@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-开发已恢复，Java改修任务1已验收：Maven四模块、Wrapper、shared配置验证及安全日志通过。7项JUnit测试、clean verify和格式检查成功；Java8被Enforcer拒绝、JAVA_HOME退出后恢复。MyBatis/Flyway新增11项数据库集成测试通过，现有测试库已审计baseline且业务数据不变；Java API新增6项HTTP单元及1项真实依赖IT通过，合同9项及生成一致性通过；worker新增3项单元及2项真实JAR进程IT通过，SIGINT/SIGTERM及JDBC连接释放验证成功。旧TS后端移除。下一步前端兼容及手机端，以下暂停说明保留为历史记录。
+开发已恢复，Java改修任务1已验收：Maven四模块、Wrapper、shared配置验证及安全日志通过。7项JUnit测试、clean verify和格式检查成功；Java8被Enforcer拒绝、JAVA_HOME退出后恢复。MyBatis/Flyway新增11项数据库集成测试通过，现有测试库已审计baseline且业务数据不变；Java API新增6项HTTP单元及1项真实依赖IT通过，合同9项及生成一致性通过；worker新增3项单元及2项真实JAR进程IT通过，SIGINT/SIGTERM及JDBC连接释放验证成功。旧TS后端移除。前端Java兼容回归已通过：5项组件/客户端、模拟浏览器1项、真实Java浏览器1项，窄屏375px截图已复核；下一步手机端及CI，以下暂停说明保留为历史记录。
 
 历史（恢复前）2026-10-04补充决策：后端目标已改为Java/Spring Boot、Maven、MyBatis，当前代码尚未迁移。下方已执行验证均为原TypeScript/Prisma证据，不能视为Java/MyBatis通过。恢复执行依据为[Java/Maven改修计划](../superpowers/plans/2026-10-04-java-maven-transition.md)。
 
