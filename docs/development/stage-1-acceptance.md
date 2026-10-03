@@ -24,11 +24,11 @@
 
 后台测试实际演练失败→点击重试→成功，375px窄屏无水平溢出。已视觉复核本地截图`artifacts/admin-foundation.png`，截图是忽略的生成物，干净检出可通过浏览器测试重新生成。
 
-## 下次继续顺序
+## 当前继续顺序
 
 1. 阅读[详细计划](../superpowers/plans/2026-10-03-stage-1-engineering-foundation.md)、本文件及根README，确认分支和工作区状态；不要从头重建项目。
-2. 先按Java改修任务1至4建立Maven、MyBatis/Flyway及Java API/worker，重新取得健康、事务、约束、迁移和关闭证据；不把旧TS测试计为Java测试。旧代码在对应Java验收通过前保留。
-3. 再做后台兼容/超时回归、手机端两端构建及双工具链CI。根完整check尚未定义；Java用Maven verify、前端/合同用npm，不能声称整仓已通过。
+2. Java改修任务1至5已有当前证据和提交，不重复开发。接下来执行第1阶段任务6：手机端、两端开发构建和设备操作；账号或设备缺失时记录平台未验收。
+3. 完成任务7双工具链CI和干净检出验收。根完整check尚未定义；Java用Maven verify、前端/合同用npm，不能声称整仓已通过。
 
 ## 环境与重启
 
