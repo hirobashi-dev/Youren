@@ -4,7 +4,7 @@
 
 - [x] 将用户确认的8阶段路线保存到docs/superpowers/plans/2026-10-03-phased-development-acceptance.md。
 - [ ] 阶段1工程基础。
-- 原TS任务5后台基础已有历史验证；现按docs/superpowers/plans/2026-10-04-java-maven-transition.md恢复Java/Spring Boot、Maven、MyBatis开发；旧测试证据不计为Java验收。
+- 原TS任务5后台基础已有历史验证；现按docs/superpowers/plans/2026-10-03-stage-1-engineering-foundation.md恢复Java/Spring Boot、Maven、MyBatis开发；旧测试证据不计为Java验收。
 - [x] Java改修任务1至5已完成并提交；任务6手机端和任务7双工具链CI待完成。
 - [ ] 阶段2身份与普通资料。
 - [ ] 阶段3留言板与图片审核。

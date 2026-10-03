@@ -2,7 +2,7 @@
 
 状态（2026-10-04）：开发已恢复，任务1至5已完成、测试并本地提交；任务6手机端和任务7双工具链CI尚未开始。第1阶段尚未整体验收通过。
 
-本文件是当前总计划；[Java/Maven实施调整](2026-10-04-java-maven-transition.md)补充后端迁移步骤，[验收记录](../../development/stage-1-acceptance.md)保存当前验证和历史证据。原TypeScript后端计划可通过Git历史查阅，当前不再执行旧NestJS/runtime命令。
+本文件是第1阶段唯一实施计划，已合并Java/Maven改修内容；[验收记录](../../development/stage-1-acceptance.md)保存当前验证和历史证据。原TypeScript后端及独立改修计划可通过Git历史查阅，当前不再执行旧NestJS/runtime命令。
 
 ## 目标、架构与技术组合
 
@@ -34,10 +34,31 @@
 
 ## 全局执行要求
 
+按executing-plans逐任务实施、记录验证与提交；当前下一步为任务6。
+
 - 在`develop/stage-1-foundation`开发；每步先写对应失败测试，再实现、验证、差分审查并本地提交，未要求不推送。
 - 代码及测试加入中文注释；JSON使用邻近中文README说明。界面中文，服务时间UTC；页面实际渲染和操作。
 - 工具放独立目录，不改系统默认JDK；修改系统设置前确认，其他已授权项目操作直接执行。
 - 缺失脚本、跳过测试、旧后端证据不计为当前通过；必要条件不足时记录原因，保留未验收状态。
+
+## Java数据库与迁移规则
+
+- 使用与Boot版本匹配的官方MyBatis Starter，不自动引入MyBatis-Plus或JPA。Mapper接口和XML namespace/方法一致，显式resultMap；数据库行不直接作为公开DTO。
+- 输入使用`#{...}`参数绑定，禁止用户输入进入`${...}`；排序列等标识使用服务端枚举白名单。复杂事务和锁查询放XML便于审查。
+- Spring服务层与Mapper共用DataSource/事务管理器，不手动commit，不在持锁事务等待邮件、审核或推送；遵循业务锁序，outbox与业务写入同事务。
+- UUID、timestamptz、bigint、JSONB及枚举显式映射；UTC使用Instant，消息sequence对外仍是字符串。新增JSONB TypeHandler时增加测试。
+- Flyway V1保持原54表、函数、索引、触发器、默认配置及中文说明，由Flyway管理事务。既有库须先核对结构指纹及Prisma迁移版本/checksum，再显式baseline；不重放V1、不删除业务数据，结构不匹配则停止。
+- 关闭自动baseline和clean，API/worker关闭自动改表；新增DDL使用后续Flyway版本。SQL来源和规范源调整完成前保留旧包只读参考。
+
+详细操作见[数据库模块说明](../../../backend/database/README.md)；参数绑定及事务遵循项目Mapper实现与测试。
+
+## 后端配置与测试发现
+
+Java使用`SPRING_DATASOURCE_URL`（JDBC URL）、独立`SPRING_DATASOURCE_USERNAME`/`SPRING_DATASOURCE_PASSWORD`、`SPRING_DATA_REDIS_URL`、`SERVER_PORT`。不假设自动加载Node `.env`，不把原Prisma URL直接作为JDBC URL，不回显凭证或连接串。
+
+Surefire执行`*Test`，Failsafe绑定integration-test和verify执行`*IT`；检查实际测试数量，禁止用`-DskipTests`验收。`test`仅执行单元测试，`verify`包含集成、格式及打包；仅执行integration-test不代表完整verify通过。
+
+Windows使用`backend/build.ps1`临时选择独立JDK，退出后恢复环境；Linux/macOS使用`./backend/mvnw -f backend/pom.xml verify`。模块命令可使用`-pl api -am test`或`-pl worker -am verify`；启动使用已打包JAR及`backend/run.ps1`，详见[后端说明](../../../backend/README.md)。
 
 ## 任务1：工程与构建基础 — 已完成
 
@@ -73,6 +94,7 @@
 - [ ] 先写成功、失败、超时、取消及重试测试，确认失败后实现最小页面。
 - [ ] 新增`App.tsx`、`src/screens/FoundationScreen.tsx`、`src/api/health.ts`、`src/theme.ts`、测试及README；沿用绿色主色和粉色恋爱辅助色，不实现业务页面。
 - [ ] 固定Expo配套依赖和EAS CLI；新增`app.config.ts`、`eas.json`，配置开发客户端/internal与iOS模拟器构建。
+- [ ] 实时协议仍待确认，建议Spring WebSocket＋JSON，在阶段4前确认；手机骨架不提前绑定Socket.IO。
 - [ ] 定义并执行`test`、`typecheck`、`build:js`，运行`expo install --check`。JS导出不等于原生构建通过。
 - [ ] Android执行`expo run:android`构建安装；iOS使用EAS开发构建及登记真机，或macOS模拟器路径。
 - [ ] 两端分别验证启动、重载、API成功/故障/恢复、中文和安全区；记录OS、设备、SDK、构建ID、截图及结果。

@@ -1,6 +1,6 @@
 # 分阶段开发与验收计划
 
-状态（2026-10-04）：8阶段划分已确认，第1阶段开发已恢复，Java/Spring Boot、Maven、MyBatis及后台兼容任务1至5已完成并提交；任务6手机端和任务7双工具链CI待开发，尚未整体验收。阶段2至8未开始。当前执行[第1阶段总计划](2026-10-03-stage-1-engineering-foundation.md)，后端步骤见[Java改修计划](2026-10-04-java-maven-transition.md)。
+状态（2026-10-04）：8阶段划分已确认，第1阶段开发已恢复，Java/Spring Boot、Maven、MyBatis及后台兼容任务1至5已完成并提交；任务6手机端和任务7双工具链CI待开发，尚未整体验收。阶段2至8未开始。当前统一执行[第1阶段实施计划](2026-10-03-stage-1-engineering-foundation.md)。
 
 ## 目标与依据
 

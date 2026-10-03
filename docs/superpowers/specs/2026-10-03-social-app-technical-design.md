@@ -1,6 +1,6 @@
 # 在日华人交友 App 技术方案
 
-更新（2026-10-04）：用户已确认Java/Spring Boot后端、Maven构建与测试、MyBatis数据库访问。开发已恢复，Java/Maven shared及MyBatis/Flyway基础已通过验证；Java API健康及错误合同、worker生命周期均已验证，旧TypeScript后端已移除，历史证据保留在Git。前端继续TypeScript。改修依据见[Java/Maven实施调整](../plans/2026-10-04-java-maven-transition.md)。
+更新（2026-10-04）：用户已确认Java/Spring Boot后端、Maven构建与测试、MyBatis数据库访问。开发已恢复，Java/Maven shared及MyBatis/Flyway基础已通过验证；Java API健康及错误合同、worker生命周期均已验证，旧TypeScript后端已移除，历史证据保留在Git。前端继续TypeScript。改修依据见[第1阶段实施计划](../plans/2026-10-03-stage-1-engineering-foundation.md)。
 
 ## 1. 范围与设计前提
 

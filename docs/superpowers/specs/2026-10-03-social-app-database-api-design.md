@@ -1,6 +1,6 @@
 # 在日华人交友 App 数据库与 API 详细设计
 
-2026-10-04实现方向调整：后端Java/Spring Boot、Maven构建测试、MyBatis数据库访问已确认。现有54表SQL、约束、业务事务和OpenAPI REST合同保留；Java基础配置、MyBatis/Flyway、API健康及worker已验证，测试库已审计接续；业务实现仍待后续阶段，Prisma资料只作历史参考。[改修计划](../plans/2026-10-04-java-maven-transition.md)明确Flyway默认和实时协议待确认边界。
+2026-10-04实现方向调整：后端Java/Spring Boot、Maven构建测试、MyBatis数据库访问已确认。现有54表SQL、约束、业务事务和OpenAPI REST合同保留；Java基础配置、MyBatis/Flyway、API健康及worker已验证，测试库已审计接续；业务实现仍待后续阶段，Prisma资料只作历史参考。[第1阶段实施计划](../plans/2026-10-03-stage-1-engineering-foundation.md)明确Flyway默认和实时协议待确认边界。
 
 结构文件已生成于[packages/database](../../../packages/database/README.md)，包含Prisma模型、SQL初始迁移与隔离数据库测试；本文中的业务API事务和worker仍待实施。字段默认值及PostgreSQL专用约束以该包的规范源和迁移文件为实施依据。
 
