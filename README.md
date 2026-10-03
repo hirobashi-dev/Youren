@@ -1,5 +1,7 @@
 # 友缘
 
+四个应用及共享模块的目录规划见[工程结构计划](docs/superpowers/plans/2026-10-04-project-structure.md)。
+
 后端采用Java/Spring Boot、Maven、MyBatis；开发已恢复，Maven四模块和shared配置/日志基础已建立。MyBatis/Flyway数据库基础已通过，Java API健康接口及错误映射已通过，Java worker启动及信号关闭已通过，旧TypeScript后端已移除并保留Git历史。当前执行[第1阶段实施计划](docs/superpowers/plans/2026-10-03-stage-1-engineering-foundation.md)。手机端与管理后台继续TypeScript；前端与合同继续Node/npm。
 
 Java构建执行 `.\backend\build.ps1 clean verify`，使用独立JDK21，不改变系统默认Java。详见[后端说明](backend/README.md)。
