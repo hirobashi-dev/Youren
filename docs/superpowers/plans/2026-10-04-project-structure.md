@@ -182,9 +182,73 @@ backend/database/
    └─ test/                              迁移、读写、事务和约束测试
 ```
 
-依赖方向：`api`、`worker` → `shared`、`database`；具体构建依赖以各`pom.xml`为准。共享模块不反向依赖应用，不让手机端或后台导入Java实现。跨进程重复业务逻辑出现时再按职责提取，不提前建立空的领域模块。
+### 模块依赖约定
 
-## 8. 落地顺序与验证
+```text
+手机端 ──HTTP──┐
+              ├── API ──→ database ──→ shared
+管理后台 ─HTTP─┘      └───────────────→ shared
+                  worker ─→ database
+                         └→ shared
+```
+
+HTTP是运行时通信，箭头`→`是Java代码依赖；以上Java依赖已由当前`pom.xml`声明。
+
+- `api`与`worker`不能互相导入代码或依赖对方启动；通过持久任务记录衔接异步工作。
+- `database`依赖`shared`，`shared`不反向依赖database或应用。database负责Mapper、类型映射和迁移，不承担HTTP控制器或推送调用。
+- API的业务服务协调权限与事务；跨业务模块通过明确的服务接口调用，控制器不绕过服务直接写Mapper。避免模块循环依赖，新的共享业务逻辑出现后再按职责提取。
+- 前端仅调用公开或授权API，不能导入Java实现、服务器配置及旧Prisma访问包。合同以`packages/contracts/openapi.json`为准，不能以共享数据库行模型替代DTO。
+
+## 8. API到worker的任务流（后续业务实现）
+
+当前worker仅具备启动、依赖检查和关闭骨架；以下是已有数据库/API设计的落地约定，并非已实现任务消费。
+
+```text
+用户请求 → API业务服务 → 同一事务：业务数据 + outbox任务 → 提交响应
+                                          ↓
+worker短事务领取任务并设置租约 → 事务外执行审核/推送等外部调用
+                                          ↓
+                        保存业务结果及任务状态 / 安排失败重试
+                                          ↓
+                         手机端或后台通过API读取最新业务结果
+```
+
+- PostgreSQL的`outbox`是持久任务来源；Redis不作为任务是否成功的唯一凭据。删除流程还使用`deletion_jobs`与`deletion_ledger`，遵循数据库/API设计规定的清理顺序。
+- API任务生产逻辑放对应`features/<业务>/service/`；worker处理器放`jobs/`，领取、租约、重试和幂等协调放`dispatch/`。任务Mapper/XML在database模块，后续按业务归组，接口和XML保持对应。
+- 业务写入和outbox入队使用同一数据库事务；外部调用在领取事务提交后执行，不长时间持锁。API响应表示已提交的业务状态，不能将“已入队”描述成“审核或推送已成功”。
+- 沿用`pending → processing → succeeded/dead`状态；通过`available_at`安排执行，`lease_until`支持崩溃后重新领取，`attempts`记录尝试次数。具体租约时长、重试间隔和上限在对应业务实施前固定并测试。
+- 允许任务重复执行，不承诺恰好一次；用`dedupe_key`防止重复入队，以eventId及业务唯一约束实现消费幂等。提供方支持幂等键时传递同一键；不支持时记录外部结果不确定的处理策略，避免无条件重复发送。
+- 完成或失败回写须校验当前领取资格，避免过期执行者覆盖新结果。不可重试错误或达到上限进入`dead`，管理后台查询及受控重试通过API执行，不直接修改任务表。
+- payload只保留完成任务所需的对象ID、版本等元信息；不存令牌、验证码或长期正文副本。执行前重新检查权限、版本和到期状态，清理或推送任务不得使过期内容重新可见。
+- 对应测试覆盖事务回滚不入队、重复执行、租约过期恢复、旧执行者回写拒绝、失败重试及到期/注销后不再推送。
+
+## 9. 配置与生成文件约定
+
+### 配置位置和用途
+
+| 工程/环境 | 配置位置与字段 | 加载约定 |
+|---|---|---|
+| 本地依赖 | 已有`infra/.env.example`，实际`infra/.env` | Compose通过`--env-file`显式加载；只使用开发/测试隔离服务 |
+| Java API/worker | 已有各模块`src/main/resources/application.yml`；进程环境变量 | 必需`SPRING_DATASOURCE_URL`、独立用户名/密码、`SPRING_DATA_REDIS_URL`；Java不自动读取`.env` |
+| Java可选配置 | `SERVER_PORT`、`READINESS_TIMEOUT_MS`、`LOG_LEVEL` | 当前默认3000、1500ms、info；字段边界以shared验证和后端README为准 |
+| 管理后台 | 规划`apps/admin/.env.example`；Vite实际环境文件 | `VITE_API_BASE_URL`是公开地址；现有客户端缺省为`http://127.0.0.1:3000` |
+| 手机端 | 规划`apps/mobile/.env.example`和`app.config.ts` | `EXPO_PUBLIC_API_BASE_URL`是公开地址；模拟器/真机地址分别记录，不能照搬本机localhost |
+| 云构建/CI | 平台环境变量和秘密管理 | 仅注入该任务需要的配置，不提交密钥文件或账号凭据 |
+
+环境示例和README可提交，实际`.env`及秘密不得提交；`VITE_*`、`EXPO_PUBLIC_*`会进入客户端产物，禁止放密码、签名密钥或管理员凭据。新增Java配置示例放`backend/.env.example`（规划），仅作为变量说明，不能暗示Java会自动加载。
+
+开发/测试配置必须分别指向隔离数据库和Redis；测试配置由测试代码或明确编排传入，拒绝无意回退到开发/生产目标。数据库迁移为独立受控操作，不由API/worker启动自动执行。完整配置规则见[后端说明](../../../backend/README.md)和[基础设施说明](../../../infra/README.md)。
+
+### 测试配置和产物
+
+- Java测试配置就近放`src/test/resources/`；前端测试配置及模拟环境放对应应用，不把测试凭证写入生产入口。
+- 提交源码、根`package-lock.json`、Maven Wrapper及校验配置、Flyway版本迁移和OpenAPI规范。生成合同由生成源维护，重新生成后检查一致性。
+- 忽略`node_modules/`、`target/`、`dist/`、`.expo/`、覆盖率/测试报告和截图等生成物；截图记录在忽略的`docs/development/artifacts/`，验收文档记载复现步骤。
+- 当前`.gitignore`已忽略`apps/mobile/android/`、`apps/mobile/ios/`，默认沿用Expo生成策略。若以后需要持久维护原生改动，先明确生成/维护方式，再同步忽略规则、构建说明及干净检出验证。
+- 新增API客户端生成产物的路径、提交策略和生成命令须随引入步骤明确；目前未建立自动生成客户端，不把规划描述为已可用。
+
+## 10. 落地顺序与验证
+
 
 1. 第1阶段任务6：建立手机基础目录，先测试状态和重试，再实现；运行类型、组件、JS导出及Android/iOS开发构建验收。
 2. 第1阶段任务7：建立CI与统一检查；Maven `verify`和npm前端/合同检查分别执行，子命令失败必须传递非零状态。
