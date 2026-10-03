@@ -72,3 +72,10 @@
 - 所有54张表补充中文用途说明；常用字段、主键/唯一/CHECK、外键/索引、保留/引用/成员/图片触发器与初始配额补充就近注释。新增tools/comments.cjs维护说明并修改生成器，重新生成不会丢注释。
 - npm run check:generated通过；npm test共10项通过，带注释初始SQL在空数据库成功执行。将HEAD与当前migration.sql移除独立行注释/空行比较，可执行SQL完全相同；54表中文说明覆盖检查和git diff --check通过。
 - 此次只增加注释及其生成源，不新增业务规则、不执行真实数据库升级；依照已有仓库要求保存一次本地版本。
+## 真实PostgreSQL迁移与Prisma验证
+
+- 用户授权验证迁移、数据库约束及Prisma读写。找到用户目录Docker客户端29.8.1，但daemon报Docker Desktop unable to start；本机PostgreSQL16.6可用，使用隔离临时实例完成验证，不连接已有数据库。
+- 增加Prisma Client6.19.0和pg8.16.3固定测试依赖、test:postgres脚本。使用临时数据目录、随机127.0.0.1端口，migrate deploy连续两次、generate后运行Prisma CRUD/关联/事务与SQL约束；自动停止自身实例并按已验证目录清理。
+- 初次脚本存在两个多余花括号，语法检查拒绝且未启动实例；修正后完整执行通过。结果：PostgreSQL16.6，54业务表，1条成功迁移记录；8组检查通过（空库/重复部署、表与历史、CRUD唯一约束、关联与日历年保留、CHECK/FK/声明拒绝、普通/恋爱会话独立、延迟群约束及回滚、删除）。临时实例与目录已清理，外部数据库未访问。
+- 尚未执行多连接竞争、API业务事务、升级迁移或性能验证，本次不宣称这些通过。README更新实际验证能力与Docker故障边界，后续不混用外部DATABASE_URL。
+- 最终npm run validate、npm test及npm run check:generated通过，10项原测试无回归；git diff --check通过。复核临时目录归属、仅自身pg_ctl停机和loopback端口隔离，依赖目录/生成客户端保持忽略，按要求保存本地Git版本。

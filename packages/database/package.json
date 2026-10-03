@@ -2,15 +2,20 @@
   "name": "@youren/database",
   "private": true,
   "version": "0.1.0",
-  "engines": { "node": ">=20.12" },
+  "engines": {
+    "node": ">=20.12"
+  },
   "scripts": {
     "build:schema": "node tools/generate.cjs",
     "check:generated": "node tools/generate.cjs --check",
     "validate": "node tools/validate.cjs",
-    "test": "node --test tests/schema.test.cjs tests/invariants.test.cjs"
+    "test": "node --test tests/schema.test.cjs tests/invariants.test.cjs",
+    "test:postgres": "node tools/test-postgres.cjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
+    "@prisma/client": "6.19.0",
+    "pg": "8.16.3",
     "prisma": "6.19.0"
   }
 }

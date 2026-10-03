@@ -46,6 +46,16 @@ npx prisma migrate deploy --schema prisma/schema.prisma
 - FK使用RESTRICT，清理前需按顺序清空收据等可空引用或保留去标识占位，再删除关联资源；不能按账号级CASCADE绕过图片/审计清理。
 - `updated_at`由后续仓储写入（本次只有插入默认值）；消费方使用更新时必须显式写入，不能当作已提供数据库自动更新时间。
 
-PGlite验证是真实PostgreSQL引擎的隔离执行，但本次尚未进行独立PostgreSQL服务器、多连接竞态、Prisma Client实际读写、升级迁移及性能测试；这些在业务服务实现阶段必做。未生成全日本地区/兴趣种子，避免编造地区数据；导入字典前公开资料允许region为空，活动发布必须有有效地区FK。
+已在本机独立临时PostgreSQL 16.6实例验证初始迁移、重复部署、Prisma Client实际增删改查/关联/事务及关键数据库约束。尚未进行多连接竞态、旧版本升级迁移及性能测试；这些在业务服务实现阶段必做。未生成全日本地区/兴趣种子，避免编造地区数据；导入字典前公开资料允许region为空，活动发布必须有有效地区FK。
+
+## 独立PostgreSQL验证
+
+```powershell
+npm run test:postgres
+```
+
+脚本默认使用本机`C:\Program Files\PostgreSQL\16\bin`，也可用PG_BIN_DIR指定安装目录。它新建临时数据目录、随机loopback端口和测试账号，通过Prisma执行migrate deploy两次及generate，测试后停止该实例并删除仅本次生成的目录。不会读取外部DATABASE_URL或连接已有库。使用临时trust认证仅供本机短时测试，不是生产配置。执行期间生成客户端位于已忽略的generated目录。
+
+本次Docker客户端位于用户安装目录，但daemon返回“Docker Desktop is unable to start”，因此采用本地PostgreSQL隔离实例替代；没有创建或修改Docker容器、数据卷。后续Docker启动问题与本次数据库结果分开处理。
 
 参考：[PGlite文档](https://pglite.dev/docs/)；Prisma固定版本由package-lock.json管理，使用本包已验证的命令，不将新版文档命令混入旧工具链。
