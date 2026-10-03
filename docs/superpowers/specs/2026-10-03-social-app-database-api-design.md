@@ -8,7 +8,7 @@
 
 采用现有 PostgreSQL＋Prisma、NestJS 模块化单体、REST＋Socket.IO、S3 和 outbox worker。关系数据库便于处理名额、成员与匹配事务；文档数据库会增加这些关系约束的应用维护成本，微服务会引入跨服务一致性成本，首版不采用。版本锁定及运行规格在实施阶段确定。
 
-以下采用建议默认值并明确保留评审点：邮箱验证码登录、免费活动、陌生私聊接收开关、活动重要修改确认与取消原因、群主转让退出、审核规则及频率。这些设计支持后续调整，不当作用户已确认的产品决定。正式恋爱上线边界沿用技术方案，本稿不新增证件上传流程。
+普通私聊接收与首次联系限额、活动修改取消及报名退出、群容量与创建配额、群主自愿转让及解散已确认，见第14节。邮箱验证码登录细节、免费活动、审核规则及其他频率仍为建议。正式恋爱上线边界沿用技术方案，本稿不新增证件上传流程。
 
 ## 2. 数据与接口共同约定
 
@@ -70,7 +70,7 @@ erDiagram
 | sessions | account_id FK、refresh_hash UQ、family_id uuid、replaced_by_id? FK sessions、expires_at、revoked_at?、platform；轮换旧记录保留到该 family 过期以识别重放 |
 | email_challenges | email_normalized、purpose(login/register/delete_account)、code_hmac、attempts、expires_at、consumed_at?；失败计数原子递增，成功单次消费 |
 | profiles | account_id FK UQ、nickname、bio、avatar_media_id? FK media_assets、region_code? FK regions、visibility(public/hidden)；不含恋爱偏好 |
-| account_settings | account_id FK UQ、allow_stranger_dm bool、push_enabled bool、lockscreen_preview bool；建议默认 true/true/false |
+| account_settings | account_id FK UQ、allow_stranger_dm bool默认true已确认、push_enabled bool、lockscreen_preview bool；后两项建议默认true/false |
 | regions | code text PK（例外，无 UUID id）、parent_code? FK regions、level(prefecture/municipality)、name_ja、name_zh、active；以版本化地区种子维护 |
 | interests | code text UQ、name_zh、active、sort_order |
 | profile_interests | account_id FK、interest_id FK，复合 PK；纯连接表无默认 id/时间 |
@@ -102,7 +102,7 @@ erDiagram
 
 | 表 | 额外字段与约束 |
 |---|---|
-| groups | creator_id FK accounts、owner_id FK accounts、type(ordinary/event/dating)、name、description、rules、region_code? FK、interest_id? FK、status(active/readonly/closed)、capacity? int、active_count int、version；count≥0，capacity为空或≥count |
+| groups | creator_id FK accounts、owner_id FK accounts、type(ordinary/event/dating)、name、description、rules、region_code? FK、interest_id? FK、status(active/readonly/closed)、capacity? int、active_count int、version、dissolved_at?；普通群capacity默认100且包含群主，解散后readonly，closed仅用于禁止读取的关闭 |
 | group_members | group_id FK、account_id FK、role(owner/member)、status(active/left/banned)、muted bool、UQ(group_id,account_id) |
 | membership_periods | group_member_id FK、start_sequence bigint、end_sequence? bigint、joined_at、left_at?；只有一个未关闭区间，使用部分唯一索引；起止序号非负且 end≥start |
 | conversations | type(group/direct/dating)、group_id? FK UQ、match_id? FK UQ、account_low_id? FK、account_high_id? FK、status(active/readonly/closed)、last_sequence bigint；按类型 CHECK 字段组合，账号对 low<high，UQ(type,account_low_id,account_high_id) |
@@ -137,7 +137,7 @@ erDiagram
 | events | creator_id FK accounts、group_id? FK UQ、cover_media_id? FK、title、description、region_code FK、starts_at、ends_at、registration_deadline、capacity int、confirmed_count int、status(draft/pending/open/ended/cancelled/hidden)、cancellation_policy、cancel_reason?、cancelled_at?、version；0≤count≤capacity、capacity>0、deadline≤starts<ends |
 | event_private_details | event_id FK UQ、meeting_instructions、version；只有发布者、有效报名者及有理由的运营权限可读 |
 | event_interests | event_id FK、interest_id FK，复合 PK，纯连接表 |
-| event_registrations | event_id FK、account_id FK、status(confirmed/cancelled)、accepted_event_version int、registered_at、cancelled_at?、expires_at?，UQ(event_id,account_id) |
+| event_registrations | event_id FK、account_id FK、status(confirmed/cancelled/left)、accepted_event_version int、registered_at、cancelled_at?、left_at?、expires_at?，UQ(event_id,account_id)；开始前cancelled释放名额，开始后left不释放历史报名名额 |
 | event_revisions | event_id FK、version、changed_fields jsonb、reason、actor_id FK，UQ(event_id,version)；不复制私有集合全文，清理期限跟活动记录策略 |
 | blocks | blocker_id FK accounts、blocked_id FK、UQ(blocker_id,blocked_id)，CHECK(两者不同)，只含 created_at |
 | reports | reporter_principal_id FK、target_type、post_id?/comment_id?/message_id?/account_id?/group_id?/event_id? 各自 FK、reason_code、detail、status(open/reviewing/resolved)、resolved_at?、expires_at?；CHECK恰好一个目标并与类型匹配 |
@@ -180,7 +180,7 @@ erDiagram
 | 普通加入/退出 | 锁账号→群→会话，检查状态/封禁/容量，更新成员及区间和 count；重复加入不加人数，退出重复不减人数；无审批步骤 |
 | 发送消息 | 锁发送者及两人会话对方账号→必要的群→会话，再查资格、拉黑/接收、区间；查client ID去重，增加last_sequence，写消息、收据、outbox，提交后ACK |
 | 双向喜欢 | 锁两个账号，校验资格及拉黑，写like；检查反向like，创建/恢复唯一match与dating会话及参与者；两个并发like不会遗漏匹配 |
-| 报名/取消报名 | 锁账号→活动→活动群→会话，查开放状态/时间/容量；更新报名与confirmed_count，写/撤销成员资格和区间，写outbox；任一步失败回滚 |
+| 报名/取消报名 | 锁账号→活动→活动群→会话，查开放状态/时间/容量；更新报名，开始前取消减confirmed_count、开始后退出不减，写/撤销成员资格和区间，写outbox；任一步失败回滚 |
 | 取消活动 | 锁发布者→活动→群→会话，验证version，改cancelled与readonly，写唯一取消通知任务；通知名单从提交时报名快照ID生成，不在事务内发送 |
 | 修改活动 | 锁发布者→活动，校验version及capacity≥confirmed_count，保存新审核版本，获批提交时重新检查约束；重要修改按建议要求确认并创建通知任务 |
 | 拉黑/资格撤销 | 锁相关账号，更新关系/声明/auth_version，提交权限失效事件；之后发送必读新状态，网关移出room且广播前再次过滤 |
@@ -280,12 +280,13 @@ PublicPostDTO 包含 id,title,body,authorDisplay,region,interests,images,replyCo
 | POST /groups | U，幂等 | name,description,rules?,regionCode?,interestId → 201 group,conversationId,role=owner；客户端不能建event/dating类型 |
 | PATCH /groups/{groupId} | U＋owner，版本 | name,description,rules,regionCode? → 200，审核重要修改 |
 | POST /groups/{groupId}/join | U，幂等 | 空 → 200 membership,conversationId；仅普通群直接加入，受控群按资格来源 |
-| DELETE /groups/{groupId}/membership | U | → 204退出；owner建议先转让/解散，规则待评审 |
+| DELETE /groups/{groupId}/membership | U | → 204退出；owner须先完成自愿转让，只有自己时可解散 |
 | GET /groups/{groupId}/members | U＋active成员 | cursor? → 注册成员公开资料与角色 |
 | PATCH /groups/{groupId}/membership | U＋active成员 | muted → 自己的设置 |
 | DELETE /groups/{groupId}/members/{accountId} | U＋owner | reason → 204移除并封禁，不能移除自己/其他owner |
-| POST /groups/{groupId}/owner-transfer | U＋owner，幂等 | targetAccountId → 200，目标须active；建议功能待评审 |
-| POST /groups/{groupId}/close | U＋owner，幂等 | reason → 200关闭，活动群改由活动取消接口管理 |
+| POST /groups/{groupId}/owner-transfer | U＋owner，幂等 | targetAccountId → 201 transferRequestId,status=pending；目标须active，等待本人同意，不直接替换owner |
+| POST /groups/{groupId}/owner-transfers/{transferId}/accept | U＋指定接任者，幂等 | accepted=true → 200原子转让；双方仍active、原owner仍有效及配额合格才提交 |
+| POST /groups/{groupId}/close | U＋owner，幂等 | confirmed=true,reason? → 200 readonly,dissolvedAt，停止加入和发送、通知成员，保留原成员未到期历史；活动群改由活动取消/结束接口管理 |
 | GET /me/groups | U | cursor? → 当前群、角色、未读摘要 |
 | POST /direct-conversations | U，幂等 | targetAccountId,source=publicProfile/groupMember,sourceGroupId? → 200/201 ConversationDTO；无年龄/匹配要求 |
 | GET /conversations | U | type?,cursor? → 自己有权会话及未读，不返回到期预览 |
@@ -294,7 +295,7 @@ PublicPostDTO 包含 id,title,body,authorDisplay,region,interests,images,replyCo
 | PUT /conversations/{conversationId}/read-cursor | U，按类型鉴权 | lastReadSequence → 200，只能单调递增至有权当前高水位 |
 | PATCH /conversations/{conversationId}/settings | U参与者/成员 | muted,archived? → 200自己的设置，不改变群状态 |
 
-普通私聊需目标具有可公开普通账号资料或共同有效群资料来源，服务端验证source，不接受客户端伪造出处。双方拉黑或目标关闭陌生私聊时返回统一不可发起结果。source不授权恋爱资料转普通身份；恋爱DTO没有direct入口。
+普通私聊需目标具有可公开普通账号资料或共同有效群资料来源，服务端验证source，不接受客户端伪造出处。双方拉黑时禁止双方发送；目标关闭陌生私聊时拒绝新的首次联系，已有成功发送的会话仍可继续；空会话不构成既有联系。source不授权恋爱资料转普通身份；恋爱DTO没有direct入口。
 
 MessageDTO＝id,conversationId,senderDisplay,clientMessageId,sequence,body,sentAt,expiresAt,status。补取响应另含 `scannedThroughSequence`、`hasMore`、`nextCursor`：记录因过期/拉黑过滤产生序号空洞，客户端仍推进扫描游标，不能无限重复查询。read cursor不会重新授权旧消息，未读数基于当前可见未过期消息，不把last_sequence差值直接当未读。
 
@@ -323,9 +324,10 @@ MessageDTO＝id,conversationId,senderDisplay,clientMessageId,sequence,body,sentA
 | POST /events | U，幂等 | title,description,regionCode,interestIds,startsAt,endsAt,registrationDeadline,capacity,cancellationPolicy,meetingInstructions,coverMediaId? → 201 id,status,version；默认提交审核，可指定saveAsDraft=true |
 | PATCH /events/{eventId} | U＋发布者，版本 | 可编辑字段,changeReason?,confirmChanges? → 200审核/更新状态；取消不接受PATCH status |
 | POST /events/{eventId}/cancel | U＋发布者，版本＋幂等 | reason → 200 cancelled；已有取消返回同结果 |
+| POST /events/{eventId}/end | U＋发布者，版本＋幂等 | confirmed=true,reason → 200 ended；开始后可提前结束，通知成员，群转readonly，保留记录 |
 | GET /events/{eventId}/private-details | U＋发布者/confirmed报名 | → 集合说明；取消后原有效报名者按建议仍可读，过期/已取消报名者拒绝 |
 | POST /events/{eventId}/registrations | U，幂等 | acceptedEventVersion,acceptedRules=true → 201/重复200 registration,conversationId；发布者无需占报名名额 |
-| DELETE /events/{eventId}/registrations/me | U | → 204，释放名额并撤销活动群资格 |
+| DELETE /events/{eventId}/registrations/me | U | → 204；开始前cancelled释放名额，开始后left不释放历史报名名额；两种情况均撤销群访问资格 |
 | GET /events/{eventId}/registrations | U＋发布者 | cursor? → 参加者公开资料及报名状态，不公开名单给其他报名者 |
 | GET /me/events | U | role=participant/creator,status?,cursor? → 我的活动与报名 |
 | GET /notifications | U | cursor? → NotificationDTO，无锁屏敏感正文 |
@@ -342,7 +344,7 @@ MessageDTO＝id,conversationId,senderDisplay,clientMessageId,sequence,body,sentA
 | GET /admin/tasks；POST /admin/tasks/{taskId}/retry | A运维角色 | 查询 / 空 → 队列状态 / 202重试，成功任务不重执行 |
 | GET /admin/audit-actions | A审计角色 | cursor?,from?,to? → 操作流水，只含必要信息 |
 
-EventPublicDTO＝id,title,description,cover,region,interests,startsAt,endsAt,registrationDeadline,capacity,confirmedCount,status,cancellationPolicy,version,capabilities。报名必须接受当前version，版本变化返回412，让用户看完新规则再确认。活动修改取消细则、免费、取消报名截止、结束后集合信息清理策略需业务评审；默认建议开始前可自行取消，不允许隐藏操作静默取消报名。
+EventPublicDTO＝id,title,description,cover,region,interests,startsAt,endsAt,registrationDeadline,capacity,confirmedCount,status,cancellationPolicy,version,capabilities。报名必须接受当前version，版本变化返回412，让用户看完新规则再确认。活动修改取消及报名退出按第14节已确认规则执行；免费及结束后集合信息清理策略仍需评审，不允许隐藏操作静默取消报名。
 
 ## 8. 请求与响应示例
 
@@ -477,8 +479,34 @@ Outbox worker 使用短租约领取并在事务外执行外部调用；成功后
 
 ## 13. 评审清单与下一份交付
 
-尚需业务确认：普通私聊默认接收与频率、活动修改取消/取消报名截止、群人数与创建频率/群主退出转让、资料字段与限额、审核与外部联系方式规则、邮箱登录细节及注销后重注册。需要运维确定：日志/备份窗口、ledger和幂等收据期限、待审最终清理时间、正式恋爱发布要求。
+普通私聊默认接收与首次联系限额、活动修改取消与报名退出、群人数与创建频率及群主退出转让已确认。尚需业务确认：资料字段与限额、审核与外部联系方式规则、邮箱登录细节、免费活动及注销后重注册。需要运维确定：日志/备份窗口、ledger和幂等收据期限、待审最终清理时间、正式恋爱发布要求。
 
 这些项均在上文有可调整的建议默认值或明确的配置边界；不影响评审数据结构，但编码对应功能前应确定。审核正文版本、consent_records等辅助表实施时纳入完整迁移，不能漏掉本文后列实体。
 
 用户评审本稿后，下一步可生成 Prisma schema＋SQL约束迁移与 OpenAPI 3.1 合同草稿，再按模块制定实现计划；届时执行解析、迁移、权限和并发测试。本次不将文字设计说成已运行的数据库或API。
+
+## 14. 已确认的业务默认值
+
+用户已接受下列默认值。本节替代前文相应“建议/待评审”描述；不同时确认免费活动、邮箱登录细节或其他未列事项。人数与频率限额做成后台配置，变更记录操作者、版本与生效时间，不追溯删除既有内容。
+
+| 领域 | 已确认规则 |
+|---|---|
+| 普通私聊接收 | 默认接收注册用户消息，可关闭陌生人私聊；已有会话仍可继续。拉黑后双方不能私聊 |
+| 首次联系 | 对方回复前最多发3条文字消息；每天最多新联系10人；计数按账号，不按安装或会话重复创建 |
+| 活动修改 | 发布者管理本人活动；已有报名时修改时间、集合地点或取消规则需二次确认并通知报名者，通知包含具体变更；容量可增，减少不能低于当前报名人数 |
+| 活动取消/结束 | 开始前填写原因并确认取消，停止报名、通知报名者、群转只读；开始后用提前结束，保留记录 |
+| 报名取消/退出 | 开始前自行取消，释放名额并退出活动群；开始后退出活动，不再释放报名名额，并撤销本人活动群资格 |
+| 群容量 | 普通群上限100人，含群主；活动群为发布者加有效报名者，按活动名额确定，不套普通群100人上限 |
+| 群创建配额 | 每账号最多拥有5个未解散普通群，每天最多创建2个普通群；创建和转让检查拥有数，创建频率按原creator计，不因解散或转让返还当日次数 |
+| 群主退出 | 有其他成员时先转给自愿接任者，完成同意后方可退出；只有自己时可直接解散，不要求接任者 |
+| 群解散 | 二次确认，停止发言及加入，通知原成员；原成员可查看自己原有权限内未到期历史，仍按发送满一年删除 |
+
+工程计数约定：每日按Asia/Tokyo自然日计算，数据库时间仍用UTC；关闭陌生私聊不撤销已建立的会话，但不能靠首次创建空会话绕过设置，首次成功发送才计为新联系。对方回复前的3条为该账号对方向累计，不因删消息、归档或重复创建重置；对方第一次成功回复后解除该首次限制，常规反滥用限流继续执行。
+
+新增数据：`direct_contact_states(account_low_id FK,account_high_id FK,low_sent_count int,high_sent_count int,low_first_sent_at?,high_first_sent_at?,low_first_replied_at?,high_first_replied_at?,UQ(low,high))`记录首次联系状态，不存正文；`daily_usage(account_id FK,day_jst date,kind(new_dm_target/group_create),used_count int,UQ(account_id,day_jst,kind))`记录自然日使用；`group_owner_transfers(group_id FK,from_account_id FK,to_account_id FK,status(pending/accepted/cancelled),accepted_at?,UQ约束每群最多一个pending)`记录自愿接任；`policy_configs(key text UQ,value jsonb,version int,updated_by_admin_id FK)`记录运营配置。
+
+上述辅助表沿用公共id/时间字段（daily_usage可采用复合PK），计数与首条消息/群创建/转让在同事务更新；重复请求先去重再扣次数。并发最后一次额度不超额，接收关闭与首次发送采用账号锁串行检查。无正文联系状态在会话有效时用于限制，不随单条消息满一年重置；账号注销时去标识化/清理，其他元信息期限由运维保留策略细化，不延长聊天正文保留。
+
+活动新增 `actual_ended_at?`，提前结束从该时刻起计算报名记录一年保留；自然结束用ends_at，取消用cancelled_at。更新开始时间与退出竞争锁同一活动行，以事务中的服务器时间及当前已提交starts_at为准。已开始活动不能通过把starts_at改到未来重新变成可取消/可释放名额状态；确认次数和已开始标志保持单调。批量通知保存报名者ID与字段级变更，不复制私有地点到公开通知或锁屏，有权详情内展示具体变更。
+
+补充验收：关闭陌生私聊后旧会话可继续但空会话不能绕过；第4条首次消息、第11位新联系人拒绝，重复请求不扣两次；东京跨日重置；第101位成员、第6个拥有群、第3个当日创建拒绝；对方拒绝或未接受转让不改变owner；解散后原成员只读且新加入拒绝；开始前后取消/退出的名额计数分开；提前结束及通知幂等、重要变更显示字段内容、所有历史仍按原一年到期清理。上述是后续实现测试要求，本次只核对设计一致性。
