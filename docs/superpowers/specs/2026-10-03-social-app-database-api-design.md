@@ -1,14 +1,16 @@
 # 在日华人交友 App 数据库与 API 详细设计
 
+2026-10-04实现方向调整：后端Java/Spring Boot、Maven构建测试、MyBatis数据库访问已确认。现有54表SQL、约束、业务事务和OpenAPI REST合同保留；Java实现与迁移接续尚未执行，Prisma资料只作迁移参考。[改修计划](../plans/2026-10-04-java-maven-transition.md)明确Flyway默认和实时协议待确认边界。
+
 结构文件已生成于[packages/database](../../../packages/database/README.md)，包含Prisma模型、SQL初始迁移与隔离数据库测试；本文中的业务API事务和worker仍待实施。字段默认值及PostgreSQL专用约束以该包的规范源和迁移文件为实施依据。
 
 ## 1. 设计范围与决策状态
 
-本稿供开发评审，依据[产品方案](2026-10-03-social-app-design.md)、[技术方案](2026-10-03-social-app-technical-design.md)及[页面与交互方案](2026-10-03-social-app-ui-interaction-design.md)的最新确认部分。旧稿中 verified 默认条件、组织者预授权及仅匹配后可私聊的描述，以后续确认与本文为准。当前交付是数据和协议设计，尚未建立数据库、迁移、API 服务或业务测试。
+本稿供开发评审，依据[产品方案](2026-10-03-social-app-design.md)、[技术方案](2026-10-03-social-app-technical-design.md)及[页面与交互方案](2026-10-03-social-app-ui-interaction-design.md)的最新确认部分。旧稿中 verified 默认条件、组织者预授权及仅匹配后可私聊的描述，以后续确认与本文为准。当前已有数据库迁移、合同及原TS基础健康测试；业务尚未实现，目标Java/MyBatis路径待重新验收。
 
 已确认：日本首发、中文、iOS/Android、邮箱注册、游客留言板图文、注册创建群与直接加入、注册发布活动、普通私聊独立于恋爱匹配、恋爱采用主动开启加 18 岁自我声明、内容限制与一年保留。首版聊天为文字，与留言板图片权限分开。
 
-采用现有 PostgreSQL＋Prisma、NestJS 模块化单体、REST＋Socket.IO、S3 和 outbox worker。关系数据库便于处理名额、成员与匹配事务；文档数据库会增加这些关系约束的应用维护成本，微服务会引入跨服务一致性成本，首版不采用。版本锁定及运行规格在实施阶段确定。
+采用PostgreSQL＋MyBatis、Java/Spring Boot模块化单体、Maven、REST、S3和独立outbox worker。SQL迁移默认Flyway，Spring事务协调行锁与Mapper；实时传输建议Spring WebSocket＋JSON，具体协议待确认。关系、状态机、名额、锁序及REST合同保留，版本在实施时固定。
 
 普通私聊接收与首次联系限额、活动修改取消及报名退出、群容量与创建配额、群主自愿转让及解散已确认，见第14节。邮箱验证码登录细节、免费活动、审核规则及其他频率仍为建议。正式恋爱上线边界沿用技术方案，本稿不新增证件上传流程。
 
@@ -171,9 +173,9 @@ erDiagram
 
 查询条件始终追加权限与 `expires_at > now()`，不能只依赖每小时删除。时间游标使用 `(published_at,id)` 等稳定二元排序；新增回复不能更改旧帖排序起算。中文初版使用参数化关键词检索，可先小规模 ILIKE；不能承诺默认全文分词满足中文搜索，规模上升前验证查询计划与检索质量。
 
-单行 CHECK、UQ、FK 保障本地不变量；跨表计数和最多九图由事务加锁或触发器保障。Prisma schema 未覆盖的部分索引、CHECK、延迟触发器写入受版本管理的 SQL migration，不假设应用校验等于数据库约束。[PostgreSQL 约束文档](https://www.postgresql.org/docs/current/ddl-constraints.html)
+单行 CHECK、UQ、FK 保障本地不变量；跨表计数和最多九图由事务加锁或触发器保障。部分索引、CHECK、延迟触发器写入受版本管理的SQL migration，Java/MyBatis不自动建表，不假设应用校验等于数据库约束。[PostgreSQL 约束文档](https://www.postgresql.org/docs/current/ddl-constraints.html)
 
-所有写路径统一锁顺序：账号行按 UUID 升序 → 活动 → 群 → 会话 → 成员/附件/消息。操作不存在的中间类别跳过，取得后不能逆序新增锁；注销只先撤销账号，关联群和内容交给后续独立事务，避免批量循环互锁。外部邮件、上传、审核及推送不在持锁事务内等待。行锁与有限重试用于竞争，死锁/序列化失败最多重试三次，重试共享原幂等键。[PostgreSQL 行锁说明](https://www.postgresql.org/docs/current/explicit-locking.html)、[Prisma 事务说明](https://www.prisma.io/docs/orm/fundamentals/transactions)
+所有写路径统一锁顺序：账号行按 UUID 升序 → 活动 → 群 → 会话 → 成员/附件/消息。操作不存在的中间类别跳过，取得后不能逆序新增锁；注销只先撤销账号，关联群和内容交给后续独立事务，避免批量循环互锁。外部邮件、上传、审核及推送不在持锁事务内等待。行锁与有限重试用于竞争，死锁/序列化失败最多重试三次，重试共享原幂等键。[PostgreSQL 行锁说明](https://www.postgresql.org/docs/current/explicit-locking.html)、[MyBatis Spring事务](https://mybatis.org/spring/transactions.html)
 
 | 场景 | 同一数据库事务内的步骤 |
 |---|---|
@@ -400,7 +402,7 @@ DTO 中 capabilities 只指导界面，服务端仍逐次鉴权；direct 不能�
 
 ## 9. 实时协议与离线恢复
 
-Socket.IO 连接认证使用 `auth.accessToken`，不写URL；账号会话撤销或过期后必须重新认证。事件 room 由服务端分配，客户端不能通过任意room名订阅。REST 与 WS 调用同一消息服务和去重逻辑。
+原Socket.IO设计使用`auth.accessToken`；Java目标协议尚待确认，最终认证载体须随协议更新，令牌不得写URL。以下事件和权限为需要保留的业务语义；账号会话撤销或过期后必须重新认证。事件 room 由服务端分配，客户端不能通过任意room名订阅。REST 与 WS 调用同一消息服务和去重逻辑。
 
 | 方向 / 事件 | 载荷与效果 |
 |---|---|
@@ -412,7 +414,7 @@ Socket.IO 连接认证使用 `auth.accessToken`，不写URL；账号会话撤销
 | server → content:unavailable | targetType,targetId,eventId → 清理缓存正文/图片与引用副本 |
 | server → notification:created | notificationId,type,target → 重新读通知与目标，不信任推送正文 |
 
-Socket.IO 默认不提供断线期间服务器消息的持久重放，本方案用数据库、序号和 REST 补取负责恢复，不宣称“恰好一次投递”。提交后ACK丢失，原 clientMessageId 重试返回原结果；服务端广播前再次鉴权；到期消息及已失权限消息不广播。[Socket.IO 投递保证](https://socket.io/docs/v4/delivery-guarantees/)
+原Socket.IO传输及建议标准WebSocket均不作为持久消息日志，本方案用数据库、序号和 REST 补取负责恢复，不宣称“恰好一次投递”。提交后ACK丢失，原 clientMessageId 重试返回原结果；服务端广播前再次鉴权；到期消息及已失权限消息不广播。[Socket.IO 投递保证](https://socket.io/docs/v4/delivery-guarantees/)
 
 Outbox worker 使用短租约领取并在事务外执行外部调用；成功后标记，崩溃后可重复执行，消费者以eventId去重。payload只存对象ID和版本，执行时重新查询正文/权限/到期；避免长期任务副本绕过一年删除。推送默认仅“有新消息”，点击目标重新鉴权；拉黑/免打扰/注销后不发送正文或旧消息。
 
@@ -477,7 +479,7 @@ Outbox worker 使用短租约领取并在事务外执行外部调用；成功后
 | T11 管理后台 | 普通令牌拒绝；MFA/RBAC；缺理由拒绝；审计不复制正文与令牌；只读角色不能操作 |
 | T12 运维与恢复 | migration约束落地、死锁重试、worker租约崩溃恢复、幂等收据过期、UUIDv7离线窗口及未来时钟拒绝、删除ledger重放及恢复旧会话撤销 |
 
-实施时先身份/资料/字典，再游客留言板与媒体审核、群和消息、普通私聊、恋爱、活动、后台与清理恢复。API用Jest/Supertest，关键事务用真实PostgreSQL集成测试（Testcontainers）；合同验证用OpenAPI；手机用RNTL/Maestro，后台用Playwright。每一步通过对应测试再推进，并创建一组本地Git版本。当前不制定整体开发排期。
+实施按已确认八阶段路线推进，先Java/Maven基础改修再身份和业务。Java API使用JUnit/Spring Boot Test/MockMvc或真实HTTP，MyBatis关键事务用真实PostgreSQL集成测试（Testcontainers），Maven verify作为完整门槛；合同用OpenAPI，手机用RNTL/Maestro，后台用Playwright。每一步通过对应测试再推进，并创建一组本地Git版本。当前不制定整体开发排期。
 
 ## 13. 评审清单与下一份交付
 
@@ -485,7 +487,7 @@ Outbox worker 使用短租约领取并在事务外执行外部调用；成功后
 
 这些项均在上文有可调整的建议默认值或明确的配置边界；不影响评审数据结构，但编码对应功能前应确定。审核正文版本、consent_records等辅助表实施时纳入完整迁移，不能漏掉本文后列实体。
 
-用户评审本稿后，下一步可生成 Prisma schema＋SQL约束迁移与 OpenAPI 3.1 合同草稿，再按模块制定实现计划；届时执行解析、迁移、权限和并发测试。本次不将文字设计说成已运行的数据库或API。
+既有Prisma/SQL及OpenAPI文件已生成；下次恢复先完成Java/Maven/MyBatis基础和SQL迁移接续，复验约束、事务及合同兼容。未实现业务不标为已运行，历史TS测试不代替Java证据。
 
 ## 14. 已确认的业务默认值
 

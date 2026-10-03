@@ -1,12 +1,14 @@
 # 在日华人交友 App 技术方案
 
+更新（2026-10-04）：用户已确认Java/Spring Boot后端、Maven构建与测试、MyBatis数据库访问。当前代码仍为暂停的TypeScript基础实现；本次只更新文档，Java尚未实现。改修依据见[Java/Maven实施调整](../plans/2026-10-04-java-maven-transition.md)。
+
 ## 1. 范围与设计前提
 
 数据库字段、约束、接口契约、页面映射及事务细节见[数据库与 API 详细设计](2026-10-03-social-app-database-api-design.md)。该稿沿用本文最新确认规则，未确认业务细则保留为评审建议。
 
 依据：[产品设计方案](2026-10-03-social-app-design.md)。首发包含兴趣交友、恋爱配对、同城活动、公开留言板、群聊和管理后台。普通留言板允许未注册用户浏览、发帖、回复；恋爱功能要求注册、主动开启意愿及勾选“我已年满 18 岁”。勾选记录仅代表年龄自我声明，不代表证件核验。全站不设置统一的年龄确认弹窗。
 
-本文是技术评审稿，不是已批准的逐步实施计划，也不代表代码或基础设施已建立。首发已确认同时开发 iOS 与 Android；邮箱验证码注册、游客图片发布已确认。暂按小团队、单一日本区域部署设计，团队规模、预算及部署方式仍待确认。
+本文描述目标技术实现；当前已有工作区、配置、API健康检查、worker及后台基础，业务接口和手机端尚未实现。首发已确认同时开发 iOS 与 Android；邮箱验证码注册、游客图片发布已确认。暂按小团队、单一日本区域部署设计，团队规模、预算及部署方式仍待确认。
 
 已确认：邮箱验证码注册；游客与注册用户均可在普通公开留言板的帖子及回复中发布图片，图片通过审核后展示；注册用户可以创建普通群，创建者成为群主，加入普通群无需审批；注册用户可以发布活动并使用普通私聊。恋爱入口私聊仍需要匹配。建议首版活动免费，普通用户关注可后续扩展。建议值不覆盖已确认的产品要求。
 
@@ -17,17 +19,18 @@
 | 手机端 | React Native、Expo、TypeScript | 共用业务界面，构建 iOS 与 Android App |
 | 手机端数据 | TanStack Query、SQLite、SecureStore | 请求缓存、消息本地缓存、敏感令牌存储 |
 | 管理后台 | React、Vite、TypeScript | 审核、群管理、活动管理与审计 |
-| 后端 | NestJS、TypeScript | REST API、权限校验、业务模块 |
-| 实时通信 | Socket.IO | 群聊和匹配私聊实时事件 |
-| 主数据库 | PostgreSQL、Prisma | 持久化业务数据、事务和迁移 |
+| 后端 | Java、Spring Boot | 已确认；REST API、权限校验、业务模块和独立worker |
+| 构建与测试 | Maven、Maven Wrapper | 已确认Maven；固定安装、JUnit单元/HTTP及集成测试 |
+| 实时通信 | Spring WebSocket＋JSON事件（建议） | 协议改选待确认；保留消息ACK、去重和REST补取语义 |
+| 主数据库 | PostgreSQL、MyBatis、Flyway | PostgreSQL保留；MyBatis已确认，Flyway作为SQL迁移工程默认 |
 | 缓存 | Redis | 限流、临时验证码及实时事件分发 |
 | 文件 | S3 私有存储、受控图片分发 | 隔离待审核与已发布图片 |
 | 异步任务 | PostgreSQL outbox、独立 worker | 审核、通知、删除任务的可靠处理 |
 | 推送 | expo-notifications、Expo Push 接口 | 对接系统推送，允许后续替换供应商 |
 
-以上技术组合已获用户确认；具体版本及供应商配置仍需实施时确定。实施时选择相互兼容的稳定版本，锁定 lockfile、Node LTS 和 Expo SDK，不使用浮动 latest 作为生产约束。
+Java/Spring Boot和Maven已确认，前端选型继续沿用。JDK21作为建议基线；实施前核对并固定JDK补丁、Spring Boot BOM、Maven Wrapper发行版及插件，不使用动态版本或SNAPSHOT发布。MyBatis已确认，Flyway是可调整的工程默认，实时协议待确认。前端继续固定Node22.23.3、npm锁和Expo SDK。[Spring Boot Maven插件](https://docs.spring.io/spring-boot/maven-plugin/index.html)
 
-备选 Flutter 适合已有 Dart 经验的团队；纯原生能更深入控制平台能力，但两端维护成本更高。本方案选择 TypeScript 共用技术体系。后端先采用模块化单体，API 和 worker 分开运行，暂不引入微服务、搜索集群或机器学习推荐。
+备选 Flutter 适合已有 Dart 经验的团队；纯原生能更深入控制平台能力，但两端维护成本更高。手机端和后台使用TypeScript，后端使用Java，OpenAPI作为跨语言边界。后端先采用模块化单体，API 和 worker 分开运行，暂不引入微服务、搜索集群或机器学习推荐。
 
 Expo 推送需在 development build 和真实设备上验证，不能仅依赖 Expo Go。[官方开发构建说明](https://docs.expo.dev/develop/development-builds/faq/)
 
@@ -44,7 +47,7 @@ flowchart LR
   Service --> Redis[(Redis)]
   DB --> Worker[Outbox Worker]
   Worker --> Push[推送适配器]
-  Worker --> Verify[年龄验证适配器]
+  Service --> Declare[18岁自我声明]
   Worker --> Review[审核适配器]
   Service --> Storage[私有图片存储]
 ```
@@ -54,10 +57,13 @@ flowchart LR
 ```text
 apps/mobile/          手机端：按 board、groups、dating、events 划分功能
 apps/admin/           管理后台
-apps/api/src/modules/ accounts、board、chat、dating、events、moderation
-apps/worker/          异步任务入口，复用业务服务
-packages/contracts/  API 与实时事件 DTO、错误码、验证规则
-packages/database/   数据模型、迁移、开发种子数据
+backend/pom.xml      Maven聚合工程，固定依赖与测试插件
+backend/shared/      配置、日志和工程公共类型
+backend/database/    MyBatis Mapper、Flyway SQL迁移与数据库集成测试
+backend/api/         Spring Boot API，按accounts/board/chat/dating/events/moderation组织
+backend/worker/      Spring Boot异步入口，共用业务服务
+packages/contracts/  OpenAPI合同及Node校验，Java DTO另行映射/校验
+packages/database/   既有SQL/Prisma资料与回归，迁移接续完成前保留参考
 infra/               部署与环境配置模板
 ```
 
@@ -94,7 +100,7 @@ infra/               部署与环境配置模板
 | posts、comments | author_principal_id、scope、status、body、created_at；评论所属帖子约束 |
 | groups、group_members | 群类型、状态及 creator_id；群主角色；唯一 group_id + account_id；加入和退出时间；普通群不设待审批成员状态 |
 | conversations、messages、read_cursors | 群或配对会话；唯一 sender_id + client_message_id |
-| dating_profiles、age_verifications | 主动开启标志；pending、verified、rejected、revoked；供应商引用 |
+| dating_profiles、age_declarations | 独立资料；self_declared/withdrawn；不标为证件核验 |
 | likes、matches | 禁止自点赞；点赞方向唯一；匹配账号对规范排序并唯一 |
 | events、event_registrations | capacity、confirmed_count、status；唯一 event_id + account_id |
 | blocks、reports、moderation_actions | 屏蔽关系、举报对象、处理记录和管理员 |
@@ -106,7 +112,7 @@ infra/               部署与环境配置模板
 
 ## 6. API 与协议
 
-REST 路径统一 `/v1`，使用 OpenAPI 描述。写操作支持 client_request_id 或 Idempotency-Key，并绑定主体、路由及请求摘要；同键不同内容返回冲突。错误格式为 `code、message、request_id`，不泄露内部异常。
+REST 路径统一 `/v1`，使用 OpenAPI 描述。写操作支持 client_request_id 或 Idempotency-Key，并绑定主体、路由及请求摘要；同键不同内容返回冲突。错误格式为 `code、message、requestId`，不泄露内部异常。
 
 | 接口示例 | 权限与行为 |
 |---|---|
@@ -115,18 +121,17 @@ REST 路径统一 `/v1`，使用 OpenAPI 描述。写操作支持 client_request
 | POST /auth/email-code；POST /auth/register | 验证码、限流、游客接续 |
 | GET /groups；POST /groups；POST /groups/:id/join | 注册用户可创建普通群；校验群类型、封禁、状态和人数后直接加入，无审批流程 |
 | GET /conversations/:id/messages | 按群聊、普通私聊或恋爱私聊分别校验成员、参与者及相关资格 |
-| POST /dating/verification-sessions | 已注册；创建验证流程 |
-| POST /webhooks/age-verification | 供应商签名、重放保护，不接受客户端 verified 值 |
-| GET /dating/candidates；POST /dating/likes | verified 且主动开启恋爱意愿 |
+| POST /dating/age-declarations | 注册用户主动声明18岁，不接受客户端verified |
+| GET /dating/candidates；POST /dating/likes | 有效self_declared且主动开启恋爱意愿 |
 | POST /events/:id/registrations | 注册、活动状态和名额校验 |
 | POST /reports；POST /blocks | 举报允许游客凭证；屏蔽建议要求注册 |
-| DELETE /account | 撤销会话并生成数据删除任务 |
+| DELETE /me | 撤销会话并生成数据删除任务 |
 
 状态码区分 401 未认证、403 无权限、409 状态冲突或名额已满、422 内容不合法、429 超过频率。被屏蔽或无权访问的对象采用统一响应，避免探测用户关系。
 
 ## 7. 群聊与消息可靠性
 
-NestJS 提供 WebSocket gateway，可配合 Socket.IO 实现实时入口。[官方说明](https://docs.nestjs.com/websockets/gateways)
+建议Java实时入口使用Spring WebSocket与JSON事件，协议改选仍待确认。Socket.IO与标准WebSocket不能仅换地址互通；第4阶段前确认协议并同步详细设计/客户端测试。REST合同与消息业务语义继续保留。[Spring WebSocket API](https://docs.spring.io/spring-framework/reference/web/websocket/server.html)
 
 连接建立时验证会话；加入 room 和每次发消息再次检查权限。令牌过期需重新认证。会话撤销、退群、封禁或恋爱资格失效时主动断开相关连接，并持续在服务端过滤事件。
 
@@ -140,13 +145,13 @@ NestJS 提供 WebSocket gateway，可配合 Socket.IO 实现实时入口。[官�
 
 ## 8. 恋爱配对与年龄验证
 
-年龄验证提供统一适配器 `createSession、handleCallback、getStatus`，供应商选择与具体证件流程单独评审。默认优先第三方核验，后台保存结果、供应商引用、时间和必要审计证据，不默认保存证件照片。
+当前采用未预选的18岁自我声明，保存声明文案版本及声明/撤销时间，不接入证件供应商。未来正式核验如需要，另行评审适配器与数据规则。
 
-状态机：未申请 → pending → verified 或 rejected；verified 可转 revoked。回调验证签名和事件唯一性，绑定用户及验证会话，拒绝跨账号替换和旧事件覆盖新结果。失效或复核由所选供应商策略决定。
+声明状态为无记录、self_declared、withdrawn；撤销立即阻止恋爱发现和通信。普通留言板、群聊、普通私聊不因未声明而受限。
 
 匹配采用兴趣、地区和用户明确设置的偏好进行规则排序，不推断敏感属性。双向喜欢在数据库事务中创建唯一匹配及私聊会话；使用规范排序的账号对加锁，避免两个并发点赞遗漏匹配。拉黑、关闭恋爱意愿或验证撤销后停止配对与恋爱通信，历史数据依据保留政策处理。
 
-日本相关业务适用性、申报与年龄确认方法须在上线前按实际功能确认。18 岁勾选不是本技术方案默认的核验方法；普通公开区禁止借帖子绕过恋爱权限发布征友联系方式。审核系统不能保证完全消除违规，需有人处理举报。[日本警察厅说明](https://www.npa.go.jp/policy_area/no_cp/deai/regulatory.html)
+日本相关业务适用性、申报与年龄确认方法须在上线前按实际功能确认。当前18岁勾选如实标记为自我声明；普通公开区禁止借帖子绕过恋爱权限发布征友联系方式。审核系统不能保证完全消除违规，需有人处理举报。[日本警察厅说明](https://www.npa.go.jp/policy_area/no_cp/deai/regulatory.html)
 
 ## 9. 活动并发与异步任务
 
@@ -176,9 +181,9 @@ outbox 与业务数据同事务提交。worker 用租约或 SKIP LOCKED 领取�
 
 建议 AWS 东京区域：容器化 API、网关及 worker；托管 PostgreSQL、Redis、S3；TLS 负载均衡与 WAF；后台独立域名。实际服务规格通过压测和预算确定，不提前承诺月费。推送、邮件、验证和审核可能涉及日本以外处理，单一区域部署不等于所有数据均留在日本。
 
-开发、测试、生产使用独立数据库、对象存储、验证凭据和推送配置。开发环境用 Docker Compose，年龄验证使用模拟适配器；生产禁止模拟验证结果。CI 执行 lint、类型检查、测试及构建；迁移先在测试环境演练，生产采用兼容旧版本的增量迁移，避免启动每个副本时自动改表。
+开发、测试、生产使用独立数据库、对象存储、验证凭据和推送配置。开发使用Docker Compose；Java集成使用Testcontainers或显式隔离PostgreSQL/Redis。CI前端执行lint/类型/测试/构建，后端执行Maven verify；迁移先在测试环境演练，生产采用兼容旧版本的增量迁移，避免启动每个副本时自动改表。
 
-首版可先单实例试运营，但不承诺高可用。正式可用性目标明确后配置多实例、多可用区数据库和 Redis adapter，并测试连接路由及故障恢复。Socket.IO 如启用 polling，需配置会话粘性；不能只增加实例数量。
+首版可先单实例试运营；正式可用性目标明确后测试多实例路由、Redis事件分发和连接故障恢复。按最终实时协议配置连接路由，消息持久恢复仍以PostgreSQL与REST序号补取为准。
 
 建议恢复目标 RPO 1 小时、RTO 4 小时，属于预算待确认的目标。启用数据库备份与时间点恢复，定期实际恢复验证。监控 API 错误率、延迟、消息 ACK、outbox 积压、审核待办、验证失败、连接数和容量，配置值班告警与处理手册。
 
@@ -192,21 +197,17 @@ outbox 与业务数据同事务提交。worker 用租约或 SKIP LOCKED 领取�
 | 游客 | 接续凭证、凭证丢失、重复注册、保持原展示身份、图片上传与删除、跨主体附件拒绝关联 |
 | 并发 | 实际 PostgreSQL 测试：满员不超卖、重复取消、双向点赞同时发生 |
 | 消息 | 持久化前失败不 ACK、重试去重、乱序广播、断线补取、退群断开 |
-| 验证 | 签名伪造、重复回调、旧回调、跨账号替换、供应商超时 |
+| 年龄声明 | 未勾选拒绝、文案版本、撤销、跨账号拒绝、不产生verified |
 | 审核 | 待审不可见、文件伪装、EXIF、举报与管理员审计 |
 | 手机端 | React Native Testing Library 与 Maestro：中文、两端真机、弱网、推送 |
 | 后台 | Vitest 与 Playwright：角色权限、举报处理及失败任务重试 |
 | 运维 | 备份恢复、删除记录重放、迁移失败、实例重启与任务恢复 |
 
-API 建议 Jest、Supertest、Testcontainers；性能测试使用 k6。优先覆盖权限与事务，不以没有业务依据的覆盖率百分比代替验收。建议初始压测场景为 200 个实时连接、20 次/秒文本发送，目标服务端持久化 ACK p95 小于 1 秒；属于工程目标，需在确定规格后实测，不是既有性能承诺。
+Java采用JUnit Jupiter、Spring Boot Test、MockMvc/真实HTTP与Testcontainers；Maven Surefire执行单元/HTTP测试，Failsafe执行集成测试，完整门槛为verify。旧Jest/Supertest只作历史参考，Java重新验收。性能测试使用k6。[Maven生命周期](https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html)优先覆盖权限与事务，不以没有业务依据的覆盖率百分比代替验收。建议初始压测场景为 200 个实时连接、20 次/秒文本发送，目标服务端持久化 ACK p95 小于 1 秒；属于工程目标，需在确定规格后实测，不是既有性能承诺。
 
 ## 13. 实施阶段与评审事项
 
-1. 基础与游客留言板：仓库、数据库、会话、游客发言、审核和管理后台，验证普通权限闭环。
-2. 注册与群聊：身份接续、成员管理、消息持久化、断线补取及推送。
-3. 恋爱：年龄验证适配器、受控资料、规则推荐、双向匹配及私聊。
-4. 活动：发布、报名事务、活动群、取消与通知。
-5. 上线验证：供应商接入、实际权限审查、两端真机、压测、恢复和运维演练。
+执行已确认[八阶段路线](../plans/2026-10-03-phased-development-acceptance.md)：工程基础→身份与普通资料→留言板与图片审核→群聊与普通私聊→同城活动→恋爱配对→运营与数据生命周期→全链路验收。恢复时先完成Java/Maven基础改修，再继续第1阶段手机端与CI。
 
 阶段用于降低实施风险；目标首发包含全部核心功能，恋爱正式开放需先确认年龄核验要求。每阶段再制定独立、可验收的开发计划，每次完成一组修改并验证后创建本地 Git 提交。
 
@@ -259,7 +260,7 @@ POST /v1/groups/:id/join 锁定群记录，检查群有效状态、账号限制�
 
 创建者作为群主可管理群信息、公告与成员；普通成员不具有这些权限，平台运营管理权限独立。群主退出前需转让或解散的具体策略、创建频率和人数限制属于进一步细化项。被群封禁用户不能反复加入；平台可处理违规群。游客不能通过接口创建或加入群，只可浏览普通群公开概要。
 
-测试覆盖注册创建成功且拥有群主角色、游客拒绝、重复请求幂等、无需审批即加入、满员竞争、封禁拒绝、群关闭拒绝、群主管理越权及活动/恋爱群资格隔离。当前仓库只有设计图册，上述为后续业务实现验收要求，不宣称已执行后端测试。
+测试覆盖注册创建成功且拥有群主角色、游客拒绝、重复请求幂等、无需审批即加入、满员竞争、封禁拒绝、群关闭拒绝、群主管理越权及活动/恋爱群资格隔离。当前已有基础工程和图册，上述群业务尚未实现；历史健康测试不代替业务验收。
 
 ## 17. 活动发布、普通私聊、限额与一年清理
 
@@ -310,3 +311,15 @@ conversation_type 明确区分 group、direct、dating；同类型的账号对�
 活动已有报名时重要时间、地点、取消规则变更需再次确认、记录版本并通知具体变更；减少容量不得低于报名数。开始前填写原因确认取消并停止报名、群转只读；开始后提供提前结束。报名者开始前取消释放名额，开始后退出不释放名额，两种均撤销本人群访问。使用同一活动行锁处理时间边界和竞争，重复操作不重复扣数/发通知。提前结束记录actual_ended_at，报名记录从实际结束起保留一年。
 
 结构、接口、自愿转让流程及验收边界详见[详细设计第14节](2026-10-03-social-app-database-api-design.md)。配置变更审计，正文与图片仍按既有到期规则删除。当前未实现这些业务；后续测试覆盖第4条首次消息、第11人、第101名群成员、第6个拥有群、第3个当日创建、东京跨日、未同意转让、解散只读和开始前后退出差异。
+
+## 19. Java/Maven实施与迁移规则（2026-10-04）
+
+Java采用src/main/java、src/main/resources、src/test/java，包根jp.youren；Maven模块为youren-shared、youren-database、youren-api、youren-worker。Windows用backend/mvnw.cmd，Linux/macOS用backend/mvnw。Java数据库使用MyBatis Mapper和参数化SQL，Spring事务协调行锁与outbox；SQL迁移管理PostgreSQL专用约束，不自动建表。[MyBatis Spring Boot Starter](https://mybatis.org/spring-boot-starter/mybatis-spring-boot-autoconfigure/)、[MyBatis事务](https://mybatis.org/spring/transactions.html)
+
+现有54表SQL及业务规则继续复用，Prisma Client不进入Java运行时；旧schema与迁移保持参考，Java验收通过后再受控移除旧后端。Flyway接续先在空隔离库验证SQL等价、全部约束和重复迁移；既有数据库先核对结构与迁移记录，再明确baseline，不启用自动baseline或clean，不重复执行建表。切换后只有Flyway负责后续DDL，部署迁移单独执行，避免API与worker同时改表。
+
+Maven计划命令：backend/mvnw.cmd test执行单元测试；backend/mvnw.cmd verify执行单元、集成和打包检查。用Surefire/Failsafe报告核对实际执行数，缺Docker等必要环境时报失败而非跳过成功。前端继续npm，整仓检查须串联两套工具且传播失败。上述命令须在Wrapper/pom创建后才能执行，本次未创建Java工程或运行Maven。
+
+复验必须包括Java配置与脱敏、API健康200/503/恢复、worker失败与幂等关闭、真实MyBatis CRUD/事务/约束、迁移接续、OpenAPI字段和错误一致性；手机端、后台、Docker和REST合同继续复用。Unicode可见字符限额需要Java与TypeScript共享测试样例，不以Java String.length代替。
+
+MyBatis实现要求：XML与Mapper接口明确对应，输入值使用#{...}绑定，禁止用户值进入${...}拼接；排序/表名等标识采用服务端白名单。数据库实体不直接返回公开DTO；UUID、UTC时间、bigint字符串及JSONB映射均执行边界测试。Spring服务事务和Mapper使用同一DataSource，不手动commit。MyBatis Starter与Boot主版本按官方兼容矩阵锁定，首版不自动引入MyBatis-Plus或JPA。[Mapper参数说明](https://mybatis.org/mybatis-3/sqlmap-xml.html)

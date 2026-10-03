@@ -1,6 +1,6 @@
 # 分阶段开发与验收计划
 
-状态：8阶段划分已获用户确认，各阶段均未开始。本文件记录阶段交付与验收门槛；阶段启动前再细化任务、文件及可执行测试命令。
+状态：8阶段划分已确认，第1阶段基础工程已开发后暂停，尚未整体验收；阶段2至8未开始。2026-10-04已确认后端改为Java/Spring Boot、Maven、MyBatis；恢复时先执行[后端改修计划](2026-10-04-java-maven-transition.md)。
 
 ## 目标与依据
 
@@ -8,7 +8,7 @@
 
 依据：[产品方案](../specs/2026-10-03-social-app-design.md)、[页面与交互](../specs/2026-10-03-social-app-ui-interaction-design.md)、[数据库与API详细设计](../specs/2026-10-03-social-app-database-api-design.md)、[OpenAPI合同](../../../packages/contracts/openapi.json)。开发前统一早期技术稿中的旧规则，以最新用户确认、详细设计和合同为准；冲突先记录并解决。
 
-沿用已确认的React Native/Expo/TypeScript、NestJS、PostgreSQL/Prisma、Redis、Socket.IO、私有对象存储、独立worker和React管理后台，采用模块化单体，按完整用户流程交付。
+手机端/后台沿用React Native/Expo/TypeScript及React；后端Java/Spring Boot、Maven、MyBatis，PostgreSQL、Redis、私有对象存储及独立worker保留。Flyway为迁移工程默认，实时协议建议Spring WebSocket＋JSON、待确认。继续模块化单体和完整用户流程交付。
 
 ## 八阶段路线与验收
 

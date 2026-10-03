@@ -1,5 +1,7 @@
 # 友缘
 
+后端方向已于2026-10-04确认改为Java/Spring Boot、Maven、MyBatis；当前仓库仍保留暂停的TypeScript后端基础，Java尚未实现。恢复先执行[改修计划](docs/superpowers/plans/2026-10-04-java-maven-transition.md)。前端与合同继续Node/npm；以下命令说明当前代码，不代表目标Java构建已经可用。
+
 面向日本中国用户的交友应用。第一阶段工程建设进行中；产品与数据库/API设计见`docs/superpowers/specs/`，验收计划见`docs/superpowers/plans/2026-10-03-stage-1-engineering-foundation.md`。
 
 ## 开发环境

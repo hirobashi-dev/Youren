@@ -1,5 +1,12 @@
 # 工作记录
 
+## Java/Maven/MyBatis技术方案调整（2026-10-04）
+
+- 用户确认Java/Spring Boot后端、Maven构建与测试，并指定MyBatis数据库访问。已更新技术选型、目录、事务/Mapper、迁移接续、测试/CI、八阶段路线和恢复入口；旧TS后端保持暂停，不修改代码或SQL/合同。
+- Flyway记为SQL迁移工程默认；JDK21为建议基线、版本实施前锁定；Spring WebSocket＋JSON为待确认建议，不冒充已批准协议。MyBatis绑定、类型、Spring事务和真实数据库IT纳入改修门槛。
+- 新计划用Surefire/Failsafe和Maven Wrapper test/verify；旧Jest/Prisma证据保留历史身份。恢复先完成Java基础，再继续手机与CI；不执行Maven或安装Java依赖。
+- 本次文档核对已确认项、相对引用、命令为拟新增、暂停/未实现状态及差分；验证通过后一次本地提交，不推送。
+
 ## 第1阶段暂停点（2026-10-04）
 
 - 用户要求先暂停，停止新增功能。后台任务5先RED缺少App，随后2项组件/1项真实Chrome测试通过，构建/类型、ESLint及格式通过；截图视觉复核，窄屏和重试通过。保存后台与恢复入口为本地版本。

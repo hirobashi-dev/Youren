@@ -2,6 +2,8 @@
 
 ## 当前状态
 
+2026-10-04补充决策：后端目标已改为Java/Spring Boot、Maven、MyBatis，当前代码尚未迁移。下方已执行验证均为原TypeScript/Prisma证据，不能视为Java/MyBatis通过。恢复执行依据为[Java/Maven改修计划](../superpowers/plans/2026-10-04-java-maven-transition.md)。
+
 2026-10-04按用户要求暂停。开发分支为`develop/stage-1-foundation`，未合并master、未推送。第1阶段尚未整体验收完成。
 
 已实现任务1至5的工程基础：根工作区与锁文件、配置/日志、隔离依赖、API健康检查、worker生命周期和后台连接页。任务6手机端和任务7完整自动检查/CI尚未开始。
@@ -23,10 +25,12 @@
 ## 下次继续顺序
 
 1. 阅读[详细计划](../superpowers/plans/2026-10-03-stage-1-engineering-foundation.md)、本文件及根README，确认分支和工作区状态；不要从头重建项目。
-2. 先运行已完成部分的回归，完善后台超时/取消边界证据及worker实际进程信号演练；再执行任务6手机端骨架和两端构建。
-3. 最后执行任务7完整根check、CI、干净环境验证和阶段验收。根`check`/`typecheck`/集成编排尚未定义，不能声称整仓检查通过。
+2. 先按Java改修任务1至4建立Maven、MyBatis/Flyway及Java API/worker，重新取得健康、事务、约束、迁移和关闭证据；不把旧TS测试计为Java测试。旧代码在对应Java验收通过前保留。
+3. 再做后台兼容/超时回归、手机端两端构建及双工具链CI。根完整check尚未定义；Java用Maven verify、前端/合同用npm，不能声称整仓已通过。
 
 ## 环境与重启
+
+下方为历史TypeScript环境重现命令。Java恢复前检查JDK/JAVA_HOME，按新计划创建Wrapper/pom；Java配置用JDBC URL和独立用户名/密码，不能直接复用Prisma URL或假设自动读取Node `.env`。Java未实现前不尝试执行拟新增Maven命令。
 
 固定Node22.23.3在`D:/MyWork/01_developer/Ai/.youren-tools/node_modules/node/bin/node.exe`，系统默认仍为20.12.1。系统npm.ps1可能优先旧Node，因此本会话直接用固定Node运行系统npm-cli：
 
@@ -48,3 +52,4 @@ docker compose --env-file infra/.env -f infra/compose.yaml -p youren-stage1 up -
 - SWC Windows原生缓存权限校验失败，已改为兼容TS6的ts-jest，没有修改本机缓存权限。
 - 新应用随任务创建，未用空脚本伪造工作区检查。统一根锁后移除既有包锁。
 - 旧文档中逐包`npm ci`需更新为根安装；根README版本说明及全部命令将在任务7统一核对。新依赖的生产维护/安全版本评估仍需完成，不把当前开发基线当生产认证。
+- 下一步不再直接继续手机任务6，而是先改修Java/Maven/MyBatis基础。暂停状态保持，本次仅修改方案和记录。
