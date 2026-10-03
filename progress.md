@@ -1,5 +1,15 @@
 # 工作记录
 
+## Java工程恢复与Maven基础（2026-10-04）
+
+- 用户授权一般命令直接执行，仅高风险命令另行确认；执行环境要求的权限审批仍按工具规则处理。首次提交后发现shared/pom.xml一行尾空格，已修正并重新差分核对。
+
+- 用户确认恢复开发及独立JDK21，前端继续TypeScript，分支develop/stage-1-foundation。JDK21.0.12.1+1 ZIP官方SHA-256：f9d6e191ab098c0d416e7d588a24420a8621cd2f4720dab2459b8b7b2d2d8b4e，下载校验成功；未改系统默认Java。
+- Maven3.9.9 ZIP官方SHA-512验证后计算并固定SHA-256：4ec3f26fb1a692473aea0235c300bd20f0f9fe741947c82c1234cefd76ac3a3c。Wrapper3.3.2使用官方only-script模板，旁注解释用途。Boot3.5.16/MyBatis3.0.5固定，四模块与JUnit/Enforcer/Surefire/Failsafe/Spotless建立。
+- 先运行7项测试确认配置验证与日志尚未实现时失败；实现后backend/build.ps1 clean verify和-pl shared -am test均成功，7项JUnit无失败/跳过，格式检查通过。另验证错误JDK8失败，当前进程JAVA_HOME恢复，系统Java不变。初次Wrapper参数因PowerShell解析小数拆分失败，已用引号修正；官方ZIP没有sha256资源，改用官方sha512校验再固定sha256。
+- 差分检查中文注释、错误只含字段名、默认record日志脱敏、URL/数值边界及必要字段；未添加业务入口，database/API/worker当前空工程，不声称集成通过。构建产物target忽略，旧TS保持。
+
+
 ## Java/Maven/MyBatis技术方案调整（2026-10-04）
 
 - 用户确认Java/Spring Boot后端、Maven构建与测试，并指定MyBatis数据库访问。已更新技术选型、目录、事务/Mapper、迁移接续、测试/CI、八阶段路线和恢复入口；旧TS后端保持暂停，不修改代码或SQL/合同。

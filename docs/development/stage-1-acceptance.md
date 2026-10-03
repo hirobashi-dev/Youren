@@ -2,6 +2,8 @@
 
 ## 当前状态
 
+开发已恢复，Java改修任务1已验收：Maven四模块、Wrapper、shared配置验证及安全日志通过。7项JUnit测试、clean verify和格式检查成功；Java8被Enforcer拒绝、JAVA_HOME退出后恢复。数据库/API/worker当前仍为空工程，不能作为业务验收。下一步执行MyBatis/SQL迁移，以下暂停说明保留为历史记录。
+
 2026-10-04补充决策：后端目标已改为Java/Spring Boot、Maven、MyBatis，当前代码尚未迁移。下方已执行验证均为原TypeScript/Prisma证据，不能视为Java/MyBatis通过。恢复执行依据为[Java/Maven改修计划](../superpowers/plans/2026-10-04-java-maven-transition.md)。
 
 2026-10-04按用户要求暂停。开发分支为`develop/stage-1-foundation`，未合并master、未推送。第1阶段尚未整体验收完成。

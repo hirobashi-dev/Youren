@@ -1,10 +1,10 @@
 # Java、Spring Boot、Maven与MyBatis实施调整
 
-> 当前有效的后端改修计划，替代第1阶段原TypeScript后端任务。执行时使用executing-plans逐任务测试与提交；本次只更新文档，不创建Java工程。
+> 当前有效的后端改修计划，替代第1阶段原TypeScript后端任务。执行时使用executing-plans逐任务测试与提交；开发已恢复，逐任务测试与提交。
 
 **目标：** 以Java/Spring Boot重建后端基础，Maven构建和测试、MyBatis数据库访问，复用数据库SQL、前端与OpenAPI合同。
 
-**状态：** Java/Spring Boot、Maven、MyBatis已获用户确认。JDK21为建议基线，Flyway为SQL迁移工程默认，标准WebSocket＋JSON为实时协议建议、仍待确认。版本在开发恢复时核对兼容性并固定；目前开发仍暂停，Java代码尚未实现。
+**状态：** 开发已恢复，前端保留TypeScript。Java/Spring Boot、Maven、MyBatis已获确认。版本固定为JDK21.0.12.1+1、Spring Boot3.5.16、MyBatis Starter3.0.5、Maven3.9.9；JDK独立下载校验，不改系统默认。Flyway为工程默认，实时WebSocket＋JSON协议仍待确认。
 
 **依据：** [最新技术方案](../specs/2026-10-03-social-app-technical-design.md)、[数据库/API设计](../specs/2026-10-03-social-app-database-api-design.md)、[八阶段路线](2026-10-03-phased-development-acceptance.md)、[现有证据与恢复记录](../../development/stage-1-acceptance.md)。
 
@@ -39,10 +39,10 @@
 
 ### 1. Maven与依赖基线
 
-- [ ] 核实本机JDK与JAVA_HOME，固定JDK、Boot、MyBatis Starter、Maven和插件版本；保留前端固定Node环境。
-- [ ] 创建四模块及Wrapper，先写缺配置/日志测试，确认因实现缺失而失败，再实现最小shared模块。
-- [ ] Maven Enforcer约束工具版本；Surefire执行`*Test`，Failsafe绑定integration-test与verify执行`*IT`，JUnit Jupiter自动发现测试。XML配置与关键逻辑加入中文注释。
-- [ ] 干净安装/编译和shared测试通过，报告确认不是0测试；差分审查后提交`Add Maven backend foundation`。
+- [x] 核实本机JDK与JAVA_HOME，固定JDK、Boot、MyBatis Starter、Maven和插件版本；保留前端固定Node环境。
+- [x] 创建四模块及Wrapper，先写缺配置/日志测试，确认因实现缺失而失败，再实现最小shared模块。
+- [x] Maven Enforcer约束工具版本；Surefire执行`*Test`，Failsafe绑定integration-test与verify执行`*IT`，JUnit Jupiter自动发现测试。XML配置与关键逻辑加入中文注释。
+- [x] 干净安装/编译和shared测试通过，报告确认不是0测试；差分审查后提交`Add Maven backend foundation`。
 
 ### 2. MyBatis与SQL迁移接续
 
@@ -85,7 +85,7 @@
 
 ## 构建、测试和启动命令
 
-以下均为拟新增命令，本次没有Wrapper/pom，不能现在执行；Windows从仓库根调用：
+Wrapper和pom已建立；Windows推荐backend/build.ps1临时选择JDK21。以下直接Wrapper命令需当前终端设置正确JAVA_HOME：
 
 ```powershell
 .\backend\mvnw.cmd -f backend/pom.xml test
@@ -106,4 +106,4 @@
 - [ ] 前端/合同兼容、错误与序号序列化一致；秘密无日志/版本控制泄漏。
 - [ ] 新增中文注释、对应测试和每任务本地提交完整；阶段整体未满足仍标未完成。
 
-本次不修改现有SQL、Prisma schema或OpenAPI产物，不删除TS代码，不执行Maven，不恢复开发。下一次继续开发时先从本计划任务1开始，而不是直接进入原手机任务6。
+历史TS代码在对应Java验收通过前保留；按任务顺序继续MyBatis、API和worker，不能跳到原手机任务6或冒称旧证据为Java结果。
