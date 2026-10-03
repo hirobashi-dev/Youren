@@ -1,8 +1,10 @@
 -- PostgreSQL 专用约束；不要只用 prisma db push（会遗漏本文件）。
+-- 部分唯一索引：只限制当前有效身份、群主、开放加入区间和待处理转让，不影响历史记录。
 CREATE UNIQUE INDEX principals_account_identity ON principals(account_id) WHERE kind='account';
 CREATE UNIQUE INDEX group_single_owner ON group_members(group_id) WHERE role='owner' AND status='active';
 CREATE UNIQUE INDEX membership_single_open_period ON membership_periods(group_member_id) WHERE end_sequence IS NULL;
 CREATE UNIQUE INDEX group_single_pending_transfer ON group_owner_transfers(group_id) WHERE status='pending';
+-- 列表与任务索引：匹配筛选/排序条件；expires_at索引供分批清理，不替代查询时鉴权与到期过滤。
 CREATE INDEX posts_public_feed ON posts(scope,status,published_at DESC,id DESC);
 CREATE INDEX posts_region_feed ON posts(region_code,status,published_at DESC,id DESC);
 CREATE INDEX comments_thread ON comments(post_id,status,published_at,id);
@@ -20,6 +22,7 @@ CREATE FUNCTION calendar_year_after(ts timestamptz) RETURNS timestamptz
 LANGUAGE sql IMMUTABLE STRICT AS $$ SELECT ((ts AT TIME ZONE 'UTC') + INTERVAL '1 year') AT TIME ZONE 'UTC' $$;
 CREATE FUNCTION content_retention() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+ -- 已公开内容的起算点不可改变，恢复隐藏或编辑也不能续期。
  IF TG_OP='UPDATE' AND OLD.published_at IS NOT NULL THEN
   IF NEW.published_at IS DISTINCT FROM OLD.published_at THEN RAISE EXCEPTION 'published_at is immutable' USING ERRCODE='23514'; END IF;
  END IF;
@@ -31,12 +34,14 @@ CREATE TRIGGER posts_retention BEFORE INSERT OR UPDATE ON posts FOR EACH ROW EXE
 CREATE TRIGGER comments_retention BEFORE INSERT OR UPDATE ON comments FOR EACH ROW EXECUTE FUNCTION content_retention();
 CREATE FUNCTION message_retention() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+ -- 强制用原发送时间重算到期，拒绝改时间延长消息寿命。
  IF TG_OP='UPDATE' AND NEW.sent_at IS DISTINCT FROM OLD.sent_at THEN RAISE EXCEPTION 'sent_at is immutable' USING ERRCODE='23514'; END IF;
  NEW.expires_at=calendar_year_after(NEW.sent_at); RETURN NEW;
 END $$;
 CREATE TRIGGER messages_retention BEFORE INSERT OR UPDATE ON messages FOR EACH ROW EXECUTE FUNCTION message_retention();
 CREATE FUNCTION declaration_retention() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+ -- 有效自我声明不设自动失效；撤销后只保留一年的声明记录。
  IF NEW.status='withdrawn' THEN NEW.expires_at=calendar_year_after(NEW.withdrawn_at); ELSE NEW.expires_at=NULL; END IF;
  RETURN NEW;
 END $$;
@@ -44,6 +49,7 @@ CREATE TRIGGER declaration_retention BEFORE INSERT OR UPDATE ON age_declarations
 
 CREATE FUNCTION comment_same_post() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+ -- 同帖引用检查与普通外键互补，不能用有效评论ID引用另一个帖子的内容。
  IF NEW.reply_to_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM comments WHERE id=NEW.reply_to_id AND post_id=NEW.post_id) THEN
   RAISE EXCEPTION 'reply must belong to same post' USING ERRCODE='23514';
  END IF; RETURN NEW;
@@ -71,6 +77,7 @@ CREATE CONSTRAINT TRIGGER conversation_group_integrity AFTER INSERT OR UPDATE OR
 
 CREATE FUNCTION immutable_membership_identity() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+ -- 转移成员身份会破坏原加入区间；换群应退出后创建另一群的成员记录。
  IF NEW.group_id<>OLD.group_id OR NEW.account_id<>OLD.account_id THEN RAISE EXCEPTION 'membership identity is immutable' USING ERRCODE='23514'; END IF;
  RETURN NEW;
 END $$;
@@ -78,6 +85,7 @@ CREATE TRIGGER immutable_membership_identity BEFORE UPDATE ON group_members FOR 
 
 CREATE FUNCTION conversation_integrity() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+ -- 恋爱会话必须属于指定匹配的同一账号对，普通会话不依赖匹配。
  IF NEW.type='dating' AND NOT EXISTS(SELECT 1 FROM matches WHERE id=NEW.match_id AND account_low_id=NEW.account_low_id AND account_high_id=NEW.account_high_id) THEN
   RAISE EXCEPTION 'dating pair differs from match' USING ERRCODE='23514';
  END IF; RETURN NEW;
@@ -85,6 +93,7 @@ END $$;
 CREATE TRIGGER conversation_integrity BEFORE INSERT OR UPDATE ON conversations FOR EACH ROW EXECUTE FUNCTION conversation_integrity();
 CREATE FUNCTION participant_integrity() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+ -- 两人会话只能登记账号对中的成员，群聊使用group_members鉴权。
  IF NOT EXISTS(SELECT 1 FROM conversations WHERE id=NEW.conversation_id AND type IN ('direct','dating') AND NEW.account_id IN (account_low_id,account_high_id)) THEN
   RAISE EXCEPTION 'participant not in conversation pair' USING ERRCODE='23514';
  END IF; RETURN NEW;
@@ -130,6 +139,7 @@ CREATE TRIGGER avatar_media_binding BEFORE INSERT OR UPDATE ON profiles FOR EACH
 CREATE TRIGGER dating_media_binding BEFORE INSERT OR UPDATE ON dating_photos FOR EACH ROW EXECUTE FUNCTION media_binding_integrity('media_id','account_id','dating');
 CREATE TRIGGER event_media_binding BEFORE INSERT OR UPDATE ON events FOR EACH ROW EXECUTE FUNCTION media_binding_integrity('cover_media_id','id','event');
 
+-- 已确认的运营初始配额；业务服务在去重后同事务计数，每日按东京自然日。
 INSERT INTO policy_configs(key,value) VALUES
  ('ordinary_group_capacity','100'),('max_owned_ordinary_groups','5'),('daily_group_creations','2'),
  ('unanswered_direct_message_limit','3'),('daily_new_direct_targets','10'),('daily_timezone','"Asia/Tokyo"');
