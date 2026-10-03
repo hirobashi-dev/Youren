@@ -4,5 +4,10 @@
   <!-- 模块继承同一版本及测试门槛，尚未加入业务功能。 -->
   <parent><groupId>jp.youren</groupId><artifactId>youren-backend</artifactId><version>0.1.0-SNAPSHOT</version></parent>
   <artifactId>youren-worker</artifactId>
-  <dependencies><dependency><groupId>jp.youren</groupId><artifactId>youren-shared</artifactId></dependency></dependencies>
+  <dependencies><dependency><groupId>jp.youren</groupId><artifactId>youren-shared</artifactId></dependency><dependency><groupId>jp.youren</groupId><artifactId>youren-database</artifactId></dependency>
+  <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
+  <dependency><groupId>org.testcontainers</groupId><artifactId>testcontainers-postgresql</artifactId><scope>test</scope></dependency>
+  <dependency><groupId>org.testcontainers</groupId><artifactId>testcontainers-junit-jupiter</artifactId><scope>test</scope></dependency></dependencies>
+  <!-- worker独立打包，无HTTP服务及业务消费。 -->
+  <build><plugins><plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId><executions><execution><goals><goal>repackage</goal></goals></execution></executions></plugin></plugins></build>
 </project>

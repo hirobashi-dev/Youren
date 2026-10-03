@@ -2,9 +2,9 @@
 
 ## 当前状态
 
-开发已恢复，Java改修任务1已验收：Maven四模块、Wrapper、shared配置验证及安全日志通过。7项JUnit测试、clean verify和格式检查成功；Java8被Enforcer拒绝、JAVA_HOME退出后恢复。MyBatis/Flyway新增11项数据库集成测试通过，现有测试库已审计baseline且业务数据不变；Java API新增6项HTTP单元及1项真实依赖IT通过，合同9项及生成一致性通过；worker仍为空工程。下一步Java worker生命周期，以下暂停说明保留为历史记录。
+开发已恢复，Java改修任务1已验收：Maven四模块、Wrapper、shared配置验证及安全日志通过。7项JUnit测试、clean verify和格式检查成功；Java8被Enforcer拒绝、JAVA_HOME退出后恢复。MyBatis/Flyway新增11项数据库集成测试通过，现有测试库已审计baseline且业务数据不变；Java API新增6项HTTP单元及1项真实依赖IT通过，合同9项及生成一致性通过；worker新增3项单元及2项真实JAR进程IT通过，SIGINT/SIGTERM及JDBC连接释放验证成功。旧TS后端移除。下一步前端兼容及手机端，以下暂停说明保留为历史记录。
 
-2026-10-04补充决策：后端目标已改为Java/Spring Boot、Maven、MyBatis，当前代码尚未迁移。下方已执行验证均为原TypeScript/Prisma证据，不能视为Java/MyBatis通过。恢复执行依据为[Java/Maven改修计划](../superpowers/plans/2026-10-04-java-maven-transition.md)。
+历史（恢复前）2026-10-04补充决策：后端目标已改为Java/Spring Boot、Maven、MyBatis，当前代码尚未迁移。下方已执行验证均为原TypeScript/Prisma证据，不能视为Java/MyBatis通过。恢复执行依据为[Java/Maven改修计划](../superpowers/plans/2026-10-04-java-maven-transition.md)。
 
 2026-10-04按用户要求暂停。开发分支为`develop/stage-1-foundation`，未合并master、未推送。第1阶段尚未整体验收完成。
 
@@ -32,7 +32,7 @@
 
 ## 环境与重启
 
-下方为历史TypeScript环境重现命令。Java恢复前检查JDK/JAVA_HOME，按新计划创建Wrapper/pom；Java配置用JDBC URL和独立用户名/密码，不能直接复用Prisma URL或假设自动读取Node `.env`。Java未实现前不尝试执行拟新增Maven命令。
+下方为历史TypeScript环境重现命令，需先检出3448582对应版本；当前已移除旧后端，不能在当前分支执行这些历史工作区命令。Java恢复前检查JDK/JAVA_HOME，按新计划创建Wrapper/pom；Java配置用JDBC URL和独立用户名/密码，不能直接复用Prisma URL或假设自动读取Node `.env`。Java未实现前不尝试执行拟新增Maven命令。
 
 固定Node22.23.3在`D:/MyWork/01_developer/Ai/.youren-tools/node_modules/node/bin/node.exe`，系统默认仍为20.12.1。系统npm.ps1可能优先旧Node，因此本会话直接用固定Node运行系统npm-cli：
 
@@ -54,4 +54,4 @@ docker compose --env-file infra/.env -f infra/compose.yaml -p youren-stage1 up -
 - SWC Windows原生缓存权限校验失败，已改为兼容TS6的ts-jest，没有修改本机缓存权限。
 - 新应用随任务创建，未用空脚本伪造工作区检查。统一根锁后移除既有包锁。
 - 旧文档中逐包`npm ci`需更新为根安装；根README版本说明及全部命令将在任务7统一核对。新依赖的生产维护/安全版本评估仍需完成，不把当前开发基线当生产认证。
-- 下一步不再直接继续手机任务6，而是先改修Java/Maven/MyBatis基础。暂停状态保持，本次仅修改方案和记录。
+- 下一步不再直接继续手机任务6，而是先改修Java/Maven/MyBatis基础。此句为恢复前决策；现在已恢复并完成Java改修任务1至4。

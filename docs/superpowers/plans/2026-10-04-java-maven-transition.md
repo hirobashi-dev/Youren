@@ -61,10 +61,10 @@
 
 ### 4. Java worker生命周期
 
-- [ ] 独立Boot worker进程复用shared/database，无业务任务消费。启动失败返回非零退出，连接只检查授权测试目标。
-- [ ] 先测试失败释放、重复关闭及超时，再实现；JUnit/Testcontainers验证真实依赖，实际启动/信号关闭检查无残留线程和连接。
-- [ ] 验证对应Java任务1至4通过后，单独评审移除旧TS API/worker/runtime及其npm依赖/检查；保留历史测试记录，不留两套后端默认入口。
-- [ ] 差分和回归通过，提交`Replace worker lifecycle with Java`。
+- [x] 独立Boot worker进程复用shared/database，无业务任务消费。启动失败返回非零退出，连接只检查授权测试目标。
+- [x] 先测试失败释放、重复关闭及超时，再实现；JUnit/Testcontainers验证真实依赖，实际启动/信号关闭检查无残留线程和连接。
+- [x] 验证对应Java任务1至4通过后，单独评审移除旧TS API/worker/runtime及其npm依赖/检查；保留历史测试记录，不留两套后端默认入口。
+- [x] 差分和回归通过，提交`Replace worker lifecycle with Java`。
 
 ### 5. 前端兼容回归
 

@@ -1,0 +1,10 @@
+# 无HTTP服务；迁移需独立受控执行，worker不得自动初始化数据库。
+spring:
+  main:
+    web-application-type: none
+    banner-mode: off
+  flyway:
+    enabled: false
+  sql:
+    init:
+      mode: never

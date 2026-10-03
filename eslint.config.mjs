@@ -3,6 +3,8 @@ import tseslint from 'typescript-eslint';
 export default tseslint.config(
   {
     ignores: [
+      '.local/**',
+      'backend/**/target/**',
       '**/node_modules/**',
       '**/dist/**',
       '**/generated/**',

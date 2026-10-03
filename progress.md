@@ -1,5 +1,14 @@
 # 工作记录
 
+## Java worker及旧后端清理（2026-10-04）
+
+- worker独立Boot入口，无HTTP/业务消费；依赖启动有超时，失败非零、错误固定事件，Spring管理Hikari/Lettuce关闭，生命周期重复关闭安全。3项先行单元测试全部失败，随后实现通过。
+- 临时Linux Java21容器运行真实worker JAR，镜像固定官方摘要cff19e6215689161eb6162c11b86b0c60ddf802164f2eaf48d570f8fb79a36c5；验证真实依赖启动、SIGTERM及SIGINT10秒内退出、对应退出码、stopped恰好一次、JDBC连接数归零。失败启动非零且秘密不进日志。首次失败测试因Testcontainers自动清理无法读取日志，改为保留退出态供测试观察，未降低非零/日志断言。
+- 完整clean verify通过：shared7、数据库11IT、HTTP6+1IT、worker3+2IT，共30项无失败或跳过；单独run.ps1缺配置返回非零且只输出startup_failed。
+- 核对旧目录绝对路径在仓库内、无用户未提交改动，按计划git rm旧apps/api、apps/worker、packages/runtime，Git保留历史；npm重新安装锁移除401包。根格式范围去掉已移除runtime，ESLint忽略本地辅助及Maven生成目录。Node工程2项、工程检查、lint、格式、后台2项测试、类型/生产构建均通过。
+- 所有新增实现/配置/测试有中文说明，分支未合并master且不推送。Android本机已有两个AVD但无连接设备；iOS账号已提出缺失信息问题，尚未进行云构建。下一步前端兼容回归，再手机端及CI。
+
+
 ## Java API健康与HTTP合同（2026-10-04）
 
 - Spring Boot API重建GET /health/live及/health/ready，固定status响应；默认1500ms等待，单在途探测、驱动超时、错误不返回内部异常。共用Spring连接配置为API及后续worker管理Hikari/Lettuce关闭，不自动Flyway或SQL初始化。CORS仅localhost/127.0.0.1:5173的GET。

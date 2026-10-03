@@ -13,7 +13,7 @@
   "scripts": {
     "test:engineering": "node --test tests/engineering.test.cjs",
     "lint": "eslint .",
-    "format:check": "prettier --check tools tests apps packages/runtime README.md package.json tsconfig.base.json eslint.config.mjs",
+    "format:check": "prettier --check tools tests apps README.md package.json tsconfig.base.json eslint.config.mjs",
     "check:engineering": "node tools/check-engineering.cjs"
   },
   "devDependencies": {
