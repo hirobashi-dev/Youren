@@ -34,8 +34,11 @@
   "missingIDs": [],
   "browserErrors": [],
   "previewOnly": false,
+  "greenContrast": 4.976748367842557,
   "pinkContrast": 4.746056752651387,
   "checks": [
+    "green-theme",
+    "green-button-contrast",
     "ordinary-dm",
     "registered-event-publish",
     "pink-button-contrast",

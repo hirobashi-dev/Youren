@@ -32,6 +32,13 @@ function assert(ok, message) { if (!ok) throw new Error(message); }
     assert((await page.locator('[data-screen="P01-PUBLIC"] .sticky-action').innerText()).includes('发消息'),'Public profile has no ordinary DM entry');
     assert((await page.locator('[data-screen="E01"] .tools').innerText()).includes('发布活动'),'Activities have no publish entry');
     assert(!(await page.locator('[data-screen="E05"]').innerText()).includes('已获授权'),'Event creation still requires organizer authorization');
+    const ordinaryButton=await page.locator('[data-screen="B04"] .sticky-action .primary').evaluate(el=>({background:getComputedStyle(el).backgroundColor,color:getComputedStyle(el).color}));
+    assert(ordinaryButton.background==='rgb(6, 129, 63)','Ordinary button is not readable green');
+    assert(ordinaryButton.color==='rgb(255, 255, 255)','Ordinary button text is not white');
+    assert(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--accent').trim())==='#07c160','Bright green accent is missing');
+    const greenRgb=[6,129,63].map(value=>{const c=value/255;return c<=0.04045?c/12.92:Math.pow((c+0.055)/1.055,2.4);});
+    const greenContrast=1.05/(greenRgb[0]*0.2126+greenRgb[1]*0.7152+greenRgb[2]*0.0722+0.05);
+    assert(greenContrast>=4.5,'Green button white text contrast below 4.5');
     const datingBackground=await page.locator('[data-screen="L03"] .primary').first().evaluate(el=>getComputedStyle(el).backgroundColor);
     assert(datingBackground==='rgb(217, 35, 112)','Dating button is not vivid pink');
     const rgb=[217,35,112].map(value=>{const channel=value/255;return channel<=0.04045?channel/12.92:Math.pow((channel+0.055)/1.055,2.4);});
@@ -86,7 +93,7 @@ function assert(ok, message) { if (!ok) throw new Error(message); }
     assert(dialogWidth.scroll<=dialogWidth.width,'Mobile dialog overflow');
     await page.locator('#close').click();
     assert(errors.length===0,'Browser errors: '+errors.join('; '));
-    console.log(`Verified ${count} screens: ${expected.length} required IDs, ordinary DM, registered event publishing, pink contrast ${contrast.toFixed(2)}:1, group rules and gallery interactions.`);
+    console.log(`Verified ${count} screens: ${expected.length} required IDs, ordinary DM, registered event publishing, green contrast ${greenContrast.toFixed(2)}:1, pink contrast ${contrast.toFixed(2)}:1, group rules and gallery interactions.`);
     await page.setViewportSize({width:1440,height:1080});
     await page.addStyleTag({content:'.export-page{margin:0;padding:0;background:white}.export-page .device{height:auto;min-height:844px;border-radius:0;width:390px}.export-page .screen-body{overflow:visible;flex:1 0 auto;min-height:620px}.export-page .art.portrait{height:260px}.export-page .fab{bottom:100px}'});
     for(const viewMode of ['visual','wireframe']) {
@@ -107,12 +114,12 @@ function assert(ok, message) { if (!ok) throw new Error(message); }
           const batch=mobileKeys.slice(start,start+12);
           await page.setViewportSize({width:1320,height:1000});
           const cells=batch.map(id=>`<article><h2>${id}</h2><img src="${pathToFileURL(path.join(out,viewMode,id+'.png')).href}" alt="${id}"></article>`).join('');
-          await page.setContent(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><style>*{box-sizing:border-box}body{margin:0;padding:28px;background:#eff5f7;font-family:Microsoft YaHei,sans-serif;color:#163e43}h1{font-size:22px;font-weight:500;margin:0 0 8px}p{font-size:12px;margin:0 0 22px;color:#597078}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}article{background:white;padding:10px;border:1px solid #dce7ea;border-radius:12px}h2{font-size:12px;margin:0 0 10px}img{display:block;width:100%;height:620px;object-fit:contain;object-position:top;background:white}</style><h1>在日·同好 / ${viewMode==='visual'?'视觉稿':'线框图'} / ${start+1}–${start+batch.length}</h1><p>全部图片为示意，完整单页 PNG 另附；长页面在此缩小展示。</p><div class="grid">${cells}</div></html>`,{waitUntil:'load'});
+          await page.setContent(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><style>*{box-sizing:border-box}body{margin:0;padding:28px;background:#f5f6f5;font-family:Microsoft YaHei,sans-serif;color:#163e43}h1{font-size:22px;font-weight:500;margin:0 0 8px}p{font-size:12px;margin:0 0 22px;color:#597078}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}article{background:white;padding:10px;border:1px solid #dce7ea;border-radius:12px}h2{font-size:12px;margin:0 0 10px}img{display:block;width:100%;height:620px;object-fit:contain;object-position:top;background:white}</style><h1>在日·同好 / ${viewMode==='visual'?'视觉稿':'线框图'} / ${start+1}–${start+batch.length}</h1><p>全部图片为示意，完整单页 PNG 另附；长页面在此缩小展示。</p><div class="grid">${cells}</div></html>`,{waitUntil:'load'});
           await page.screenshot({path:path.join(out,`${viewMode}-sheet-${Math.floor(start/12)+1}.png`),fullPage:true});
         }
       }
       console.log('Exported visual and wireframe contact sheets.');
     }
-    fs.writeFileSync(path.join(out,'verification.json'),JSON.stringify({screenCount:count,requiredIDs:expected,missingIDs:expected.filter(id=>!keys.includes(id)),browserErrors:errors,previewOnly,pinkContrast:contrast,checks:['ordinary-dm','registered-event-publish','pink-button-contrast','group-create','group-direct-join','no-group-approval','group-flow','module-filter','search','empty-state','wire-visual','viewer','keyboard','flow','platform','mobile-width','dialog-width','export-width']},null,2)+'\n');
+    fs.writeFileSync(path.join(out,'verification.json'),JSON.stringify({screenCount:count,requiredIDs:expected,missingIDs:expected.filter(id=>!keys.includes(id)),browserErrors:errors,previewOnly,greenContrast,pinkContrast:contrast,checks:['green-theme','green-button-contrast','ordinary-dm','registered-event-publish','pink-button-contrast','group-create','group-direct-join','no-group-approval','group-flow','module-filter','search','empty-state','wire-visual','viewer','keyboard','flow','platform','mobile-width','dialog-width','export-width']},null,2)+'\n');
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1;});
