@@ -4,5 +4,12 @@
   <!-- 模块继承同一版本及测试门槛，尚未加入业务功能。 -->
   <parent><groupId>jp.youren</groupId><artifactId>youren-backend</artifactId><version>0.1.0-SNAPSHOT</version></parent>
   <artifactId>youren-database</artifactId>
-  <dependencies><dependency><groupId>jp.youren</groupId><artifactId>youren-shared</artifactId></dependency></dependencies>
+  <dependencies><dependency><groupId>jp.youren</groupId><artifactId>youren-shared</artifactId></dependency><dependency><groupId>org.mybatis.spring.boot</groupId><artifactId>mybatis-spring-boot-starter</artifactId></dependency>
+    <dependency><groupId>org.postgresql</groupId><artifactId>postgresql</artifactId></dependency>
+    <dependency><groupId>org.flywaydb</groupId><artifactId>flyway-core</artifactId></dependency>
+    <dependency><groupId>org.flywaydb</groupId><artifactId>flyway-database-postgresql</artifactId></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>org.testcontainers</groupId><artifactId>testcontainers-postgresql</artifactId><version>2.0.5</version><scope>test</scope></dependency>
+    <dependency><groupId>org.testcontainers</groupId><artifactId>testcontainers-junit-jupiter</artifactId><version>2.0.5</version><scope>test</scope></dependency>
+  </dependencies>
 </project>

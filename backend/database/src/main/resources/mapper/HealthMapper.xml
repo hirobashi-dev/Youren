@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="jp.youren.database.mapper.HealthMapper">
+  <!-- 只读连通性探测，SQL也设超时；请求层另限制整体等待时间。 -->
+  <select id="ping" resultType="int" timeout="1">SELECT 1</select>
+</mapper>

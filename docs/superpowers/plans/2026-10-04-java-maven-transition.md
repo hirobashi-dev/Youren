@@ -46,11 +46,11 @@
 
 ### 2. MyBatis与SQL迁移接续
 
-- [ ] 从现有初始SQL生成Flyway V1，保持54表、约束、函数、索引、触发器、默认配置与中文说明；由Flyway管理事务，外层BEGIN/COMMIT若调整须验证可执行SQL等价。
-- [ ] 在全新隔离PostgreSQL运行初始/重复迁移及Mapper CRUD，验证唯一/CHECK/FK、跨表约束、UTC日历年与回滚；不能仅以旧Prisma测试代替Java验证。
-- [ ] 既有开发/测试库带`_prisma_migrations`；切换前核对结构/迁移版本，再受控baseline到对应Flyway版本。关闭自动baseline和clean，不对已有表重放V1，不删除用户数据；若结构不匹配，停止并报告。
-- [ ] 写迁移接续记录，之后只用Flyway管理新增DDL；SQL来源和规范源调整完成前保留旧包只读参考，禁止同时运行Prisma和Flyway变更同一库。
-- [ ] 数据库IT和重复迁移通过后提交`Add MyBatis access and SQL migration continuity`。
+- [x] 从现有初始SQL生成Flyway V1，保持54表、约束、函数、索引、触发器、默认配置与中文说明；由Flyway管理事务，外层BEGIN/COMMIT若调整须验证可执行SQL等价。
+- [x] 在全新隔离PostgreSQL运行初始/重复迁移及Mapper CRUD，验证唯一/CHECK/FK、跨表约束、UTC日历年与回滚；不能仅以旧Prisma测试代替Java验证。
+- [x] 既有开发/测试库带`_prisma_migrations`；切换前核对结构/迁移版本，再受控baseline到对应Flyway版本。关闭自动baseline和clean，不对已有表重放V1，不删除用户数据；若结构不匹配，停止并报告。
+- [x] 写迁移接续记录，之后只用Flyway管理新增DDL；SQL来源和规范源调整完成前保留旧包只读参考，禁止同时运行Prisma和Flyway变更同一库。
+- [x] 数据库IT和重复迁移通过后提交`Add MyBatis access and SQL migration continuity`。
 
 ### 3. Java API健康和HTTP合同
 

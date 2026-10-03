@@ -1,9 +1,9 @@
 # Java 后端
 
 Java 21、Spring Boot 3.5.16、MyBatis Starter 3.0.5、Maven 3.9.9。
-`shared` 提供配置验证与日志白名单；`database`、`api`、`worker` 随后续任务实现。
+`shared` 提供配置验证与日志白名单；`database` 已实现 MyBatis/Flyway 基础，`api`、`worker` 随后续任务实现。
 四模块使用同一 BOM，Surefire 发现 `*Test`，Failsafe 在 `verify` 验收 `*IT`。
-Spotless 在 `verify` 检查 Java 格式。当前尚无数据库或 HTTP 集成实现。
+Spotless 在 `verify` 检查 Java 格式。数据库有11项临时PostgreSQL集成测试，HTTP尚待实现。
 
 ## Windows 本地构建
 

@@ -1,0 +1,4 @@
+<configuration>
+  <!-- 独立迁移进程只输出受控状态；API/worker另用自己的日志配置。 -->
+  <root level="OFF"/>
+</configuration>

@@ -1,5 +1,14 @@
 # 工作记录
 
+## MyBatis与Flyway接续（2026-10-04）
+
+- 一般项目执行已获持续授权，只有修改系统设置时向用户确认；取代此前高风险命令确认偏好，运行权限仍服从环境限制。
+- Java数据库模块接入MyBatis Starter3.0.5、显式Mapper XML/UUID TypeHandler、Flyway V1；同步工具检查原SQL除外层事务之外完整等价，54表及中文说明保留。Testcontainers BOM2.0.5统一全部传递模块，避免Boot默认旧核心混用。
+- 先行测试缺SQL/Mapper时失败；实现后7项shared及11项数据库IT全部通过，clean install及版本统一后的clean verify、Spotless通过。审计SQL首次char拼接歧义导致两项失败，读取错误报告定位后增加显式text转换，全套重跑通过。
+- localhost5442/youren_test现有测试库执行完整pg_dump备份到忽略的.local，只读审计成功，显式baseline版本1及migrate成功；业务data-only快照SHA-256前后完全相同，历史类型BASELINE且成功。data-only因循环FK提示不可单独恢复，完整备份已保留，快照仅作不变性比较。只启动本项目postgres-test，开发库未切换，外部数据库未访问。
+- 临时容器验证旧结构指纹/历史checksum匹配时接续并保留账号、结构漂移或未知历史拒绝、clean及自动baseline禁止。指纹资源旁置README说明，无秘密进入版本控制。后续DDL只用Flyway，保留旧源码作历史且禁止同库Prisma迁移；Java API/worker尚未验证。
+
+
 ## Java工程恢复与Maven基础（2026-10-04）
 
 - 用户授权一般命令直接执行，仅高风险命令另行确认；执行环境要求的权限审批仍按工具规则处理。首次提交后发现shared/pom.xml一行尾空格，已修正并重新差分核对。
