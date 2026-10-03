@@ -2,6 +2,10 @@
   "name": "@youren/runtime",
   "version": "0.1.0",
   "private": true,
+  "dependencies": {
+    "@youren/database": "0.1.0",
+    "ioredis": "6.0.0"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

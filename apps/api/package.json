@@ -1,0 +1,26 @@
+{
+  "name": "@youren/api",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "node --env-file=../../.env dist/main.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "jest --runInBand --testPathPattern=health",
+    "test:e2e": "jest --runInBand --testPathPattern=health",
+    "test:integration": "jest --runInBand --testPathPattern=readiness"
+  },
+  "dependencies": {
+    "@nestjs/common": "11.2.7",
+    "@nestjs/core": "11.2.7",
+    "@nestjs/platform-express": "11.2.7",
+    "@youren/runtime": "0.1.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "11.2.7",
+    "supertest": "7.1.4",
+    "@types/supertest": "6.0.3"
+  }
+}
