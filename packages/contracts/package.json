@@ -1,0 +1,16 @@
+{
+  "name": "@youren/contracts",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {"node": ">=20.12"},
+  "scripts": {
+    "build": "node tools/generate.cjs",
+    "check:generated": "node tools/generate.cjs --check",
+    "test": "node --test tests/contract.test.cjs tests/rules.test.cjs"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "12.1.0",
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1"
+  }
+}
