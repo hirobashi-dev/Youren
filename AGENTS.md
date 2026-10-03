@@ -1,29 +1,29 @@
-# Repository Guidelines
+# 仓库贡献指南
 
-## Project Structure & Module Organization
+## 项目结构与模块组织
 
-This repository currently has no source code, tests, assets, or build configuration. Establish a clear layout when adding the first implementation: keep application code in `src/`, automated tests in `tests/`, static assets in `assets/`, and supporting documentation in `docs/`. Adapt these directories to the chosen framework and explain the actual layout in `README.md`.
+本仓库目前尚无源代码、测试、静态资源或构建配置。首次添加实现时，应建立清晰的目录结构：应用代码放在 `src/`，自动化测试放在 `tests/`，静态资源放在 `assets/`，辅助文档放在 `docs/`。可根据所选框架调整目录，并在 `README.md` 中说明实际结构。
 
-## Build, Test, and Development Commands
+## 构建、测试与开发命令
 
-No build, test, or local development commands are configured yet. When introducing tooling, add reproducible commands to the project manifest and document them in `README.md`, including required runtime versions and dependency installation steps. Commands such as `npm run dev`, `npm test`, and `npm run build` are examples only; use them only if the project adopts the corresponding scripts.
+目前尚未配置构建、测试或本地开发命令。引入工具时，应在项目配置文件中定义可重复执行的命令，并在 `README.md` 中记录运行环境版本和依赖安装步骤。`npm run dev`、`npm test` 和 `npm run build` 仅为示例；只有项目定义了对应脚本时才能使用。
 
-## Coding Style & Naming Conventions
+## 代码风格与命名规范
 
-Follow the conventions of the language and framework selected for the project. Configure a formatter and linter alongside the initial implementation, and use their settings consistently. Keep names descriptive, organize modules by responsibility, and avoid unrelated formatting changes. Use UTF-8 for text files and keep Markdown instructions concise, with fenced code blocks for runnable examples.
+遵循所选语言和框架的惯例。在首次实现时配置格式化工具和代码检查工具，统一使用其缩进及格式规则。名称应清楚表达用途，模块按职责组织，避免无关的格式修改。文本文件使用 UTF-8 编码；Markdown 说明保持简洁，可执行示例使用围栏代码块。
 
-## Testing Guidelines
+## 测试要求
 
-No testing framework or coverage threshold is established. Add an appropriate test runner with the first executable code. Test observable behavior, include relevant edge cases, and add regression tests for bug fixes. Use descriptive test names and the selected framework's file naming conventions. Document the exact test command and any required fixtures or environment settings.
+目前尚未指定测试框架或覆盖率要求。添加首批可执行代码时，应同时引入合适的测试工具。测试应验证可观察的行为，覆盖相关边界情况，并为缺陷修复添加回归测试。测试名称应清楚描述场景，文件命名遵循所选框架的规范。记录准确的测试命令及所需测试数据、环境配置。
 
-## Commit & Pull Request Guidelines
+## 提交与拉取请求规范
 
-No Git history is available to establish a commit convention. Use short, imperative commit subjects, such as `Add initial project setup`, and keep each commit focused. Pull requests should explain the purpose, summarize changes, link relevant issues, and report validation performed. Include screenshots for visual changes and identify checks that could not be run.
+已有提交使用简短、描述性的英文祈使句标题，例如 `Add repository guidelines and version commit workflow`。每次提交应聚焦一组完整修改。拉取请求应说明目的、概述变更、关联相关问题，并记录验证结果。界面变更应附截图，无法执行的检查应明确说明。
 
-## Security & Configuration
+## 安全与配置
 
-Keep credentials, local environment files, dependencies, and generated outputs out of version control. Add appropriate ignore rules when tooling is introduced. Provide placeholder configuration examples and document required variables without including real secrets.
+凭据、本地环境文件、依赖目录和生成产物不得纳入版本控制。引入工具时添加适当的忽略规则。配置示例应使用占位值，并说明必需的环境变量，不得包含真实密钥。
 
-## Agent Workflow
+## 代理工作流程
 
-After completing each requested set of changes in this repository, run appropriate checks, review the diff, and create one Git commit representing that version. Include the completed changes and use a concise, descriptive commit message. If there are no changes, do not create an empty commit. Keep commits local unless the user requests a push.
+每次完成用户要求的一组仓库内容修改后，应执行适当检查、审阅差异，并创建一次 Git 提交，作为该版本的记录。提交应包含本次已完成的修改，提交信息应简洁且明确。没有内容变化时，不创建空提交。除非用户要求推送，否则仅进行本地提交。
