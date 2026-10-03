@@ -1,5 +1,5 @@
 {
-  "screenCount": 48,
+  "screenCount": 50,
   "requiredIDs": [
     "B01",
     "B02",
@@ -15,6 +15,7 @@
     "G02",
     "G03",
     "G04",
+    "C01",
     "L01",
     "L02",
     "L03",
@@ -33,7 +34,11 @@
   "missingIDs": [],
   "browserErrors": [],
   "previewOnly": false,
+  "pinkContrast": 4.746056752651387,
   "checks": [
+    "ordinary-dm",
+    "registered-event-publish",
+    "pink-button-contrast",
     "group-create",
     "group-direct-join",
     "no-group-approval",
