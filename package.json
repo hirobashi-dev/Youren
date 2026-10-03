@@ -1,0 +1,26 @@
+{
+  "name": "youren",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": "22.23.3"
+  },
+  "packageManager": "npm@10.5.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "test:engineering": "node --test tests/engineering.test.cjs",
+    "lint": "eslint .",
+    "format:check": "prettier --check tools tests apps packages/runtime README.md package.json tsconfig.base.json eslint.config.mjs",
+    "check:engineering": "node tools/check-engineering.cjs"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3",
+    "eslint": "9.39.5",
+    "typescript-eslint": "8.71.0",
+    "prettier": "3.8.1",
+    "@types/node": "22.19.15"
+  }
+}

@@ -1,0 +1,9 @@
+**/node_modules/**
+**/dist/**
+**/generated/**
+**/android/**
+**/ios/**
+**/.expo/**
+packages/database/schema.prisma
+packages/database/migrations/**
+packages/contracts/openapi.json
