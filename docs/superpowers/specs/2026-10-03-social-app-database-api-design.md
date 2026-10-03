@@ -1,5 +1,7 @@
 # 在日华人交友 App 数据库与 API 详细设计
 
+结构文件已生成于[packages/database](../../../packages/database/README.md)，包含Prisma模型、SQL初始迁移与隔离数据库测试；本文中的业务API事务和worker仍待实施。字段默认值及PostgreSQL专用约束以该包的规范源和迁移文件为实施依据。
+
 ## 1. 设计范围与决策状态
 
 本稿供开发评审，依据[产品方案](2026-10-03-social-app-design.md)、[技术方案](2026-10-03-social-app-technical-design.md)及[页面与交互方案](2026-10-03-social-app-ui-interaction-design.md)的最新确认部分。旧稿中 verified 默认条件、组织者预授权及仅匹配后可私聊的描述，以后续确认与本文为准。当前交付是数据和协议设计，尚未建立数据库、迁移、API 服务或业务测试。

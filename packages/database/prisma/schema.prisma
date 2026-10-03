@@ -1,0 +1,921 @@
+// Generated model: PostgreSQL CHECK/partial indexes/triggers are in migration.sql.
+generator client {
+  provider = "prisma-client-js"
+  output = "../generated/client"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+model Accounts {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  email_normalized String
+  status String @default("active")
+  auth_version Int @default(1)
+  deletion_requested_at DateTime? @db.Timestamptz(6)
+  @@unique([email_normalized])
+  back_principals_account_id Principals[] @relation("principals_account_id_fkey")
+  back_sessions_account_id Sessions[] @relation("sessions_account_id_fkey")
+  back_profiles_account_id Profiles? @relation("profiles_account_id_fkey")
+  back_account_settings_account_id AccountSettings? @relation("account_settings_account_id_fkey")
+  back_profile_interests_account_id ProfileInterests[] @relation("profile_interests_account_id_fkey")
+  back_push_devices_account_id PushDevices[] @relation("push_devices_account_id_fkey")
+  back_consent_records_account_id ConsentRecords[] @relation("consent_records_account_id_fkey")
+  back_groups_creator_id Groups[] @relation("groups_creator_id_fkey")
+  back_groups_owner_id Groups[] @relation("groups_owner_id_fkey")
+  back_group_members_account_id GroupMembers[] @relation("group_members_account_id_fkey")
+  back_matches_account_low_id Matches[] @relation("matches_account_low_id_fkey")
+  back_matches_account_high_id Matches[] @relation("matches_account_high_id_fkey")
+  back_conversations_account_low_id Conversations[] @relation("conversations_account_low_id_fkey")
+  back_conversations_account_high_id Conversations[] @relation("conversations_account_high_id_fkey")
+  back_conversation_participants_account_id ConversationParticipants[] @relation("conversation_participants_account_id_fkey")
+  back_messages_sender_id Messages[] @relation("messages_sender_id_fkey")
+  back_read_cursors_account_id ReadCursors[] @relation("read_cursors_account_id_fkey")
+  back_message_request_receipts_sender_id MessageRequestReceipts[] @relation("message_request_receipts_sender_id_fkey")
+  back_age_declarations_account_id AgeDeclarations? @relation("age_declarations_account_id_fkey")
+  back_dating_profiles_account_id DatingProfiles? @relation("dating_profiles_account_id_fkey")
+  back_likes_from_account_id Likes[] @relation("likes_from_account_id_fkey")
+  back_likes_to_account_id Likes[] @relation("likes_to_account_id_fkey")
+  back_events_creator_id Events[] @relation("events_creator_id_fkey")
+  back_event_registrations_account_id EventRegistrations[] @relation("event_registrations_account_id_fkey")
+  back_event_revisions_actor_id EventRevisions[] @relation("event_revisions_actor_id_fkey")
+  back_blocks_blocker_id Blocks[] @relation("blocks_blocker_id_fkey")
+  back_blocks_blocked_id Blocks[] @relation("blocks_blocked_id_fkey")
+  back_reports_account_id Reports[] @relation("reports_account_id_fkey")
+  back_moderation_actions_account_id ModerationActions[] @relation("moderation_actions_account_id_fkey")
+  back_notifications_account_id Notifications[] @relation("notifications_account_id_fkey")
+  back_direct_contact_states_account_low_id DirectContactStates[] @relation("direct_contact_states_account_low_id_fkey")
+  back_direct_contact_states_account_high_id DirectContactStates[] @relation("direct_contact_states_account_high_id_fkey")
+  back_daily_usage_account_id DailyUsage[] @relation("daily_usage_account_id_fkey")
+  back_group_owner_transfers_from_account_id GroupOwnerTransfers[] @relation("group_owner_transfers_from_account_id_fkey")
+  back_group_owner_transfers_to_account_id GroupOwnerTransfers[] @relation("group_owner_transfers_to_account_id_fkey")
+  @@map("accounts")
+}
+
+model Principals {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  kind String
+  account_id String? @db.Uuid
+  claimed_at DateTime? @db.Timestamptz(6)
+  rel_account_id Accounts? @relation("principals_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  back_guest_credentials_principal_id GuestCredentials[] @relation("guest_credentials_principal_id_fkey")
+  back_media_assets_owner_principal_id MediaAssets[] @relation("media_assets_owner_principal_id_fkey")
+  back_posts_author_principal_id Posts[] @relation("posts_author_principal_id_fkey")
+  back_comments_author_principal_id Comments[] @relation("comments_author_principal_id_fkey")
+  back_reports_reporter_principal_id Reports[] @relation("reports_reporter_principal_id_fkey")
+  @@map("principals")
+}
+
+model GuestCredentials {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  principal_id String @db.Uuid
+  secret_hash String
+  revoked_at DateTime? @db.Timestamptz(6)
+  last_used_at DateTime @db.Timestamptz(6) @default(now())
+  @@unique([secret_hash])
+  rel_principal_id Principals @relation("guest_credentials_principal_id_fkey", fields: [principal_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("guest_credentials")
+}
+
+model Sessions {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  account_id String @db.Uuid
+  refresh_hash String
+  family_id String @db.Uuid
+  replaced_by_id String? @db.Uuid
+  expires_at DateTime @db.Timestamptz(6)
+  revoked_at DateTime? @db.Timestamptz(6)
+  platform String
+  @@unique([refresh_hash])
+  rel_account_id Accounts @relation("sessions_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_replaced_by_id Sessions? @relation("sessions_replaced_by_id_fkey", fields: [replaced_by_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  back_sessions_replaced_by_id Sessions[] @relation("sessions_replaced_by_id_fkey")
+  @@map("sessions")
+}
+
+model EmailChallenges {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  email_normalized String
+  purpose String
+  code_hmac String
+  attempts Int @default(0)
+  expires_at DateTime @db.Timestamptz(6)
+  consumed_at DateTime? @db.Timestamptz(6)
+  @@map("email_challenges")
+}
+
+model Regions {
+  code String @id
+  parent_code String?
+  level String
+  name_ja String
+  name_zh String
+  active Boolean @default(true)
+  rel_parent_code Regions? @relation("regions_parent_code_fkey", fields: [parent_code], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  back_regions_parent_code Regions[] @relation("regions_parent_code_fkey")
+  back_profiles_region_code Profiles[] @relation("profiles_region_code_fkey")
+  back_posts_region_code Posts[] @relation("posts_region_code_fkey")
+  back_groups_region_code Groups[] @relation("groups_region_code_fkey")
+  back_dating_profiles_region_code DatingProfiles[] @relation("dating_profiles_region_code_fkey")
+  back_events_region_code Events[] @relation("events_region_code_fkey")
+  @@map("regions")
+}
+
+model Interests {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  code String
+  name_zh String
+  active Boolean @default(true)
+  sort_order Int @default(0)
+  @@unique([code])
+  back_profile_interests_interest_id ProfileInterests[] @relation("profile_interests_interest_id_fkey")
+  back_post_interests_interest_id PostInterests[] @relation("post_interests_interest_id_fkey")
+  back_groups_interest_id Groups[] @relation("groups_interest_id_fkey")
+  back_dating_profile_interests_interest_id DatingProfileInterests[] @relation("dating_profile_interests_interest_id_fkey")
+  back_event_interests_interest_id EventInterests[] @relation("event_interests_interest_id_fkey")
+  @@map("interests")
+}
+
+model MediaAssets {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  owner_principal_id String @db.Uuid
+  purpose String
+  object_key String
+  status String @default("initiated")
+  mime String
+  size_bytes BigInt
+  width Int?
+  height Int?
+  checksum String?
+  upload_expires_at DateTime @db.Timestamptz(6)
+  cleanup_after DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  @@unique([object_key])
+  rel_owner_principal_id Principals @relation("media_assets_owner_principal_id_fkey", fields: [owner_principal_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  back_profiles_avatar_media_id Profiles? @relation("profiles_avatar_media_id_fkey")
+  back_post_media_media_id PostMedia? @relation("post_media_media_id_fkey")
+  back_comment_media_media_id CommentMedia? @relation("comment_media_media_id_fkey")
+  back_media_variants_media_id MediaVariants[] @relation("media_variants_media_id_fkey")
+  back_dating_photos_media_id DatingPhotos? @relation("dating_photos_media_id_fkey")
+  back_events_cover_media_id Events? @relation("events_cover_media_id_fkey")
+  @@map("media_assets")
+}
+
+model Profiles {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  account_id String @db.Uuid
+  nickname String
+  bio String @default("")
+  avatar_media_id String? @db.Uuid
+  region_code String?
+  visibility String @default("public")
+  version Int @default(1)
+  @@unique([account_id])
+  @@unique([avatar_media_id])
+  rel_account_id Accounts @relation("profiles_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_avatar_media_id MediaAssets? @relation("profiles_avatar_media_id_fkey", fields: [avatar_media_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_region_code Regions? @relation("profiles_region_code_fkey", fields: [region_code], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  @@map("profiles")
+}
+
+model AccountSettings {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  account_id String @db.Uuid
+  allow_stranger_dm Boolean @default(true)
+  push_enabled Boolean @default(true)
+  lockscreen_preview Boolean @default(false)
+  @@unique([account_id])
+  rel_account_id Accounts @relation("account_settings_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("account_settings")
+}
+
+model ProfileInterests {
+  account_id String @db.Uuid
+  interest_id String @db.Uuid
+  @@id([account_id, interest_id])
+  rel_account_id Accounts @relation("profile_interests_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_interest_id Interests @relation("profile_interests_interest_id_fkey", fields: [interest_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("profile_interests")
+}
+
+model PushDevices {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  account_id String @db.Uuid
+  installation_id String @db.Uuid
+  token_ciphertext String
+  token_hash String
+  platform String
+  revoked_at DateTime? @db.Timestamptz(6)
+  @@unique([installation_id])
+  @@unique([token_hash])
+  rel_account_id Accounts @relation("push_devices_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("push_devices")
+}
+
+model ConsentRecords {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  account_id String @db.Uuid
+  terms_version String
+  privacy_version String
+  accepted_at DateTime @db.Timestamptz(6)
+  rel_account_id Accounts @relation("consent_records_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("consent_records")
+}
+
+model Posts {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  author_principal_id String @db.Uuid
+  display_mode String @default("guest")
+  scope String @default("public")
+  category String @default("general")
+  title String
+  body String
+  region_code String?
+  status String @default("pending")
+  published_at DateTime? @db.Timestamptz(6)
+  expires_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  version Int @default(1)
+  rel_author_principal_id Principals @relation("posts_author_principal_id_fkey", fields: [author_principal_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_region_code Regions? @relation("posts_region_code_fkey", fields: [region_code], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  back_comments_post_id Comments[] @relation("comments_post_id_fkey")
+  back_post_interests_post_id PostInterests[] @relation("post_interests_post_id_fkey")
+  back_post_media_post_id PostMedia[] @relation("post_media_post_id_fkey")
+  back_reports_post_id Reports[] @relation("reports_post_id_fkey")
+  back_moderation_actions_post_id ModerationActions[] @relation("moderation_actions_post_id_fkey")
+  @@map("posts")
+}
+
+model Comments {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  post_id String @db.Uuid
+  author_principal_id String @db.Uuid
+  display_mode String @default("guest")
+  reply_to_id String? @db.Uuid
+  body String @default("")
+  status String @default("pending")
+  published_at DateTime? @db.Timestamptz(6)
+  expires_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  version Int @default(1)
+  @@unique([post_id, id])
+  rel_post_id Posts @relation("comments_post_id_fkey", fields: [post_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_author_principal_id Principals @relation("comments_author_principal_id_fkey", fields: [author_principal_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_reply_to_id Comments? @relation("comments_reply_to_id_fkey", fields: [reply_to_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  back_comments_reply_to_id Comments[] @relation("comments_reply_to_id_fkey")
+  back_comment_media_comment_id CommentMedia[] @relation("comment_media_comment_id_fkey")
+  back_reports_comment_id Reports[] @relation("reports_comment_id_fkey")
+  back_moderation_actions_comment_id ModerationActions[] @relation("moderation_actions_comment_id_fkey")
+  @@map("comments")
+}
+
+model PostInterests {
+  post_id String @db.Uuid
+  interest_id String @db.Uuid
+  @@id([post_id, interest_id])
+  rel_post_id Posts @relation("post_interests_post_id_fkey", fields: [post_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_interest_id Interests @relation("post_interests_interest_id_fkey", fields: [interest_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("post_interests")
+}
+
+model PostMedia {
+  post_id String @db.Uuid
+  media_id String @db.Uuid
+  position Int
+  @@id([post_id, media_id])
+  @@unique([media_id])
+  @@unique([post_id, position])
+  rel_post_id Posts @relation("post_media_post_id_fkey", fields: [post_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_media_id MediaAssets @relation("post_media_media_id_fkey", fields: [media_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("post_media")
+}
+
+model CommentMedia {
+  comment_id String @db.Uuid
+  media_id String @db.Uuid
+  position Int
+  @@id([comment_id, media_id])
+  @@unique([media_id])
+  @@unique([comment_id, position])
+  rel_comment_id Comments @relation("comment_media_comment_id_fkey", fields: [comment_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_media_id MediaAssets @relation("comment_media_media_id_fkey", fields: [media_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("comment_media")
+}
+
+model MediaVariants {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  media_id String @db.Uuid
+  kind String
+  object_key String
+  size_bytes BigInt
+  width Int
+  height Int
+  @@unique([media_id, kind])
+  @@unique([object_key])
+  rel_media_id MediaAssets @relation("media_variants_media_id_fkey", fields: [media_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("media_variants")
+}
+
+model Groups {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  creator_id String @db.Uuid
+  owner_id String @db.Uuid
+  type String @default("ordinary")
+  name String
+  description String @default("")
+  rules String @default("")
+  region_code String?
+  interest_id String? @db.Uuid
+  status String @default("active")
+  capacity Int? @default(100)
+  active_count Int @default(0)
+  version Int @default(1)
+  dissolved_at DateTime? @db.Timestamptz(6)
+  rel_creator_id Accounts @relation("groups_creator_id_fkey", fields: [creator_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_owner_id Accounts @relation("groups_owner_id_fkey", fields: [owner_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_region_code Regions? @relation("groups_region_code_fkey", fields: [region_code], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  rel_interest_id Interests? @relation("groups_interest_id_fkey", fields: [interest_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  back_group_members_group_id GroupMembers[] @relation("group_members_group_id_fkey")
+  back_conversations_group_id Conversations? @relation("conversations_group_id_fkey")
+  back_events_group_id Events? @relation("events_group_id_fkey")
+  back_reports_group_id Reports[] @relation("reports_group_id_fkey")
+  back_moderation_actions_group_id ModerationActions[] @relation("moderation_actions_group_id_fkey")
+  back_group_owner_transfers_group_id GroupOwnerTransfers[] @relation("group_owner_transfers_group_id_fkey")
+  @@map("groups")
+}
+
+model GroupMembers {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  group_id String @db.Uuid
+  account_id String @db.Uuid
+  role String @default("member")
+  status String @default("active")
+  muted Boolean @default(false)
+  @@unique([group_id, account_id])
+  rel_group_id Groups @relation("group_members_group_id_fkey", fields: [group_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_account_id Accounts @relation("group_members_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  back_membership_periods_group_member_id MembershipPeriods[] @relation("membership_periods_group_member_id_fkey")
+  @@map("group_members")
+}
+
+model MembershipPeriods {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  group_member_id String @db.Uuid
+  start_sequence BigInt
+  end_sequence BigInt?
+  joined_at DateTime @db.Timestamptz(6) @default(now())
+  left_at DateTime? @db.Timestamptz(6)
+  rel_group_member_id GroupMembers @relation("membership_periods_group_member_id_fkey", fields: [group_member_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("membership_periods")
+}
+
+model Matches {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  account_low_id String @db.Uuid
+  account_high_id String @db.Uuid
+  status String @default("active")
+  matched_at DateTime @db.Timestamptz(6) @default(now())
+  ended_at DateTime? @db.Timestamptz(6)
+  @@unique([account_low_id, account_high_id])
+  rel_account_low_id Accounts @relation("matches_account_low_id_fkey", fields: [account_low_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_account_high_id Accounts @relation("matches_account_high_id_fkey", fields: [account_high_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  back_conversations_match_id Conversations? @relation("conversations_match_id_fkey")
+  @@map("matches")
+}
+
+model Conversations {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  type String
+  group_id String? @db.Uuid
+  match_id String? @db.Uuid
+  account_low_id String? @db.Uuid
+  account_high_id String? @db.Uuid
+  status String @default("active")
+  last_sequence BigInt @default(0)
+  @@unique([group_id])
+  @@unique([match_id])
+  @@unique([type, account_low_id, account_high_id])
+  rel_group_id Groups? @relation("conversations_group_id_fkey", fields: [group_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_match_id Matches? @relation("conversations_match_id_fkey", fields: [match_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_account_low_id Accounts? @relation("conversations_account_low_id_fkey", fields: [account_low_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_account_high_id Accounts? @relation("conversations_account_high_id_fkey", fields: [account_high_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  back_conversation_participants_conversation_id ConversationParticipants[] @relation("conversation_participants_conversation_id_fkey")
+  back_messages_conversation_id Messages[] @relation("messages_conversation_id_fkey")
+  back_read_cursors_conversation_id ReadCursors[] @relation("read_cursors_conversation_id_fkey")
+  back_message_request_receipts_conversation_id MessageRequestReceipts[] @relation("message_request_receipts_conversation_id_fkey")
+  @@map("conversations")
+}
+
+model ConversationParticipants {
+  conversation_id String @db.Uuid
+  account_id String @db.Uuid
+  muted Boolean @default(false)
+  archived_at DateTime? @db.Timestamptz(6)
+  @@id([conversation_id, account_id])
+  rel_conversation_id Conversations @relation("conversation_participants_conversation_id_fkey", fields: [conversation_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_account_id Accounts @relation("conversation_participants_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("conversation_participants")
+}
+
+model Messages {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  conversation_id String @db.Uuid
+  sender_id String @db.Uuid
+  client_message_id String @db.Uuid
+  sequence BigInt
+  body String
+  status String @default("visible")
+  sent_at DateTime @db.Timestamptz(6) @default(now())
+  expires_at DateTime @db.Timestamptz(6)
+  @@unique([sender_id, client_message_id])
+  @@unique([conversation_id, sequence])
+  rel_conversation_id Conversations @relation("messages_conversation_id_fkey", fields: [conversation_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_sender_id Accounts @relation("messages_sender_id_fkey", fields: [sender_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  back_message_request_receipts_message_id MessageRequestReceipts[] @relation("message_request_receipts_message_id_fkey")
+  back_reports_message_id Reports[] @relation("reports_message_id_fkey")
+  back_moderation_actions_message_id ModerationActions[] @relation("moderation_actions_message_id_fkey")
+  @@map("messages")
+}
+
+model ReadCursors {
+  conversation_id String @db.Uuid
+  account_id String @db.Uuid
+  last_read_sequence BigInt @default(0)
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  @@id([conversation_id, account_id])
+  rel_conversation_id Conversations @relation("read_cursors_conversation_id_fkey", fields: [conversation_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_account_id Accounts @relation("read_cursors_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("read_cursors")
+}
+
+model MessageRequestReceipts {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  sender_id String @db.Uuid
+  client_message_id String @db.Uuid
+  conversation_id String @db.Uuid
+  request_hash String
+  message_id String? @db.Uuid
+  sequence BigInt
+  result_state String @default("saved")
+  expires_at DateTime @db.Timestamptz(6)
+  @@unique([sender_id, client_message_id])
+  rel_sender_id Accounts @relation("message_request_receipts_sender_id_fkey", fields: [sender_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_conversation_id Conversations @relation("message_request_receipts_conversation_id_fkey", fields: [conversation_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_message_id Messages? @relation("message_request_receipts_message_id_fkey", fields: [message_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("message_request_receipts")
+}
+
+model AgeDeclarations {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  account_id String @db.Uuid
+  status String @default("self_declared")
+  statement_version String
+  declared_at DateTime @db.Timestamptz(6) @default(now())
+  withdrawn_at DateTime? @db.Timestamptz(6)
+  expires_at DateTime? @db.Timestamptz(6)
+  @@unique([account_id])
+  rel_account_id Accounts @relation("age_declarations_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("age_declarations")
+}
+
+model DatingProfiles {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  account_id String @db.Uuid
+  enabled Boolean @default(false)
+  intro String @default("")
+  region_code String?
+  preferences Json @default("{}")
+  status String @default("pending")
+  version Int @default(1)
+  @@unique([account_id])
+  rel_account_id Accounts @relation("dating_profiles_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_region_code Regions? @relation("dating_profiles_region_code_fkey", fields: [region_code], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  back_dating_profile_interests_account_id DatingProfileInterests[] @relation("dating_profile_interests_account_id_fkey")
+  back_dating_photos_account_id DatingPhotos[] @relation("dating_photos_account_id_fkey")
+  @@map("dating_profiles")
+}
+
+model DatingProfileInterests {
+  account_id String @db.Uuid
+  interest_id String @db.Uuid
+  @@id([account_id, interest_id])
+  rel_account_id DatingProfiles @relation("dating_profile_interests_account_id_fkey", fields: [account_id], references: [account_id], onDelete: Restrict, onUpdate: Cascade)
+  rel_interest_id Interests @relation("dating_profile_interests_interest_id_fkey", fields: [interest_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("dating_profile_interests")
+}
+
+model DatingPhotos {
+  account_id String @db.Uuid
+  media_id String @db.Uuid
+  position Int
+  @@id([account_id, media_id])
+  @@unique([media_id])
+  @@unique([account_id, position])
+  rel_account_id DatingProfiles @relation("dating_photos_account_id_fkey", fields: [account_id], references: [account_id], onDelete: Restrict, onUpdate: Cascade)
+  rel_media_id MediaAssets @relation("dating_photos_media_id_fkey", fields: [media_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("dating_photos")
+}
+
+model Likes {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  from_account_id String @db.Uuid
+  to_account_id String @db.Uuid
+  decision String
+  @@unique([from_account_id, to_account_id])
+  rel_from_account_id Accounts @relation("likes_from_account_id_fkey", fields: [from_account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_to_account_id Accounts @relation("likes_to_account_id_fkey", fields: [to_account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("likes")
+}
+
+model Events {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  creator_id String @db.Uuid
+  group_id String? @db.Uuid
+  cover_media_id String? @db.Uuid
+  title String
+  description String
+  region_code String
+  starts_at DateTime @db.Timestamptz(6)
+  ends_at DateTime @db.Timestamptz(6)
+  registration_deadline DateTime @db.Timestamptz(6)
+  capacity Int
+  confirmed_count Int @default(0)
+  status String @default("draft")
+  cancellation_policy String
+  cancel_reason String?
+  cancelled_at DateTime? @db.Timestamptz(6)
+  actual_ended_at DateTime? @db.Timestamptz(6)
+  version Int @default(1)
+  @@unique([group_id])
+  @@unique([cover_media_id])
+  rel_creator_id Accounts @relation("events_creator_id_fkey", fields: [creator_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_group_id Groups? @relation("events_group_id_fkey", fields: [group_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_cover_media_id MediaAssets? @relation("events_cover_media_id_fkey", fields: [cover_media_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_region_code Regions @relation("events_region_code_fkey", fields: [region_code], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  back_event_private_details_event_id EventPrivateDetails? @relation("event_private_details_event_id_fkey")
+  back_event_interests_event_id EventInterests[] @relation("event_interests_event_id_fkey")
+  back_event_registrations_event_id EventRegistrations[] @relation("event_registrations_event_id_fkey")
+  back_event_revisions_event_id EventRevisions[] @relation("event_revisions_event_id_fkey")
+  back_reports_event_id Reports[] @relation("reports_event_id_fkey")
+  back_moderation_actions_event_id ModerationActions[] @relation("moderation_actions_event_id_fkey")
+  @@map("events")
+}
+
+model EventPrivateDetails {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  event_id String @db.Uuid
+  meeting_instructions String
+  version Int @default(1)
+  @@unique([event_id])
+  rel_event_id Events @relation("event_private_details_event_id_fkey", fields: [event_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("event_private_details")
+}
+
+model EventInterests {
+  event_id String @db.Uuid
+  interest_id String @db.Uuid
+  @@id([event_id, interest_id])
+  rel_event_id Events @relation("event_interests_event_id_fkey", fields: [event_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_interest_id Interests @relation("event_interests_interest_id_fkey", fields: [interest_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("event_interests")
+}
+
+model EventRegistrations {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  event_id String @db.Uuid
+  account_id String @db.Uuid
+  status String @default("confirmed")
+  accepted_event_version Int
+  registered_at DateTime @db.Timestamptz(6) @default(now())
+  cancelled_at DateTime? @db.Timestamptz(6)
+  left_at DateTime? @db.Timestamptz(6)
+  expires_at DateTime? @db.Timestamptz(6)
+  @@unique([event_id, account_id])
+  rel_event_id Events @relation("event_registrations_event_id_fkey", fields: [event_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_account_id Accounts @relation("event_registrations_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("event_registrations")
+}
+
+model EventRevisions {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  event_id String @db.Uuid
+  version Int
+  changed_fields Json
+  reason String
+  actor_id String @db.Uuid
+  @@unique([event_id, version])
+  rel_event_id Events @relation("event_revisions_event_id_fkey", fields: [event_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_actor_id Accounts @relation("event_revisions_actor_id_fkey", fields: [actor_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("event_revisions")
+}
+
+model Blocks {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  blocker_id String @db.Uuid
+  blocked_id String @db.Uuid
+  @@unique([blocker_id, blocked_id])
+  rel_blocker_id Accounts @relation("blocks_blocker_id_fkey", fields: [blocker_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_blocked_id Accounts @relation("blocks_blocked_id_fkey", fields: [blocked_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("blocks")
+}
+
+model AdminAccounts {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  login_name String
+  password_hash String
+  status String @default("active")
+  role String
+  mfa_secret_ciphertext String
+  auth_version Int @default(1)
+  @@unique([login_name])
+  back_admin_sessions_admin_id AdminSessions[] @relation("admin_sessions_admin_id_fkey")
+  back_moderation_actions_admin_id ModerationActions[] @relation("moderation_actions_admin_id_fkey")
+  back_policy_configs_updated_by_admin_id PolicyConfigs[] @relation("policy_configs_updated_by_admin_id_fkey")
+  @@map("admin_accounts")
+}
+
+model AdminSessions {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  admin_id String @db.Uuid
+  token_hash String
+  mfa_verified_at DateTime @db.Timestamptz(6)
+  expires_at DateTime @db.Timestamptz(6)
+  revoked_at DateTime? @db.Timestamptz(6)
+  @@unique([token_hash])
+  rel_admin_id AdminAccounts @relation("admin_sessions_admin_id_fkey", fields: [admin_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("admin_sessions")
+}
+
+model Reports {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  reporter_principal_id String @db.Uuid
+  target_type String
+  post_id String? @db.Uuid
+  comment_id String? @db.Uuid
+  message_id String? @db.Uuid
+  account_id String? @db.Uuid
+  group_id String? @db.Uuid
+  event_id String? @db.Uuid
+  reason_code String
+  detail String @default("")
+  status String @default("open")
+  resolved_at DateTime? @db.Timestamptz(6)
+  expires_at DateTime? @db.Timestamptz(6)
+  rel_reporter_principal_id Principals @relation("reports_reporter_principal_id_fkey", fields: [reporter_principal_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_post_id Posts? @relation("reports_post_id_fkey", fields: [post_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_comment_id Comments? @relation("reports_comment_id_fkey", fields: [comment_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_message_id Messages? @relation("reports_message_id_fkey", fields: [message_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_account_id Accounts? @relation("reports_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_group_id Groups? @relation("reports_group_id_fkey", fields: [group_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_event_id Events? @relation("reports_event_id_fkey", fields: [event_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  back_moderation_actions_report_id ModerationActions[] @relation("moderation_actions_report_id_fkey")
+  @@map("reports")
+}
+
+model ModerationActions {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  report_id String? @db.Uuid
+  admin_id String @db.Uuid
+  target_type String
+  post_id String? @db.Uuid
+  comment_id String? @db.Uuid
+  message_id String? @db.Uuid
+  account_id String? @db.Uuid
+  group_id String? @db.Uuid
+  event_id String? @db.Uuid
+  action String
+  reason String
+  expires_at DateTime @db.Timestamptz(6)
+  rel_report_id Reports? @relation("moderation_actions_report_id_fkey", fields: [report_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_admin_id AdminAccounts @relation("moderation_actions_admin_id_fkey", fields: [admin_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_post_id Posts? @relation("moderation_actions_post_id_fkey", fields: [post_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_comment_id Comments? @relation("moderation_actions_comment_id_fkey", fields: [comment_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_message_id Messages? @relation("moderation_actions_message_id_fkey", fields: [message_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_account_id Accounts? @relation("moderation_actions_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_group_id Groups? @relation("moderation_actions_group_id_fkey", fields: [group_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_event_id Events? @relation("moderation_actions_event_id_fkey", fields: [event_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("moderation_actions")
+}
+
+model Notifications {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  account_id String @db.Uuid
+  type String
+  target_type String
+  target_id String @db.Uuid
+  params Json @default("{}")
+  read_at DateTime? @db.Timestamptz(6)
+  expires_at DateTime @db.Timestamptz(6)
+  rel_account_id Accounts @relation("notifications_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("notifications")
+}
+
+model Outbox {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  event_type String
+  aggregate_type String
+  aggregate_id String @db.Uuid
+  payload Json @default("{}")
+  status String @default("pending")
+  attempts Int @default(0)
+  available_at DateTime @db.Timestamptz(6) @default(now())
+  lease_until DateTime? @db.Timestamptz(6)
+  last_error_code String?
+  dedupe_key String
+  @@unique([dedupe_key])
+  @@map("outbox")
+}
+
+model ProcessedEvents {
+  consumer String
+  event_key String
+  processed_at DateTime @db.Timestamptz(6) @default(now())
+  @@id([consumer, event_key])
+  @@map("processed_events")
+}
+
+model IdempotencyRecords {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  actor_key String
+  method String
+  route_key String
+  key String
+  request_hash String
+  status String
+  resource_type String?
+  resource_id String? @db.Uuid
+  response_code Int?
+  expires_at DateTime @db.Timestamptz(6)
+  @@unique([actor_key, method, route_key, key])
+  @@map("idempotency_records")
+}
+
+model DeletionJobs {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  target_type String
+  target_id String @db.Uuid
+  reason String
+  status String @default("pending")
+  requested_at DateTime @db.Timestamptz(6) @default(now())
+  completed_at DateTime? @db.Timestamptz(6)
+  retry_after DateTime? @db.Timestamptz(6)
+  dedupe_key String
+  @@unique([dedupe_key])
+  @@map("deletion_jobs")
+}
+
+model DeletionLedger {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  target_type String
+  target_id String @db.Uuid
+  deleted_at DateTime @db.Timestamptz(6) @default(now())
+  purge_reason String
+  @@unique([target_type, target_id])
+  @@map("deletion_ledger")
+}
+
+model ModerationRevisions {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  target_type String
+  target_id String @db.Uuid
+  version Int
+  fields Json
+  expires_at DateTime @db.Timestamptz(6)
+  @@unique([target_type, target_id, version])
+  @@map("moderation_revisions")
+}
+
+model DirectContactStates {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  account_low_id String @db.Uuid
+  account_high_id String @db.Uuid
+  low_sent_count Int @default(0)
+  high_sent_count Int @default(0)
+  low_first_sent_at DateTime? @db.Timestamptz(6)
+  high_first_sent_at DateTime? @db.Timestamptz(6)
+  low_first_replied_at DateTime? @db.Timestamptz(6)
+  high_first_replied_at DateTime? @db.Timestamptz(6)
+  @@unique([account_low_id, account_high_id])
+  rel_account_low_id Accounts @relation("direct_contact_states_account_low_id_fkey", fields: [account_low_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_account_high_id Accounts @relation("direct_contact_states_account_high_id_fkey", fields: [account_high_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("direct_contact_states")
+}
+
+model DailyUsage {
+  account_id String @db.Uuid
+  day_jst DateTime @db.Date
+  kind String
+  used_count Int @default(0)
+  @@id([account_id, day_jst, kind])
+  rel_account_id Accounts @relation("daily_usage_account_id_fkey", fields: [account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("daily_usage")
+}
+
+model GroupOwnerTransfers {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  group_id String @db.Uuid
+  from_account_id String @db.Uuid
+  to_account_id String @db.Uuid
+  status String @default("pending")
+  accepted_at DateTime? @db.Timestamptz(6)
+  rel_group_id Groups @relation("group_owner_transfers_group_id_fkey", fields: [group_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_from_account_id Accounts @relation("group_owner_transfers_from_account_id_fkey", fields: [from_account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rel_to_account_id Accounts @relation("group_owner_transfers_to_account_id_fkey", fields: [to_account_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("group_owner_transfers")
+}
+
+model PolicyConfigs {
+  id String @db.Uuid @id @default(dbgenerated("gen_random_uuid()"))
+  created_at DateTime @db.Timestamptz(6) @default(now())
+  updated_at DateTime @db.Timestamptz(6) @default(now())
+  key String
+  value Json
+  version Int @default(1)
+  updated_by_admin_id String? @db.Uuid
+  @@unique([key])
+  rel_updated_by_admin_id AdminAccounts? @relation("policy_configs_updated_by_admin_id_fkey", fields: [updated_by_admin_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  @@map("policy_configs")
+}
