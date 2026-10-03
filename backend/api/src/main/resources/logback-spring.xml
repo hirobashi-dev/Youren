@@ -1,0 +1,4 @@
+<configuration>
+  <!-- 原始框架异常可能包含SQL或凭据，暂仅输出入口受控事件。 -->
+  <root level="OFF"/>
+</configuration>

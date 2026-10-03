@@ -1,0 +1,1 @@
+<configuration><!-- 测试报告承担失败诊断，不输出配置和原始异常。 --><root level="OFF"/></configuration>

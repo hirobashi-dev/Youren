@@ -1,0 +1,12 @@
+# 健康接口保持原路径及开发端口；迁移入口与服务启动分开。
+server:
+  port: ${SERVER_PORT:3000}
+  address: 0.0.0.0
+spring:
+  flyway:
+    enabled: false
+  sql:
+    init:
+      mode: never
+  main:
+    banner-mode: off

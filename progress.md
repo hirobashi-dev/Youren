@@ -1,5 +1,13 @@
 # 工作记录
 
+## Java API健康与HTTP合同（2026-10-04）
+
+- Spring Boot API重建GET /health/live及/health/ready，固定status响应；默认1500ms等待，单在途探测、驱动超时、错误不返回内部异常。共用Spring连接配置为API及后续worker管理Hikari/Lettuce关闭，不自动Flyway或SQL初始化。CORS仅localhost/127.0.0.1:5173的GET。
+- HTTP先行4项测试3项失败，错误DTO先行2项失败，127本机源回归先失败，再实现并重跑。最终clean verify通过：shared7、数据库11IT、HTTP6、真实HTTP依赖1IT。9项OpenAPI测试及生成一致性通过。打包run.ps1缺配置实际退出非零且只输出安全startup_failed事件。
+- 第一次IT发现Boot重打包JAR不能直接作为Failsafe类路径；读取报告中类路径并按官方说明配置classesDirectory。Redis重启恢复第一次失败，打印无秘密端口诊断证实动态HostPort从61370变61425，测试改为本次空闲端口固定绑定后200→503→200成功；移除诊断输出。未放宽生产恢复要求。
+- 错误DTO匹配OpenAPI的平铺code/message/requestId，拒绝原异常或输入泄漏；测试验证中文错误路径及服务器UUID，框架原始日志暂关闭，入口仅受控事件。业务接口尚未实现。代码/配置/测试有中文说明，差分审查通过后本地提交，未合并或推送。
+
+
 ## MyBatis与Flyway接续（2026-10-04）
 
 - 一般项目执行已获持续授权，只有修改系统设置时向用户确认；取代此前高风险命令确认偏好，运行权限仍服从环境限制。

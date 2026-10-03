@@ -54,10 +54,10 @@
 
 ### 3. Java API健康和HTTP合同
 
-- [ ] 重建`GET /health/live`、`GET /health/ready`，响应仍是安全`status`对象；依赖失败503、有限超时、恢复200。前端URL和health响应保持一致。
-- [ ] MockMvc/真实HTTP测试先失败再实现；使用真实MyBatis/PostgreSQL及Redis验证就绪。连接设置使用JDBC URL、用户名/密码独立变量，禁止把原Prisma URL直接当JDBC URL。
-- [ ] 配置脱敏、受限CORS、关闭连接、异常输出检查通过；增加Java DTO序列化/错误映射合同测试，继续运行Node OpenAPI检查。
-- [ ] 构建及测试报告确认后提交`Replace API foundation with Spring Boot`。
+- [x] 重建`GET /health/live`、`GET /health/ready`，响应仍是安全`status`对象；依赖失败503、有限超时、恢复200。前端URL和health响应保持一致。
+- [x] MockMvc/真实HTTP测试先失败再实现；使用真实MyBatis/PostgreSQL及Redis验证就绪。连接设置使用JDBC URL、用户名/密码独立变量，禁止把原Prisma URL直接当JDBC URL。
+- [x] 配置脱敏、受限CORS、关闭连接、异常输出检查通过；增加Java DTO序列化/错误映射合同测试，继续运行Node OpenAPI检查。
+- [x] 构建及测试报告确认后提交`Replace API foundation with Spring Boot`。
 
 ### 4. Java worker生命周期
 
