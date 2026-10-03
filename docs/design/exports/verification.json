@@ -1,5 +1,5 @@
 {
-  "screenCount": 47,
+  "screenCount": 48,
   "requiredIDs": [
     "B01",
     "B02",
@@ -14,6 +14,7 @@
     "G01",
     "G02",
     "G03",
+    "G04",
     "L01",
     "L02",
     "L03",
@@ -33,6 +34,10 @@
   "browserErrors": [],
   "previewOnly": false,
   "checks": [
+    "group-create",
+    "group-direct-join",
+    "no-group-approval",
+    "group-flow",
     "module-filter",
     "search",
     "empty-state",

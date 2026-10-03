@@ -17,10 +17,18 @@ function assert(ok, message) { if (!ok) throw new Error(message); }
     page.on('requestfailed',request=>errors.push(request.url()+': '+request.failure().errorText));
     await page.goto(pathToFileURL(path.join(root,'index.html')).href);
     const count=await page.locator('.screen-card').count();
-    const expected=['B01','B02','B03','B04','B05','B06','A01','A02','D01','D02','G01','G02','G03','L01','L02','L03','L04','L05','E01','E02','E03','E04','E05','N01','P01','S01','R01'];
+    const expected=['B01','B02','B03','B04','B05','B06','A01','A02','D01','D02','G01','G02','G03','G04','L01','L02','L03','L04','L05','E01','E02','E03','E04','E05','N01','P01','S01','R01'];
     const keys=await page.evaluate(()=>DESIGN_SCREENS.map(s=>s.key));
     assert(new Set(keys).size===keys.length,'Duplicate screen ID');
-    assert(expected.every(id=>keys.includes(id)),'Missing required screen');
+    assert(expected.every(id=>keys.includes(id)),'Missing required screen: '+expected.filter(id=>!keys.includes(id)).join(', '));
+    assert(!keys.includes('G01-PENDING'),'Old group approval page remains');
+    assert(keys.includes('G01-JOINED'),'Direct-join result page missing');
+    const groupCopy=(await page.locator('.screen-card').filter({has:page.locator('[data-screen^="G"]')}).allInnerTexts()).join('\n');
+    assert(!/申请加入|等待审核|审批加入/.test(groupCopy),'Group approval copy remains');
+    const groupDetails=page.locator('[data-screen="G01"]');
+    assert((await groupDetails.locator('.sticky-action').innerText()).includes('注册后加入群聊'),'Guest join action is wrong');
+    assert((await page.locator('[data-screen="G04"]').innerText()).includes('创建后你将成为群主'),'Creator role explanation missing');
+    assert((await page.locator('[data-screen="D01"]').innerText()).includes('创建群聊'),'Interest discovery has no create-group entry');
     await page.screenshot({path:path.join(out,'overview.png')});
     await page.getByRole('button',{name:'线框图',exact:true}).click();
     assert(await page.locator('body').evaluate(el=>el.classList.contains('wireframe')),'Wire toggle failed');
@@ -46,6 +54,14 @@ function assert(ok, message) { if (!ok) throw new Error(message); }
     await page.locator('#next').click();
     assert((await page.locator('#viewer-id').innerText()).startsWith('E02'),'Flow step failed');
     await page.locator('#close').click();
+    await page.locator('[data-flow="group"]').click();
+    for(let step=0;step<6;step++)await page.locator('#next').click();
+    assert((await page.locator('#viewer-id').innerText()).startsWith('G01-JOINED'),'Group flow did not directly join after registration');
+    await page.locator('#close').click();
+    await page.locator('[data-flow="create"]').click();
+    for(let step=0;step<4;step++)await page.locator('#next').click();
+    assert((await page.locator('#viewer-id').innerText()).startsWith('G04'),'Create-group flow did not reach form');
+    await page.locator('#close').click();
     await page.getByRole('button',{name:'Android',exact:true}).click();
     assert(await page.locator('body').evaluate(el=>el.classList.contains('android')),'Platform toggle failed');
     await page.getByRole('button',{name:'iOS',exact:true}).click();
@@ -58,7 +74,7 @@ function assert(ok, message) { if (!ok) throw new Error(message); }
     assert(dialogWidth.scroll<=dialogWidth.width,'Mobile dialog overflow');
     await page.locator('#close').click();
     assert(errors.length===0,'Browser errors: '+errors.join('; '));
-    console.log(`Verified ${count} screens: 27 required IDs, filters, search, wire/visual, viewer keyboard, flow navigation, iOS/Android, mobile width, no browser errors.`);
+    console.log(`Verified ${count} screens: ${expected.length} required IDs, group creation/direct joining, filters, search, wire/visual, viewer keyboard, flow navigation, iOS/Android, mobile width, no browser errors.`);
     await page.setViewportSize({width:1440,height:1080});
     await page.addStyleTag({content:'.export-page{margin:0;padding:0;background:white}.export-page .device{height:auto;min-height:844px;border-radius:0;width:390px}.export-page .screen-body{overflow:visible;flex:1 0 auto;min-height:620px}.export-page .art.portrait{height:260px}.export-page .fab{bottom:100px}'});
     for(const viewMode of ['visual','wireframe']) {
@@ -85,6 +101,6 @@ function assert(ok, message) { if (!ok) throw new Error(message); }
       }
       console.log('Exported visual and wireframe contact sheets.');
     }
-    fs.writeFileSync(path.join(out,'verification.json'),JSON.stringify({screenCount:count,requiredIDs:expected,missingIDs:expected.filter(id=>!keys.includes(id)),browserErrors:errors,previewOnly,checks:['module-filter','search','empty-state','wire-visual','viewer','keyboard','flow','platform','mobile-width','dialog-width','export-width']},null,2)+'\n');
+    fs.writeFileSync(path.join(out,'verification.json'),JSON.stringify({screenCount:count,requiredIDs:expected,missingIDs:expected.filter(id=>!keys.includes(id)),browserErrors:errors,previewOnly,checks:['group-create','group-direct-join','no-group-approval','group-flow','module-filter','search','empty-state','wire-visual','viewer','keyboard','flow','platform','mobile-width','dialog-width','export-width']},null,2)+'\n');
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1;});
