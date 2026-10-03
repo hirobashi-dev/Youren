@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>在日·同好 — 页面线框图与视觉稿</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="masthead">
+    <div class="brand"><span class="brand-mark">同</span><span>在日·同好 <small>页面设计图册 · v1</small></span></div>
+    <a href="README.md">交付说明 ↗</a>
+  </header>
+  <main>
+    <section class="intro">
+      <div><p class="eyebrow">兴趣相遇 · 中文交流 · 日本生活</p><h1>从一句留言，<br>到一群同好。</h1><p class="intro-copy">游客可以直接参与，关系在讨论中慢慢建立。<br>这里呈现每一页的结构、视觉与关键状态。</p></div>
+      <aside class="intro-aside"><span class="orbit"><i></i><b>同好</b><i></i></span><p><strong id="screen-count">—</strong> 张设计稿<span>27 个手机页面 · 关键状态 · 管理后台</span></p><small>中文 · iOS & Android<br>本地图册 / 虚构示例内容</small></aside>
+    </section>
+    <section class="flows" aria-label="主要流程"><span>按流程查看</span><button data-flow="guest">游客图文发帖 ↗</button><button data-flow="group">注册与加入群 ↗</button><button data-flow="dating">恋爱开通与匹配 ↗</button><button data-flow="event">活动报名 ↗</button></section>
+    <section class="toolbar" aria-label="展示设置">
+      <div class="segmented" aria-label="稿件类型"><button id="visual" aria-pressed="true">视觉稿</button><button id="wire" aria-pressed="false">线框图</button></div>
+      <div class="segmented compact" aria-label="平台样式"><button id="ios" aria-pressed="true">iOS</button><button id="android" aria-pressed="false">Android</button></div>
+      <label class="search"><span>搜索页面</span><input id="search" type="search" placeholder="页面名称 / ID / 模块" autocomplete="off"></label>
+      <button id="print">打印当前图册</button>
+    </section>
+    <nav id="filters" class="filters" aria-label="模块筛选"></nav>
+    <div class="gallery-caption"><p id="result-count" role="status"></p><p>点开画板，查看完整页面与交互备注</p></div>
+    <div id="gallery" class="gallery"></div>
+    <p id="empty" class="empty" hidden>没有符合条件的页面，请尝试其他关键词或模块。</p>
+    <section class="tokens"><h2>一套界面，多种相遇</h2><p>蓝绿用于兴趣与日常交流；莓红仅用于恋爱。地区和兴趣标签贯穿各页，所有状态保留文字说明。</p><div class="swatches"><span style="--swatch:#163E43">文字 / #163E43</span><span style="--swatch:#086D72">主色 / #086D72</span><span style="--swatch:#EFF5F7">背景 / #EFF5F7</span><span style="--swatch:#9B4968">恋爱 / #9B4968</span></div></section>
+    <footer>设计评审稿 · 展示名称、图片及人物为示意 · 真实业务操作不在此图册执行</footer>
+  </main>
+  <dialog id="viewer" aria-labelledby="viewer-title">
+    <header class="viewer-header"><div><small id="viewer-id"></small><h2 id="viewer-title"></h2></div><button id="close" aria-label="关闭放大视图">关闭 ×</button></header>
+    <div class="viewer-layout"><div id="viewer-screen"></div><aside><p id="viewer-flow" class="eyebrow"></p><h3>设计说明</h3><p id="viewer-note"></p><h3>页面位置</h3><p id="viewer-context"></p><div class="viewer-controls"><button id="previous">← 上一页</button><button id="next">下一页 →</button></div><p class="fine">画板中的业务按钮仅为设计示意。可使用方向键切换、Escape 关闭。</p></aside></div>
+  </dialog>
+  <script src="screens.js"></script>
+  <script src="gallery.js"></script>
+</body>
+</html>
