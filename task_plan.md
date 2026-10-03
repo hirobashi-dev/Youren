@@ -4,6 +4,7 @@
 
 - [x] 将用户确认的8阶段路线保存到docs/superpowers/plans/2026-10-03-phased-development-acceptance.md。
 - [ ] 阶段1工程基础。
+- 暂停于任务5后台基础已验证；任务1至5基础已实现，阶段整体未验收。恢复入口：docs/development/stage-1-acceptance.md；下一开发任务为6手机端。
 - [x] 第1阶段细化计划：7项任务、明确文件、测试命令及12项阶段验收门槛；开发尚未开始。
 - [ ] 阶段2身份与普通资料。
 - [ ] 阶段3留言板与图片审核。

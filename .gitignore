@@ -11,3 +11,4 @@ packages/database/generated/
 apps/mobile/android/
 apps/mobile/ios/
 .local/
+docs/development/artifacts/
