@@ -9,8 +9,15 @@ const config: ExpoConfig = {
   scheme: 'youren-dev',
   orientation: 'portrait',
   userInterfaceStyle: 'light',
-  ios: { bundleIdentifier: 'jp.youren.app.dev', supportsTablet: false },
+  ios: {
+    bundleIdentifier: 'jp.youren.app.dev',
+    // 按本次EAS交互确认的标准/豁免加密声明设置，不启用非豁免加密。
+    infoPlist: { ITSAppUsesNonExemptEncryption: false },
+    supportsTablet: false,
+  },
   android: { package: 'jp.youren.app.dev' },
   plugins: ['expo-dev-client'],
+  // 将动态Expo配置绑定到用户刚创建的EAS项目，供云构建解析项目身份。
+  extra: { eas: { projectId: 'a0d99061-5c20-4cc8-b75b-141ae378932a' } },
 };
 export default config;
