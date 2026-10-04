@@ -10,7 +10,7 @@
 
 ## 1. 工程清单
 
-第1阶段同步（2026-10-04）：四个应用基础均已建立，Java四模块共30项测试，统一检查本地共78项测试及构建通过；Android模拟器有原生验收证据，iOS按用户决定延期。已推送到GitHub的`develop/stage-1-foundation`；CI配置已上传，云端修正后运行37168830294的前端、后端、浏览器均成功。产品显示名称为`Youren`，重要更改先与用户确认。
+第1阶段同步（2026-10-04）：四个应用基础均已建立，Java四模块共30项测试，统一检查本地共78项测试及构建通过；Android模拟器有原生验收证据，iOS按用户决定延期。GitHub运行37168830294（基于`914bd0f`）的前端、后端、浏览器均成功；EAS项目关联和动态配置解析已验证，配置提交为`169c396`。当前`develop/stage-1-foundation`在本地领先远端3个提交，最新提交尚未推送；该CI运行不覆盖这些本地提交。产品显示名称为`Youren`，重要更改先与用户确认。
 
 | 工程 | 根目录 | 职责 | 当前状态 |
 |---|---|---|---|
@@ -30,6 +30,7 @@ Youren/
 ├─ apps/
 │  ├─ admin/                  管理后台
 │  └─ mobile/                 iOS/Android共用手机工程
+├─ app.json                   根目录EAS项目ID参考，需与手机动态配置保持一致
 ├─ backend/
 │  ├─ pom.xml                 Maven聚合：shared/database/api/worker
 │  ├─ mvnw、mvnw.cmd          固定Maven Wrapper
@@ -52,7 +53,13 @@ Youren/
 │  ├─ development/            验收证据和恢复记录
 │  └─ design/                 线框图、视觉稿及相关工具
 ├─ .github/workflows/ci.yml    前端、Java、浏览器三个任务；修正后的云端验收已通过
-├─ .gitattributes             文本LF、Windows cmd保留CRLF
+├─ AGENTS.md                  贡献与代理工作规范（日文）
+├─ .gitignore、.gitattributes  忽略规则；文本LF、Windows cmd保留CRLF
+├─ .node-version              固定Node运行时版本
+├─ eslint.config.mjs           ESLint配置
+├─ .prettierrc.json            Prettier配置
+├─ .prettierignore             格式化排除规则
+├─ tsconfig.base.json          TypeScript共享配置
 ├─ package.json               npm工作区，仅前端/合同及历史工具
 ├─ package-lock.json          根npm依赖锁
 └─ README.md                  安装、启动和文档入口
@@ -63,7 +70,7 @@ Youren/
 ```text
 apps/mobile/
 ├─ App.tsx、index.ts          应用入口
-├─ app.config.ts             应用标识、Expo平台配置
+├─ app.config.ts             动态Expo配置、应用标识、EAS项目ID及iOS加密声明
 ├─ eas.json                  Android/iOS开发构建配置
 ├─ package.json、tsconfig.json
 ├─ jest.config.cjs           组件测试配置
@@ -83,6 +90,8 @@ apps/mobile/
 ├─ .env.example                 公开API地址示例
 └─ README.md                 本机运行、设备地址与构建验收
 ```
+
+根目录`app.json`当前只保留EAS项目ID参考值，须与`apps/mobile/app.config.ts`中的`extra.eas.projectId`一致；手机工程实际解析结果以动态`app.config.ts`为准。EAS项目关联已完成，iOS云构建仍因Apple开发者账号条件暂缓。
 
 后续`features/`按`auth/`、`profile/`、`board/`、`chat/`、`activities/`、`dating/`、`settings/`组织，每个模块按需包含`screens/`、`components/`、`api.ts`、`types.ts`和测试。第1阶段只建立入口、状态页和连接测试。
 
