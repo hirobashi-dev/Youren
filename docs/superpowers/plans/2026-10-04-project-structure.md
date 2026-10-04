@@ -10,7 +10,7 @@
 
 ## 1. 工程清单
 
-第1阶段同步（2026-10-04）：四个应用基础均已建立，Java四模块共30项测试，统一检查本地共78项测试及构建通过；Android模拟器有原生验收证据，iOS按用户决定延期。已推送到GitHub的`develop/stage-1-foundation`；CI配置已上传，云端运行结果尚未核验。产品显示名称为`Youren`，重要更改先与用户确认。
+第1阶段同步（2026-10-04）：四个应用基础均已建立，Java四模块共30项测试，统一检查本地共78项测试及构建通过；Android模拟器有原生验收证据，iOS按用户决定延期。已推送到GitHub的`develop/stage-1-foundation`；CI配置已上传，云端结果已核验：前端成功、后端JDK安装失败、浏览器跳过。产品显示名称为`Youren`，重要更改先与用户确认。
 
 | 工程 | 根目录 | 职责 | 当前状态 |
 |---|---|---|---|
@@ -51,7 +51,7 @@ Youren/
 │  ├─ superpowers/plans/      开发路线与实施计划
 │  ├─ development/            验收证据和恢复记录
 │  └─ design/                 线框图、视觉稿及相关工具
-├─ .github/workflows/ci.yml    前端、Java、浏览器三个任务；云端结果尚未核验
+├─ .github/workflows/ci.yml    前端、Java、浏览器三个任务；云端已核验但未通过（后端JDK安装失败）
 ├─ .gitattributes             文本LF、Windows cmd保留CRLF
 ├─ package.json               npm工作区，仅前端/合同及历史工具
 ├─ package-lock.json          根npm依赖锁
@@ -259,7 +259,7 @@ worker短事务领取任务并设置租约 → 事务外执行审核/推送等�
 
 
 1. 第1阶段任务6：手机基础、组件、类型、两端JS导出及Android模拟器已有证据；用户决定延期iOS原生验收。
-2. 第1阶段任务7：已有CI与统一检查；Maven `clean verify`和npm前端/合同检查分别执行，子命令失败立即停止，JUnit数量与结果独立检查。本地完整检查已通过，已推送GitHub，云端结果尚未核验；操作见`docs/development/ci.md`。
+2. 第1阶段任务7：已有CI与统一检查；Maven `clean verify`和npm前端/合同检查分别执行，子命令失败立即停止，JUnit数量与结果独立检查。本地完整检查已通过，已推送GitHub，云端已核验但未通过（后端JDK安装失败）；操作见`docs/development/ci.md`。
 3. 阶段2至7：随业务新增上述规划目录，明确模块接口后开发，避免为目录完整性生成空代码。
 4. 每步核对中文注释、依赖边界、对应测试及差分，保存一次本地提交；更新README说明实际新增目录。
 

@@ -20,4 +20,4 @@
 
 本地测试证据及恢复顺序见[阶段验收记录](stage-1-acceptance.md)。干净源码验证使用Git暂存树导出到新目录，不带node_modules、target或dist，再固定安装并执行完整检查；本地工具、Docker和Chrome为显式外部前置条件。
 
-仓库已推送，GitHub hosted runner运行结果尚未核验，不能把语法检查当作云端通过。用户决定延期iOS账号/设备准备与原生测试；两端JS导出通过不代表iOS开发构建或设备验收通过。
+仓库已推送，GitHub hosted runner结果已核验：前端成功、后端JDK安装失败、浏览器跳过，不能把语法检查当作云端通过。用户决定延期iOS账号/设备准备与原生测试；两端JS导出通过不代表iOS开发构建或设备验收通过。

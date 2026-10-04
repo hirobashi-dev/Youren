@@ -1,8 +1,16 @@
 # 第1阶段进度与恢复入口
 
+## GitHub CI实际核验（2026-10-04）
+
+最新已推送提交`5b9200d`的[运行37168061562](https://github.com/hirobashi-dev/Youren/actions/runs/37168061562)已结束，结论failure；前端success、后端failure、浏览器skipped。前次`5c1704a`运行也失败。
+
+GitHub后端check-run注释明确：`21.0.12.1+1`不是setup-java接受的SemVer格式，失败于安装JDK步骤；Maven及集成测试未执行，JUnit报告未生成，不能计为云端后端通过。浏览器因needs依赖未满足跳过。核验通过GitHub REST API读取runs、jobs、check-run annotations，未修改工作流、重跑或推送修复。
+
+本地最新计划同步提交`c2df803`尚未推送，不属于该运行覆盖范围；本次仅记录核验结果。iOS延期决定保持。
+
 ## 当前状态
 
-最新（任务7）：统一检查、JUnit报告门槛及三个GitHub CI任务已实现；本地结果见下方记录。手机基础及Android已有证据，用户决定延期iOS原生测试，保持未验收；GitHub hosted runner运行结果尚未核验。不宣称第1阶段所有平台通过。
+最新（任务7）：统一检查、JUnit报告门槛及三个GitHub CI任务已实现；本地结果见下方记录。手机基础及Android已有证据，用户决定延期iOS原生测试，保持未验收；GitHub hosted runner结果已核验：前端成功、后端JDK安装失败、浏览器跳过。不宣称第1阶段所有平台通过。
 
 ### 统一检查与CI验证证据（2026-10-04）
 
@@ -19,7 +27,7 @@
 
 干净源码复验发现并修正两项问题：系统Git的core.autocrlf使导出文本变为CRLF，Prettier拒绝44个文件；仓库`.gitattributes`统一文本LF、cmd保留CRLF，未修改系统Git设置。Jest将含`.local`的Windows绝对路径拼入glob后找不到测试；改为相对匹配，原路径失败、新路径两套10项通过，随后完整复验成功。干净目录仅更新这份已验证配置，未复制旧构建产物。
 
-这是全新源码目录的本地验证，不称为GitHub实际检出运行。使用既有独立Node/JDK、Docker、Chrome及隔离测试环境配置；固定安装、各组及完整日志保留于忽略的`.local/stage7-*.log`。GitHub配置已推送，报告和API产物传递的云端结果尚未核验；iOS原生测试按用户决定延期，两端JS导出不计平台验收。
+这是全新源码目录的本地验证，不称为GitHub实际检出运行。使用既有独立Node/JDK、Docker、Chrome及隔离测试环境配置；固定安装、各组及完整日志保留于忽略的`.local/stage7-*.log`。GitHub配置已推送，报告和API产物传递的云端已核验但未通过（后端JDK安装失败）；iOS原生测试按用户决定延期，两端JS导出不计平台验收。
 
 测试只停止本次启动的redis-test，保留原有postgres-test和卷；Testcontainers临时实例自行清理。未改变系统默认JDK/PATH，不提交本地环境、依赖、JAR、截图或日志。操作与JSON配置说明见[CI说明](ci.md)。
 
