@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.HexFormat;
+import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
 import org.junit.jupiter.api.Test;
 
@@ -13,6 +14,7 @@ class MigrationIT extends DatabaseTestSupport {
   // 先建立可信V1指纹，再核对旧迁移结构和历史，baseline不得重放已有业务表。
   @Test
   void adoptsAuditedLegacySchemaWithoutChangingData() throws Exception {
+    targetV1();
     flyway.migrate();
     String fingerprint = LegacyMigrationAdoption.fingerprint(dataSource);
     assertEquals(
@@ -51,6 +53,7 @@ class MigrationIT extends DatabaseTestSupport {
   // 结构漂移或不匹配历史必须在写入Flyway历史之前拒绝，不能降低校验门槛。
   @Test
   void refusesSchemaDriftBeforeBaseline() {
+    targetV1();
     flyway.migrate();
     String fingerprint = LegacyMigrationAdoption.fingerprint(dataSource);
     jdbc.execute("DROP TABLE flyway_schema_history");
@@ -73,6 +76,7 @@ class MigrationIT extends DatabaseTestSupport {
   // 结构相同但历史checksum未知也不能baseline，已有数据原样保留。
   @Test
   void refusesUnknownMigrationHistory() {
+    targetV1();
     flyway.migrate();
     String fingerprint = LegacyMigrationAdoption.fingerprint(dataSource);
     jdbc.execute("DROP TABLE flyway_schema_history");
@@ -86,10 +90,10 @@ class MigrationIT extends DatabaseTestSupport {
         () -> LegacyMigrationAdoption.adopt(dataSource, fingerprint, "a".repeat(64)));
   }
 
-  // 新库只执行一次初始迁移，54张业务表齐全，重复部署无DDL。
+  // 新库执行V1及V2，54张业务表齐全，重复部署无DDL。
   @Test
   void migratesEmptyDatabaseAndRepeatedDeploymentIsNoOp() {
-    assertEquals(1, flyway.migrate().migrationsExecuted);
+    assertEquals(2, flyway.migrate().migrationsExecuted);
     assertEquals(
         54,
         jdbc.queryForObject(
@@ -97,10 +101,62 @@ class MigrationIT extends DatabaseTestSupport {
             Integer.class));
     assertEquals(0, flyway.migrate().migrationsExecuted);
     assertEquals(
-        1,
+        2,
         jdbc.queryForObject(
             "SELECT count(*) FROM flyway_schema_history WHERE success", Integer.class));
     assertEquals(6, jdbc.queryForObject("SELECT count(*) FROM policy_configs", Integer.class));
+  }
+
+  // V1升级保留原摘要，到期回填从创建时间计算；旧账号会话必须撤销，不能伪造访问秘密。
+  @Test
+  void upgradesExistingCredentialsAndInvalidatesLegacySessions() {
+    targetV1();
+    flyway.migrate();
+    jdbc.execute(
+        "INSERT INTO principals(id,kind) VALUES ('00000000-0000-0000-0000-000000000001','guest')");
+    jdbc.execute(
+        "INSERT INTO guest_credentials(principal_id,secret_hash,created_at) VALUES ('00000000-0000-0000-0000-000000000001','legacy-hash','2026-09-01T00:00:00Z')");
+    jdbc.execute(
+        "INSERT INTO accounts(id,email_normalized) VALUES ('00000000-0000-0000-0000-000000000002','upgrade@example.test')");
+    jdbc.execute(
+        "INSERT INTO sessions(account_id,refresh_hash,family_id,expires_at,platform) VALUES ('00000000-0000-0000-0000-000000000002','legacy-refresh','00000000-0000-0000-0000-000000000003',CURRENT_TIMESTAMP + INTERVAL '30 days','android')");
+    flyway =
+        Flyway.configure()
+            .dataSource(dataSource)
+            .locations("classpath:db/migration")
+            .cleanDisabled(true)
+            .load();
+    assertEquals(1, flyway.migrate().migrationsExecuted);
+    assertEquals(
+        "2026-10-01T00:00:00Z",
+        jdbc.queryForObject(
+                "SELECT expires_at FROM guest_credentials", java.time.OffsetDateTime.class)
+            .toInstant()
+            .toString());
+    assertEquals(
+        "legacy-hash",
+        jdbc.queryForObject("SELECT secret_hash FROM guest_credentials", String.class));
+    assertEquals(
+        1,
+        jdbc.queryForObject(
+            "SELECT count(*) FROM sessions WHERE revoked_at IS NOT NULL AND access_hash IS NULL AND access_expires_at IS NULL",
+            Integer.class));
+    assertEquals(
+        1,
+        jdbc.queryForObject(
+            "SELECT count(*) FROM pg_indexes WHERE indexname='sessions_family_id_idx'",
+            Integer.class));
+  }
+
+  // 指纹和历史接管固定在V1；后续迁移不能改变冻结基线的比较对象。
+  private void targetV1() {
+    flyway =
+        Flyway.configure()
+            .dataSource(dataSource)
+            .locations("classpath:db/migration")
+            .target("1")
+            .cleanDisabled(true)
+            .load();
   }
 
   // 未审计的非空库拒绝自动baseline，clean禁止删除结构。

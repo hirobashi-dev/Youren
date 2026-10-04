@@ -1,5 +1,6 @@
 package jp.youren.api.http;
 
+import jp.youren.api.guest.GuestCredentialException;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -10,6 +11,13 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @RestControllerAdvice
 public final class ApiExceptionHandler extends ResponseEntityExceptionHandler {
   public record ApiError(String code, String message, String requestId) {}
+
+  // 游客凭证业务失败不区分未知、过期或撤销，也不回显原凭证。
+  @ExceptionHandler(GuestCredentialException.class)
+  public ResponseEntity<Object> guestCredentialUnavailable(GuestCredentialException error) {
+    return ResponseEntity.status(401)
+        .body(new ApiError("AUTH_REQUIRED", "身份凭证不可用", java.util.UUID.randomUUID().toString()));
+  }
 
   @Override
   protected ResponseEntity<Object> handleExceptionInternal(

@@ -21,7 +21,7 @@
 
 ## 文件地图
 
-后端精确新增文件：backend/api/src/main/java/jp/youren/api/auth/{AuthController,AuthService,EmailChallengeService,TokenService,AuthDtos}.java；email/EmailDelivery.java；guest/{GuestSessionController,GuestSessionService,GuestClaimController,GuestClaimService}.java；profile/{ProfileController,ProfileService,ProfileDtos}.java；security/{AccessTokenFilter,CurrentPrincipal}.java。数据库新增 backend/database/src/main/java/jp/youren/database/mapper/{PrincipalMapper,GuestCredentialMapper,SessionMapper,EmailChallengeMapper,ProfileMapper,AccountSettingsMapper}.java 及 backend/database/src/main/resources/mapper/ 同名 XML；AccountMapper 已有，直接复用。后端测试分别新增于 backend/api/src/test/java/jp/youren/api/{auth,guest,profile,security}/ 和 backend/database/src/test/java/jp/youren/database/。仅当 V1 结构不满足合同才创建 backend/database/src/main/resources/db/migration/V2__stage2_identity_support.sql 与 MigrationIT.java，绝不改 V1。
+后端精确新增文件：backend/api/src/main/java/jp/youren/api/auth/{AuthController,AuthService,EmailChallengeService,TokenService,AuthDtos}.java；email/EmailDelivery.java；guest/{GuestSessionController,GuestSessionService,GuestClaimController,GuestClaimService}.java；profile/{ProfileController,ProfileService,ProfileDtos}.java；security/{AccessTokenFilter,CurrentPrincipal}.java。数据库新增 backend/database/src/main/java/jp/youren/database/mapper/{PrincipalMapper,GuestCredentialMapper,SessionMapper,EmailChallengeMapper,ProfileMapper,AccountSettingsMapper}.java 及 backend/database/src/main/resources/mapper/ 同名 XML；AccountMapper 已有，直接复用。后端测试分别新增于 backend/api/src/test/java/jp/youren/api/{auth,guest,profile,security}/ 和 backend/database/src/test/java/jp/youren/database/。仅当 V1 结构不满足合同才创建 backend/database/src/main/resources/db/migration/V2__identity_credentials.sql 与 MigrationIT.java，绝不改 V1。
 
 手机端精确新增 apps/mobile/src/api/{auth,profile}.ts、src/auth/sessionStore.ts、src/screens/{AuthScreen,ProfileEditScreen,SettingsScreen,PublicProfileScreen}.tsx；新增 tests/{auth,profile}.test.tsx 与 sessionStore.test.ts。先核对 Expo SDK 对应 SecureStore 版本，再更新 package 与 lockfile、中文说明和配置；不得用 AsyncStorage 保存令牌。
 
@@ -51,20 +51,20 @@
 
 **文件：** 修改 `packages/contracts/src/operations.cjs`、`schemas.cjs`、对应合同测试与 `openapi.json`；创建 `docs/development/stage-2-acceptance.md`。
 
-- [ ] 完成开工前基线、参数决定和合同/数据库对照；将已注册邮箱处理、验证码存储分工、并发消费及刷新网络恢复语义同步到详细设计和合同。
-- [ ] 先为验证码用途、过期/尝试/冷却、匿名响应、注册条款版本、登录结果、游客接续失败状态、资料字段和设置字段补合同断言。
-- [ ] 核实 POST `/guest-sessions`、`/auth/email-code`、`/auth/register`、`/auth/login`、`/auth/refresh`、`/auth/logout`、`/me/guest-claims`、`/me`、PATCH `/me/profile`、PATCH `/me/settings`、GET `/profiles/{accountId}` 全部有请求/响应及权限约束。
-- [ ] 运行 `npm test -w @youren/contracts` 与 `npm run check:generated -w @youren/contracts`；预期合同测试通过、生成文件无差异。
-- [ ] 记录上述参数决定及邮件供应商状态；接口变更只由源生成 JSON。审查差分后提交 `docs: define stage 2 identity contract`。
+- [x] 完成开工前基线、参数决定和合同/数据库对照；将已注册邮箱处理、验证码存储分工、并发消费及刷新网络恢复语义同步到详细设计和合同。
+- [x] 先为验证码用途、过期/尝试/冷却、匿名响应、注册条款版本、登录结果、游客接续失败状态、资料字段和设置字段补合同断言。
+- [x] 核实 POST `/guest-sessions`、`/auth/email-code`、`/auth/register`、`/auth/login`、`/auth/refresh`、`/auth/logout`、`/me/guest-claims`、`/me`、PATCH `/me/profile`、PATCH `/me/settings`、GET `/profiles/{accountId}` 全部有请求/响应及权限约束。
+- [x] 运行 `npm test -w @youren/contracts` 与 `npm run check:generated -w @youren/contracts`；预期合同测试通过、生成文件无差异。
+- [x] 记录上述参数决定及邮件供应商状态；接口变更只由源生成 JSON。审查差分后提交 `docs: define stage 2 identity contract`。
 
 ### 任务2：持久化与游客凭证
 
 **文件：** 扩充/新增 database Mapper、XML 与行模型；必要时新增 V2 和 `MigrationIT`；新增 `GuestSessionServiceTest`、Mapper 集成测试。
 
-- [ ] 测试游客凭证只保存安全摘要、凭证过期/撤销后拒绝、重复创建不复用秘密；验证主体与凭证关联事务。
-- [ ] 实现创建游客 principal/secret、摘要比较与撤销/过期查询；禁止日志回显原凭证。逐条使用参数化 MyBatis XML。
-- [ ] 运行 `.\backend\build.ps1 -pl database -am verify`；预期 Flyway、约束、Mapper真实PostgreSQL测试通过，迁移仅新增版本。
-- [ ] 审核迁移及中文注释后提交 `feat: persist guest credentials`。
+- [x] 测试游客凭证只保存安全摘要、凭证过期/撤销后拒绝、重复创建不复用秘密；验证主体与凭证关联事务。
+- [x] 实现创建游客 principal/secret、摘要比较与撤销/过期查询；禁止日志回显原凭证。逐条使用参数化 MyBatis XML。
+- [x] 运行 `.\backend\build.ps1 -pl database -am verify`；预期 Flyway、约束、Mapper真实PostgreSQL测试通过，迁移仅新增版本。
+- [x] 审核迁移及中文注释后提交 `feat: persist guest credentials`。
 
 ### 任务3：邮箱挑战、注册、登录和令牌
 

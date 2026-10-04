@@ -7,7 +7,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Import;
 
-// API仅启动工程健康接口；迁移需独立执行，失败不输出原始配置异常。
+// API启动健康与游客接口；迁移需独立执行，失败不输出原始配置异常。
 @SpringBootApplication
 @Import({DatabaseConfiguration.class, RuntimeDependenciesConfiguration.class})
 public class ApiApplication {
