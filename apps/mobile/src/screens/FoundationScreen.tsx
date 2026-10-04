@@ -38,7 +38,7 @@ export function FoundationScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.brand}>友缘</Text>
+        <Text style={styles.brand}>Youren</Text>
         <Text style={styles.subtitle}>在日本，遇见同好</Text>
         <View style={styles.card}>
           <View style={styles.statusRow}>

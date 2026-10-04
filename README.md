@@ -1,4 +1,4 @@
-# 友缘
+# Youren
 
 四个应用及共享模块的目录规划见[工程结构计划](docs/superpowers/plans/2026-10-04-project-structure.md)。
 
@@ -10,7 +10,11 @@ Java构建执行 `.\backend\build.ps1 clean verify`，使用独立JDK21，不改
 
 面向日本中国用户的交友应用。第一阶段工程建设进行中；产品与数据库/API设计见`docs/superpowers/specs/`，验收计划见`docs/superpowers/plans/2026-10-03-stage-1-engineering-foundation.md`。
 
-## 开发环境
+## 更改确认约定
+
+产品名称统一使用`Youren`。今后重要更改（产品定位、名称、主要交互、技术架构、数据结构或保留规则、权限、安全、部署及系统设置）先说明具体内容和影响，取得用户确认后执行；用户已明确指定的更改按授权落实。常规命令和已确认方案内的开发、测试直接执行。每次完成对应验证后保存本地Git版本；推送或发布以用户当次授权为准。
+
+## 开发环境与安装
 
 使用Node **22.23.3**及npm **10.5.0**，根目录执行`npm ci`。Windows如使用专用Node安装，将其bin目录加入当前PowerShell PATH；不改变系统默认版本。根package-lock.json为唯一安装依据，所有依赖由npm生成锁定。
 

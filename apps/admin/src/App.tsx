@@ -23,7 +23,7 @@ export function App() {
     <div className="workspace">
       <aside>
         <a className="brand" href="/">
-          友缘<span>管理工作台</span>
+          Youren<span>管理工作台</span>
         </a>
         <div className="nav-active">工作台</div>
         <p className="aside-note">第一阶段 · 工程基础</p>
@@ -34,7 +34,7 @@ export function App() {
           <span>开发环境</span>
         </header>
         <section className="intro">
-          <p className="eyebrow">友缘 · 在日本，相遇同行</p>
+          <p className="eyebrow">Youren · 在日本，相遇同行</p>
           <h1>准备好，开始连接。</h1>
           <p>先确认服务可用，再进入下一步。</p>
         </section>

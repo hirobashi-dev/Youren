@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
-    "title": "友缘 API 接口合同",
+    "title": "Youren API 接口合同",
     "version": "0.1.0",
     "description": "面向日本中国用户的移动应用合同草案。接口尚未实现。文字长度按Unicode可见字符计算；x-grapheme-max需要服务端校验。所有对象访问必须重新验证权限。保留期为原始公开/发送时间起一个UTC日历年，闰日钳位，编辑不续期。标记待确认的内容不是已批准需求。"
   },
