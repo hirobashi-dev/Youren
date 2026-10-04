@@ -17,7 +17,7 @@
       "post": {
         "operationId": "post_guest_sessions",
         "summary": "创建本机游客凭证",
-        "description": "浏览无需建立游客；发言前获取秘密凭证，仅本机管理自己的内容。",
+        "description": "浏览无需建立游客；发言前获取秘密凭证，仅本机管理自己的内容，凭证30天到期（可配置）。",
         "tags": [
           "guest-sessions"
         ],
@@ -194,7 +194,7 @@
       "post": {
         "operationId": "post_auth_email_code",
         "summary": "发送邮箱验证码",
-        "description": "待确认：邮箱验证码登录与六位代码格式仍为评审建议；注册邮箱已确认。",
+        "description": "注册与登录六位验证码，10分钟有效、最多错误5次；同邮箱60秒冷却，邮箱每小时5次/每天20次，IP每小时30次/每天100次，均可配置；统一响应不暴露邮箱是否注册。",
         "tags": [
           "auth"
         ],
@@ -365,7 +365,6 @@
           }
         },
         "x-authorization-level": "P",
-        "x-decision-status": "pending",
         "requestBody": {
           "required": true,
           "description": "只接受明确字段；所有字符串按纯文本处理。",
@@ -456,6 +455,31 @@
                           "enum": [
                             "INVALID_CURSOR",
                             "INVALID_REQUEST"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED / SESSION_REVOKED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "AUTH_REQUIRED",
+                            "SESSION_REVOKED"
                           ]
                         }
                       }
@@ -596,7 +620,7 @@
       "post": {
         "operationId": "post_auth_login",
         "summary": "邮箱验证码登录",
-        "description": "待确认：邮箱验证码登录细节待确认。",
+        "description": "验证码用途必须为login；未注册邮箱验证后仍返回统一认证失败，不自动注册。",
         "tags": [
           "auth"
         ],
@@ -644,6 +668,31 @@
                           "enum": [
                             "INVALID_CURSOR",
                             "INVALID_REQUEST"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED / SESSION_REVOKED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "AUTH_REQUIRED",
+                            "SESSION_REVOKED"
                           ]
                         }
                       }
@@ -767,7 +816,6 @@
           }
         },
         "x-authorization-level": "P",
-        "x-decision-status": "pending",
         "requestBody": {
           "required": true,
           "description": "只接受明确字段；所有字符串按纯文本处理。",
@@ -785,7 +833,7 @@
       "post": {
         "operationId": "post_auth_refresh",
         "summary": "轮换刷新令牌",
-        "description": "body中的刷新令牌是认证依据，非匿名开放；单次消费，重放撤销family。",
+        "description": "body中的刷新令牌是认证依据，非匿名开放；单次消费，重放撤销family；访问15分钟、刷新30天，均可配置。",
         "tags": [
           "auth"
         ],
@@ -833,6 +881,31 @@
                           "enum": [
                             "INVALID_CURSOR",
                             "INVALID_REQUEST"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED / SESSION_REVOKED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "AUTH_REQUIRED",
+                            "SESSION_REVOKED"
                           ]
                         }
                       }
@@ -1880,7 +1953,7 @@
       "patch": {
         "operationId": "patch_me_profile",
         "summary": "更新普通资料",
-        "description": "更新自己的资料，审核版本通过前不公开新内容。",
+        "description": "首次创建使用If-Match双引号0，且必须提供昵称；之后使用正版本，仅修改本人普通资料；审核版本通过前不公开新内容。",
         "tags": [
           "me"
         ],
@@ -1896,9 +1969,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^\"[1-9][0-9]*\"$"
+              "pattern": "^\"(0|[1-9][0-9]*)\"$"
             },
-            "description": "带双引号的资源版本；缺失428，不匹配412。恋爱首次创建使用\"0\"。"
+            "description": "带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用\"0\"。"
           }
         ],
         "responses": {
@@ -4097,7 +4170,7 @@
               "type": "string",
               "pattern": "^\"[1-9][0-9]*\"$"
             },
-            "description": "带双引号的资源版本；缺失428，不匹配412。恋爱首次创建使用\"0\"。"
+            "description": "带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用\"0\"。"
           }
         ],
         "responses": {
@@ -5173,7 +5246,7 @@
               "type": "string",
               "pattern": "^\"[1-9][0-9]*\"$"
             },
-            "description": "带双引号的资源版本；缺失428，不匹配412。恋爱首次创建使用\"0\"。"
+            "description": "带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用\"0\"。"
           }
         ],
         "responses": {
@@ -8327,7 +8400,7 @@
               "type": "string",
               "pattern": "^\"[1-9][0-9]*\"$"
             },
-            "description": "带双引号的资源版本；缺失428，不匹配412。恋爱首次创建使用\"0\"。"
+            "description": "带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用\"0\"。"
           }
         ],
         "responses": {
@@ -13396,7 +13469,7 @@
               "type": "string",
               "pattern": "^\"(0|[1-9][0-9]*)\"$"
             },
-            "description": "带双引号的资源版本；缺失428，不匹配412。恋爱首次创建使用\"0\"。"
+            "description": "带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用\"0\"。"
           }
         ],
         "responses": {
@@ -15760,7 +15833,7 @@
               "type": "string",
               "pattern": "^\"[1-9][0-9]*\"$"
             },
-            "description": "带双引号的资源版本；缺失428，不匹配412。恋爱首次创建使用\"0\"。"
+            "description": "带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用\"0\"。"
           }
         ],
         "responses": {
@@ -16108,7 +16181,7 @@
               "type": "string",
               "pattern": "^\"[1-9][0-9]*\"$"
             },
-            "description": "带双引号的资源版本；缺失428，不匹配412。恋爱首次创建使用\"0\"。"
+            "description": "带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用\"0\"。"
           }
         ],
         "responses": {
@@ -16456,7 +16529,7 @@
               "type": "string",
               "pattern": "^\"[1-9][0-9]*\"$"
             },
-            "description": "带双引号的资源版本；缺失428，不匹配412。恋爱首次创建使用\"0\"。"
+            "description": "带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用\"0\"。"
           }
         ],
         "responses": {
@@ -22437,8 +22510,8 @@
       "UserBearer": {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "JWT",
-        "description": "注册账号访问令牌；不得接受管理端audience。"
+        "bearerFormat": "opaque",
+        "description": "高熵不透明注册账号访问令牌，服务器只保存摘要；不得接受管理端audience。"
       },
       "GuestToken": {
         "type": "apiKey",
@@ -22868,11 +22941,17 @@
             "type": "string",
             "description": "UUID对象标识；知道ID不代表有权访问。",
             "format": "uuid"
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "带时区的ISO8601时间，响应统一使用UTC/Z。",
+            "format": "date-time"
           }
         },
         "required": [
           "guestToken",
-          "principalId"
+          "principalId",
+          "expiresAt"
         ],
         "additionalProperties": false
       },
@@ -24698,7 +24777,7 @@
             "type": "string",
             "description": "邮箱验证码。",
             "pattern": "^[0-9]{6}$",
-            "x-decision-status": "工程初值：六位格式待登录细节确认"
+            "x-decision-status": "confirmed"
           },
           "guestToken": {
             "type": "string",
@@ -24725,7 +24804,7 @@
       },
       "LoginInput": {
         "type": "object",
-        "description": "邮箱验证码登录仍为评审建议。",
+        "description": "邮箱验证码登录；用途和单次消费由服务端验证。",
         "properties": {
           "challengeId": {
             "type": "string",
@@ -24736,7 +24815,7 @@
             "type": "string",
             "description": "邮箱验证码。",
             "pattern": "^[0-9]{6}$",
-            "x-decision-status": "工程初值：六位格式待登录细节确认"
+            "x-decision-status": "confirmed"
           },
           "guestToken": {
             "type": "string",
@@ -24762,7 +24841,7 @@
             "type": "string",
             "description": "邮箱验证码。",
             "pattern": "^[0-9]{6}$",
-            "x-decision-status": "工程初值：六位格式待登录细节确认"
+            "x-decision-status": "confirmed"
           }
         },
         "required": [

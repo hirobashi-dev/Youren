@@ -24,7 +24,7 @@ add('PublicProfile',obj('普通公开资料，无邮箱、游客主体、恋爱�
 add('Settings',obj('陌生私聊默认开放；关闭不影响已有成功联系，拉黑仍禁止双方通信。',{allowStrangerDm:{...bool('允许新陌生人私聊。'),default:true},pushEnabled:bool('允许推送，默认值仍为工程建议。'),lockscreenPreview:bool('显示锁屏预览，建议默认false。')}));
 add('AgeDeclaration',obj('自我声明而非证件核验。',{status:en('声明状态，无verified。','not_declared/self_declared/withdrawn'),declaredAt:nullable(time()),withdrawnAt:nullable(time())}));
 add('Me',obj('仅本人可读的账号与资料。',{id:uuid(),email:str('本人邮箱，禁止进入公开DTO。',{format:'email'}),status:en('账号状态。','active/restricted/deleting/deleted'),profile:nullable(ref('PublicProfile')),settings:ref('Settings'),ageDeclaration:ref('AgeDeclaration'),onboardingRequired:bool('是否需要完善基本资料。')}));
-add('GuestSession',obj('首次发言建立的本机秘密凭证，禁止写入URL或日志。',{guestToken:str('高熵游客秘密凭证。'),principalId:uuid()}));
+add('GuestSession',obj('首次发言建立的本机秘密凭证，禁止写入URL或日志。',{guestToken:str('高熵游客秘密凭证。'),principalId:uuid(),expiresAt:time()}));
 add('AuthSession',obj('仅登录/注册成功返回的令牌；禁止缓存到公开请求或记录日志。',{accessToken:str('短期账号令牌。'),refreshToken:str('可轮换刷新令牌。'),account:ref('Me'),onboardingRequired:bool('是否需要基本资料。'),claimStatus:en('游客接续不成功不应丢失登录结果。','not_requested/claimed/failed')}));
 add('Challenge',obj('统一响应，不泄漏邮箱是否注册。',{challengeId:uuid(),expiresIn:integer('有效秒数。',1),retryAfter:integer('最短等待秒数。')}));
 const published={publishedAt:time(),expiresAt:time()};
@@ -70,9 +70,9 @@ add('JobAccepted',obj('异步受理，不代表清理已完成。',{deletionJobI
 add('GuestClaim',obj('游客接续结果，不公开关联历史身份。',{claimedContentCounts:obj('接续数量。',{posts:integer('帖子数。'),comments:integer('回复数。')})}));
 // 请求只允许明确列出的字段，禁止客户端写author/owner/verified/status。
 add('EmailCodeInput',obj('申请验证码，参数仍为可调整工程配置。',{email:str('邮箱。',{format:'email'}),purpose:en('用途。','login/register/delete_account')}));
-const challengeInput={challengeId:uuid(),code:str('邮箱验证码。',{pattern:'^[0-9]{6}$','x-decision-status':'工程初值：六位格式待登录细节确认'}),guestToken:str('可选原游客秘密，证明接续所有权。')};
+const challengeInput={challengeId:uuid(),code:str('邮箱验证码。',{pattern:'^[0-9]{6}$','x-decision-status':'confirmed'}),guestToken:str('可选原游客秘密，证明接续所有权。')};
 add('RegisterInput',obj('注册接受指定条款版本，可选游客接续。',{...challengeInput,termsVersion:str('条款版本。',{minLength:1}),privacyVersion:str('隐私政策版本。',{minLength:1})},['challengeId','code','termsVersion','privacyVersion']));
-add('LoginInput',obj('邮箱验证码登录仍为评审建议。',challengeInput,['challengeId','code']));
+add('LoginInput',obj('邮箱验证码登录；用途和单次消费由服务端验证。',challengeInput,['challengeId','code']));
 add('DeleteAccountInput',obj('本账号邮箱对应删除挑战。',{challengeId:uuid(),code:challengeInput.code}));
 add('RefreshInput',obj('单次轮换刷新令牌。',{refreshToken:str('原刷新秘密令牌。',{minLength:1})}));
 add('GuestClaimInput',obj('额外游客证明不能按邮箱自动认领。',{guestToken:str('原游客秘密凭证。',{minLength:1})}));

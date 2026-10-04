@@ -75,3 +75,35 @@ test('公开DTO和终态占位拒绝私有资料字段',()=>{
   assert.ok(validate('OwnContent',{kind:'posts',id,status:'expired',unavailable:true}));
   assert.ok(!validate('OwnContent',{kind:'posts',id,status:'expired',unavailable:true,body:'应删除的正文'}));
 });
+
+// 首次资料尚无正版本，必须允许0；之后仍拒绝缺失、负数和未加引号的版本。
+test('普通资料首次创建使用0版本，更新使用正版本且保持冲突错误',()=>{
+  const op=doc.paths['/v1/me/profile'].patch;
+  const schema=op.parameters.find(p=>p.name==='If-Match').schema;
+  const valid=ajv.compile(schema);
+  assert.ok(valid('"0"'));assert.ok(valid('"1"'));
+  assert.ok(!valid('0'));assert.ok(!valid('"-1"'));
+  assert.ok(op.responses[412]);assert.ok(op.responses[428]);
+});
+
+// 刷新和验证码本身是认证证明；公开路由也必须定义统一认证失败与撤销响应。
+test('认证秘密无效时有401合同且成功响应不泄露存储摘要',()=>{
+  for(const route of ['register','login','refresh']){
+    assert.ok(doc.paths[`/v1/auth/${route}`].post.responses[401],route);
+  }
+  const guest=doc.components.schemas.GuestSession;
+  assert.ok(guest.required.includes('expiresAt'));
+  assert.equal(guest.properties.secretHash,undefined);
+  assert.equal(doc.components.securitySchemes.UserBearer.bearerFormat,'opaque');
+});
+
+// 六位格式与用途隔离实际校验输入，避免仅检查说明文字。
+test('邮箱认证仅接受六位代码及注册必需条款，登录不能伪造账号ID',()=>{
+  assert.ok(validate('LoginInput',{challengeId:id,code:'012345'}));
+  assert.ok(!validate('LoginInput',{challengeId:id,code:'12345'}));
+  assert.ok(!validate('LoginInput',{challengeId:id,code:'abcdef'}));
+  assert.ok(!validate('LoginInput',{challengeId:id,code:'012345',accountId:id}));
+  assert.ok(!validate('RegisterInput',{challengeId:id,code:'012345'}));
+  assert.ok(validate('RegisterInput',{challengeId:id,code:'012345',termsVersion:'2026-10-04',privacyVersion:'2026-10-04'}));
+  assert.ok(!validate('EmailCodeInput',{email:'a@example.test',purpose:'dating'}));
+});

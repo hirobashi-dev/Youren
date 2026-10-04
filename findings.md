@@ -29,3 +29,9 @@
 # OpenAPI合同产物
 
 packages/contracts/openapi.json按现有详细设计生成92个REST操作；安全要求区分P/G/U/D/A，游客或账号为或关系。可见字符限额使用x-grapheme-max，需服务端执行；OpenAPI不替代业务授权、事务和实时协议。详细说明见packages/contracts/README.md。
+
+## 第二阶段准备发现
+
+- 用户确认验证码/令牌/游客期限和邮箱/IP限额默认值，详见stage-2-acceptance.md。
+- V1已支持条款记录和刷新轮换；游客到期与不透明访问令牌摘要需V2补充。首次资料创建需If-Match 0；验证码权威状态放PostgreSQL，Redis原子限流。
+- 基线Java格式失败源于工作区CRLF，与Git索引LF不一致；仅恢复27个Java文件LF，无源码差分，完整复验中。

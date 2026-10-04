@@ -7,15 +7,15 @@ const filters=[q('regionCode',str('地区代码。'),'只筛选公开大致地�
 function op(method,path,summary,auth,result,input,options={}){operations.push({method,path,summary,auth,result,input,...options});}
 const list=(method,path,summary,auth,result,query=[])=>op(method,path,summary,auth,result,null,{list:true,query:[...page,...query]});
 const deleted=(path,summary,auth,options={})=>op('delete',path,summary,auth,null,null,{status:204,...options});
-op('post','/guest-sessions','创建本机游客凭证','P','GuestSession',null,{status:201,description:'浏览无需建立游客；发言前获取秘密凭证，仅本机管理自己的内容。'});
-op('post','/auth/email-code','发送邮箱验证码','P','Challenge','EmailCodeInput',{status:202,decision:'邮箱验证码登录与六位代码格式仍为评审建议；注册邮箱已确认。'});
-op('post','/auth/register','注册账号并可选接续游客内容','P','AuthSession','RegisterInput',{status:201,description:'guestToken仅证明接续；已注册邮箱不覆盖资料，验证后转登录结果。',alternate:200});
-op('post','/auth/login','邮箱验证码登录','P','AuthSession','LoginInput',{decision:'邮箱验证码登录细节待确认。'});
-op('post','/auth/refresh','轮换刷新令牌','P','AuthSession','RefreshInput',{description:'body中的刷新令牌是认证依据，非匿名开放；单次消费，重放撤销family。'});
+op('post','/guest-sessions','创建本机游客凭证','P','GuestSession',null,{status:201,description:'浏览无需建立游客；发言前获取秘密凭证，仅本机管理自己的内容，凭证30天到期（可配置）。'});
+op('post','/auth/email-code','发送邮箱验证码','P','Challenge','EmailCodeInput',{status:202,description:'注册与登录六位验证码，10分钟有效、最多错误5次；同邮箱60秒冷却，邮箱每小时5次/每天20次，IP每小时30次/每天100次，均可配置；统一响应不暴露邮箱是否注册。'});
+op('post','/auth/register','注册账号并可选接续游客内容','P','AuthSession','RegisterInput',{status:201,description:'guestToken仅证明接续；已注册邮箱不覆盖资料，验证后转登录结果。',alternate:200,errors:[401]});
+op('post','/auth/login','邮箱验证码登录','P','AuthSession','LoginInput',{description:'验证码用途必须为login；未注册邮箱验证后仍返回统一认证失败，不自动注册。',errors:[401]});
+op('post','/auth/refresh','轮换刷新令牌','P','AuthSession','RefreshInput',{description:'body中的刷新令牌是认证依据，非匿名开放；单次消费，重放撤销family；访问15分钟、刷新30天，均可配置。',errors:[401]});
 op('post','/auth/logout','退出当前会话','U',null,null,{status:204});
 op('post','/me/guest-claims','登录后接续游客内容','U','GuestClaim','GuestClaimInput',{idem:true});
 op('get','/me','读取本人账号与设置','U','Me');
-op('patch','/me/profile','更新普通资料','U','PublicProfile','ProfileInput',{version:true,description:'更新自己的资料，审核版本通过前不公开新内容。'});
+op('patch','/me/profile','更新普通资料','U','PublicProfile','ProfileInput',{version:true,description:'首次创建使用If-Match双引号0，且必须提供昵称；之后使用正版本，仅修改本人普通资料；审核版本通过前不公开新内容。'});
 op('patch','/me/settings','修改本人隐私与通知','U','Settings','SettingsInput');
 op('get','/profiles/{accountId}','读取普通公开主页','P','PublicProfile',null,{optionalAuth:true,description:'不返回邮箱、游客主体、恋爱偏好或活动记录；canMessage由实际身份决定。'});
 deleted('/me','申请注销账号','U',{input:'DeleteAccountInput',result:'JobAccepted',status:202,description:'验证码必须对应当前账号；立即撤销访问，清理由worker异步执行。'});
