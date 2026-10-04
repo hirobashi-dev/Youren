@@ -1,5 +1,11 @@
 # 工作记录
 
+## GitHub CI修正后通过（2026-10-04）
+
+- 修复提交914bd0f已推送，运行37168830294 completed/success；frontend、backend、browser均success，JDK安装、Maven真实集成及浏览器联调实际执行通过。
+- REST核对产物：java-test-reports 32714字节、verified-java-api 33427793字节、browser-evidence 30597字节，均未过期；后端报告门槛及两个浏览器检查步骤成功，未把仅静态检查算作云端通过。
+- 已同步阶段计划、工程结构、CI说明及验收记录，保留旧失败经过；文档链接/版本/进度及差分核对后保存本地记录。iOS原生测试仍按用户决定延期，本次不计平台验收通过。
+
 ## CI JDK版本配置修正（2026-10-04）
 
 - 用户授权修正并重新运行核验；核对固定setup-java源码的normalizeVersion/isVersionSatisfies及Adoptium官方Linux发布元数据。

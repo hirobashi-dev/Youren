@@ -6,7 +6,7 @@
 - [ ] 阶段1工程基础。
 - 原TS任务5后台基础已有历史验证；现按docs/superpowers/plans/2026-10-03-stage-1-engineering-foundation.md恢复Java/Spring Boot、Maven、MyBatis开发；旧测试证据不计为Java验收。
 - [x] Java改修任务1至5已完成并提交；手机基础与Android模拟器通过；任务7统一检查及CI已实现，验证详情见验收记录。
-- [ ] iOS原生测试按用户决定延期；GitHub配置已推送，hosted runner未通过（后端JDK安装失败）。
+- [ ] iOS原生测试按用户决定延期；GitHub配置已推送，hosted runner三个任务已通过。
 - [ ] 阶段2身份与普通资料。
 - [ ] 阶段3留言板与图片审核。
 - [ ] 阶段4群聊与普通私聊。

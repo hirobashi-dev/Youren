@@ -1,6 +1,12 @@
 # 第1阶段进度与恢复入口
 
-## GitHub CI实际核验（2026-10-04）
+## GitHub CI修正后验收（2026-10-04）
+
+[运行37168830294](https://github.com/hirobashi-dev/Youren/actions/runs/37168830294)对应修复提交`914bd0f`，已结束且conclusion为success。frontend、backend、browser三个任务均success；java-test-reports（32714字节）、verified-java-api（33427793字节）、browser-evidence（30597字节）均上传且未过期。
+
+setup-java输入改为官方Adoptium SemVer `21.0.12+101.0.LTS`，对应相同Temurin `21.0.12.1+1`发布；后端Wrapper与JUnit门槛、浏览器真实Java故障/恢复均在Linux hosted runner执行通过。核验通过REST读取run、jobs和artifacts元数据；没有将历史失败或跳过计入本次通过。此运行包含之前计划同步和失败记录提交，iOS延期不变。
+
+## 历史：修正前GitHub CI核验（2026-10-04）
 
 最新已推送提交`5b9200d`的[运行37168061562](https://github.com/hirobashi-dev/Youren/actions/runs/37168061562)已结束，结论failure；前端success、后端failure、浏览器skipped。前次`5c1704a`运行也失败。
 
@@ -10,7 +16,7 @@ GitHub后端check-run注释明确：`21.0.12.1+1`不是setup-java接受的SemVer
 
 ## 当前状态
 
-最新（任务7）：统一检查、JUnit报告门槛及三个GitHub CI任务已实现；本地结果见下方记录。手机基础及Android已有证据，用户决定延期iOS原生测试，保持未验收；GitHub hosted runner结果已核验：前端成功、后端JDK安装失败、浏览器跳过。不宣称第1阶段所有平台通过。
+最新（任务7）：统一检查、JUnit报告门槛及三个GitHub CI任务已实现；本地结果见下方记录。手机基础及Android已有证据，用户决定延期iOS原生测试，保持未验收；GitHub hosted runner修正后运行37168830294的前端、后端、浏览器均成功。不宣称第1阶段所有平台通过。
 
 ### 统一检查与CI验证证据（2026-10-04）
 
@@ -27,7 +33,7 @@ GitHub后端check-run注释明确：`21.0.12.1+1`不是setup-java接受的SemVer
 
 干净源码复验发现并修正两项问题：系统Git的core.autocrlf使导出文本变为CRLF，Prettier拒绝44个文件；仓库`.gitattributes`统一文本LF、cmd保留CRLF，未修改系统Git设置。Jest将含`.local`的Windows绝对路径拼入glob后找不到测试；改为相对匹配，原路径失败、新路径两套10项通过，随后完整复验成功。干净目录仅更新这份已验证配置，未复制旧构建产物。
 
-这是全新源码目录的本地验证，不称为GitHub实际检出运行。使用既有独立Node/JDK、Docker、Chrome及隔离测试环境配置；固定安装、各组及完整日志保留于忽略的`.local/stage7-*.log`。GitHub配置已推送，报告和API产物传递的云端已核验但未通过（后端JDK安装失败）；iOS原生测试按用户决定延期，两端JS导出不计平台验收。
+这是全新源码目录的本地验证，不称为GitHub实际检出运行。使用既有独立Node/JDK、Docker、Chrome及隔离测试环境配置；固定安装、各组及完整日志保留于忽略的`.local/stage7-*.log`。GitHub配置已推送，报告和API产物传递的修正后的云端验收已通过；iOS原生测试按用户决定延期，两端JS导出不计平台验收。
 
 测试只停止本次启动的redis-test，保留原有postgres-test和卷；Testcontainers临时实例自行清理。未改变系统默认JDK/PATH，不提交本地环境、依赖、JAR、截图或日志。操作与JSON配置说明见[CI说明](ci.md)。
 
@@ -83,7 +89,7 @@ Metro首次localhost绑定IPv6导致模拟器加载空白；检查端口和Expo�
 
 1. 阅读[详细计划](../superpowers/plans/2026-10-03-stage-1-engineering-foundation.md)、本文件及根README，确认分支和工作区状态；不要从头重建项目。
 2. Java任务1至5及手机基础/Android模拟器已有证据，不重复开发。iOS开发构建与设备操作已由用户决定延期，保持平台未验收。
-3. 使用`npm run check`复现本地验收；查看已推送GitHub的三个任务和报告，当前不计云端通过。下一阶段开发需要先细化身份与普通资料计划。
+3. 使用`npm run check`复现本地验收；查看已推送GitHub的三个任务和报告，已核验修正后云端运行通过。下一阶段开发需要先细化身份与普通资料计划。
 
 ## 环境与重启
 
