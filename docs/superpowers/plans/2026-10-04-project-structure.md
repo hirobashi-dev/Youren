@@ -65,7 +65,7 @@ Youren/
 └─ README.md                  安装、启动和文档入口
 ```
 
-本地工作区可能还存在`apps/api/dist/`旧TypeScript API编译产物目录；其中只有被`.gitignore`排除的`dist/`文件，不属于当前Git源码结构或活动工程。当前API实现位于`backend/api/`，勿将本地残留目录视为第二个API工程。
+旧TypeScript API曾在本地留下被`.gitignore`排除的`apps/api/dist/`编译产物；已按用户确认清理该目录。它不属于当前Git源码结构或活动工程，当前API实现位于`backend/api/`。
 
 ## 3. 手机端目录（基础已有，业务目录为规划）
 
