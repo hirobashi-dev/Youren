@@ -23015,6 +23015,77 @@
         ],
         "additionalProperties": false
       },
+      "OwnerProfile": {
+        "type": "object",
+        "description": "本人最新普通资料，可为未发布草稿；id始终为账号ID。",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "UUID对象标识；知道ID不代表有权访问。",
+            "format": "uuid"
+          },
+          "nickname": {
+            "type": "string",
+            "description": "公开昵称。"
+          },
+          "bio": {
+            "type": "string",
+            "description": "公开简介。"
+          },
+          "avatar": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Image"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "可为空；空值不表示当前已授权或已发布。"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Region"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "可为空；空值不表示当前已授权或已发布。"
+          },
+          "interests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Interest"
+            },
+            "uniqueItems": true
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/Capabilities"
+          },
+          "moderationStatus": {
+            "type": "string",
+            "description": "本人最新版本审核状态；pending不表示公开。",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "nickname",
+          "bio",
+          "avatar",
+          "region",
+          "interests",
+          "capabilities",
+          "moderationStatus"
+        ],
+        "additionalProperties": false
+      },
       "Settings": {
         "type": "object",
         "description": "陌生私聊默认开放；关闭不影响已有成功联系，拉黑仍禁止双方通信。",
@@ -23114,7 +23185,7 @@
           "profile": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/PublicProfile"
+                "$ref": "#/components/schemas/OwnerProfile"
               },
               {
                 "type": "null"
@@ -23130,7 +23201,7 @@
           },
           "onboardingRequired": {
             "type": "boolean",
-            "description": "是否需要完善基本资料。"
+            "description": "是否需要完善基本资料；按本人草稿是否存在决定，与审核发布独立。"
           },
           "profileVersion": {
             "type": [
@@ -27222,10 +27293,10 @@
       },
       "ProfileVersion": {
         "type": "object",
-        "description": "本人普通资料更新结果。",
+        "description": "本人最新普通资料草稿更新结果；不授予公开发布资格。",
         "properties": {
           "profile": {
-            "$ref": "#/components/schemas/PublicProfile"
+            "$ref": "#/components/schemas/OwnerProfile"
           },
           "version": {
             "type": "integer",
@@ -27253,5 +27324,12 @@
     "accessTtlSeconds": 900,
     "refreshTtlSeconds": 2592000,
     "guestTtlSeconds": 2592000
+  },
+  "x-profile-policy": {
+    "decisionStatus": "provisional-engineering-defaults",
+    "validationAuthority": "server-config",
+    "nicknameGraphemes": 30,
+    "bioGraphemes": 500,
+    "configurable": true
   }
 }

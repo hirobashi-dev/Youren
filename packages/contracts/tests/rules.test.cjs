@@ -13,6 +13,18 @@ ajv.addKeyword({keyword:'x-grapheme-max',type:'string',schemaType:'number',valid
 ajv.addSchema(doc,'contract');
 const validate=(name,value)=>ajv.compile({$ref:`contract#/components/schemas/${name}`})(value);
 const id='11111111-1111-7111-8111-111111111111';
+
+// 待审草稿状态只属于本人DTO；公开资料保持原有允许字段且禁止审核/私人信息。
+test('本人草稿有独立审核状态而公开DTO拒绝草稿状态',()=>{
+  const profile={id,nickname:'待审昵称',bio:'简介',avatar:null,region:null,interests:[],capabilities:{canEdit:true}};
+  assert.ok(validate('OwnerProfile',{...profile,moderationStatus:'pending'}));
+  assert.equal(validate('OwnerProfile',{...profile,moderationStatus:'visible'}),false);
+  assert.equal(validate('PublicProfile',{...profile,moderationStatus:'pending'}),false);
+  assert.equal(doc.components.schemas.Me.properties.profile.anyOf[0].$ref,'#/components/schemas/OwnerProfile');
+  assert.equal(doc.components.schemas.ProfileVersion.properties.profile.$ref,'#/components/schemas/OwnerProfile');
+  assert.equal(doc['x-profile-policy'].decisionStatus,'provisional-engineering-defaults');
+  assert.equal(doc['x-profile-policy'].validationAuthority,'server-config');
+});
 test('OpenAPI 3.1结构、引用和全部JSON Schema可验证',async()=>{
   await SwaggerParser.validate(structuredClone(doc));
   for(const name of Object.keys(doc.components.schemas))ajv.compile({$ref:`contract#/components/schemas/${name}`});

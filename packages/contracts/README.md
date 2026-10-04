@@ -31,3 +31,17 @@ npm test
 本文件是合同，不是已启动的API服务，也不验证数据库竞争、JWT签名、实时WebSocket、存储清理或业务事务。实时协议仍参照[详细设计](../../docs/superpowers/specs/2026-10-03-social-app-database-api-design.md)。
 
 邮箱注册已确认；验证码登录细节、偏好字段、额外资料长度、审核动作及幂等保存窗口仍需评审。相关操作带待确认说明；偏好首稿只接受空对象。服务器路径为相对地址，正式环境必须使用HTTPS。
+# 本人草稿与公开资料边界
+
+Me.profile和ProfileVersion.profile使用OwnerProfile，包含本人最新编辑版本的
+moderationStatus（pending/approved/rejected）；PublicProfile保持公开允许字段，
+不返回草稿审核状态或私人信息。资料id统一为账号ID，profileVersion用于后续If-Match。
+onboardingRequired按本人是否有基本资料判断，不要求草稿已发布。
+
+生成合同的x-profile-policy把昵称30/简介500标为provisional-engineering-defaults，
+尚未获用户确认；仅为可配置工程建议，服务器配置是验证权威。ProfileInput不设置
+不可覆盖的固定maxLength/x-grapheme-max。文字为纯文本、按扩展字素验证；客户端
+必须使用服务器返回的校验结果，不把建议元数据视为已批准产品上限。
+
+本阶段没有受控图片展示绑定，非空avatarMediaId安全返回MEDIA_NOT_READY，null可清除；
+OwnerProfile与PublicProfile的avatar暂为null。没有新增接口路径。

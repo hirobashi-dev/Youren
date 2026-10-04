@@ -1,7 +1,7 @@
 # Java 后端
 
 Java 21、Spring Boot 3.5.16、MyBatis Starter 3.0.5、Maven 3.9.9。
-`shared` 提供配置验证与日志白名单；`database` 已实现 MyBatis/Flyway 基础，`api` 已实现健康、游客凭证和邮箱认证，`worker` 已通过生命周期及真实JAR信号测试。
+`shared` 提供配置验证与日志白名单；`database` 已实现 MyBatis/Flyway 基础，`api` 已实现健康、游客凭证/接续、邮箱认证与普通资料，`worker` 已通过生命周期及真实JAR信号测试。
 四模块使用同一 BOM，Surefire 发现 `*Test`，Failsafe 在 `verify` 验收 `*IT`。
 Spotless 在 `verify` 检查 Java 格式。数据库和HTTP使用临时PostgreSQL/Redis进行集成验证；实际测试数量及结果以各模块报告为准。
 
@@ -99,3 +99,45 @@ $inbox = Invoke-RestMethod -Uri "http://127.0.0.1:3000/__test/mail/$challengeId"
 
 MockMvc验证严格字段、畸形JSON及安全错误；临时PostgreSQL/Redis与真实HTTP验证单次消费、并发注册、条款事务、发送故障、各窗口配额、到期、账号状态、刷新重放及退出。
 无需实际邮件供应商。独立测试收件箱的配置、权限、容量与到期另有测试；Android实际操作由阶段最终验收完成。
+# 游客接续与普通资料
+
+`POST /v1/me/guest-claims`只接受本人UserBearer、UUID `Idempotency-Key`和`guestToken`。
+账号→主体→凭证按固定顺序锁定，绑定、撤销全部同主体凭证和回执写入同一事务。
+同账号仍有效的已接续凭证可幂等重试；其他账号、过期/未接续已撤销秘密统一403，
+同键不同秘密409。回执不保存秘密或响应，只保存摘要和内部资源标识；重放重新检查
+归属并统计未删除、未到期、非deleted/expired状态的本人原主体帖子和回复。
+历史作者外键、kind及display_mode保持不变。登录/注册在认证提交后调用同一真实服务，
+预期领域失败只令claimStatus=failed，登录会话仍成功，游客可独立重试。
+
+`GET /v1/me`与AuthSession.account共用精确本人快照，资料版本以最新草稿为准。
+`PATCH /v1/me/profile`首次要求`If-Match: "0"`和非空白昵称；之后正版本，缺失428、
+格式422、不匹配412；并发只能一个成功。部分更新保留未提供字段，字典必须活跃存在
+且兴趣不可重复。`PATCH /v1/me/settings`只接受非空部分布尔更新，不接受账号ID；
+默认allowStrangerDm=true、pushEnabled=true、lockscreenPreview=false。
+
+V3独立`profile_drafts`只存本人最新版本，编辑不覆盖`profiles`已批准公开快照。
+OwnerProfile有moderationStatus=pending/approved/rejected；PublicProfile没有审核状态或
+email、principal、恋爱及活动字段，id始终为账号ID。初始草稿不公开；公开主页只读取
+active账号的public/approved快照；已有批准版本在新草稿编辑期间保持旧值。历史资料
+没有审核证据，V3默认pending，安全拒绝公开。本人基本资料存在即可完成引导，与
+审核发布分开。V1/V2没有修改；本阶段无审核、发布或清理worker。
+
+不用强制expires_at的moderation_revisions存普通资料草稿，因为其保留期尚未批准；
+latest-draft存储不虚构一年或短期清理规则。图片展示/安全绑定尚未实现，所有非空
+avatarMediaId都返回409 MEDIA_NOT_READY，包括未知、他人、错误用途和未就绪资源；
+null可清除草稿头像。本阶段所有资料DTO的avatar为null，不签发存储URL。
+
+昵称30、简介500**仅为可配置暂定工程默认值，尚未获用户确认**，不同于已批准认证
+政策。服务端使用Java21正则`\X`扩展字素计数；测试覆盖组合音标、ZWJ家庭、肤色与
+国旗边界，以及配置增大后40/700合法输入。客户端不得把合同建议元数据作为固定上限，
+实际服务器配置才是验证权威。
+
+| 环境变量 | 暂定默认 | 作用 |
+|---|---:|---|
+| YOUREN_PROFILE_NICKNAME_GRAPHEMES | 30 | 昵称可见字素上限，正整数 |
+| YOUREN_PROFILE_BIO_GRAPHEMES | 500 | 简介可见字素上限，正整数 |
+| YOUREN_GUEST_CLAIM_RECEIPT_SECONDS | 86400 | 回执重试窗口秒数，正整数；过期同键RESULT_EXPIRED |
+
+公开canMessage只由实际账号身份、非本人、双向拉黑及普通陌生私聊设置决定，
+关闭陌生联系不撤销已互相发送过消息的联系；不读取年龄/恋爱资格。
+能力字段仅指导界面，未来私聊写入仍须重新授权和检查额度。

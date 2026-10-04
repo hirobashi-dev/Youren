@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="jp.youren.database.mapper.GuestClaimMapper">
+  <!-- 内部凭证和主体不能序列化为HTTP响应；所有输入严格参数绑定。 -->
+  <resultMap id="credential" type="jp.youren.database.mapper.GuestClaimMapper$Credential"><constructor>
+    <arg column="principal_id" javaType="java.util.UUID" typeHandler="jp.youren.database.type.UuidTypeHandler"/>
+    <arg column="expires_at" javaType="java.time.OffsetDateTime"/><arg column="revoked_at" javaType="java.time.OffsetDateTime"/>
+  </constructor></resultMap>
+  <resultMap id="principal" type="jp.youren.database.mapper.GuestClaimMapper$Principal"><constructor>
+    <arg column="kind" javaType="java.lang.String"/><arg column="account_id" javaType="java.util.UUID" typeHandler="jp.youren.database.type.UuidTypeHandler"/>
+    <arg column="claimed_at" javaType="java.time.OffsetDateTime"/>
+  </constructor></resultMap>
+  <resultMap id="receipt" type="jp.youren.database.mapper.GuestClaimMapper$Receipt"><constructor><arg column="request_hash" javaType="java.lang.String"/><arg column="expires_at" javaType="java.time.OffsetDateTime"/></constructor></resultMap>
+  <resultMap id="counts" type="jp.youren.database.mapper.GuestClaimMapper$Counts"><constructor><arg column="posts" javaType="_int"/><arg column="comments" javaType="_int"/></constructor></resultMap>
+  <select id="find" resultMap="credential" timeout="2">SELECT principal_id,expires_at,revoked_at FROM guest_credentials WHERE secret_hash=#{digest}</select>
+  <select id="lockCredential" resultMap="credential" timeout="2">SELECT principal_id,expires_at,revoked_at FROM guest_credentials WHERE secret_hash=#{digest} FOR UPDATE</select>
+  <select id="lockPrincipal" resultMap="principal" timeout="2">SELECT kind,account_id,claimed_at FROM principals WHERE id=#{id} FOR UPDATE</select>
+  <!-- 只改归属，不重写kind、历史作者外键或显示模式。 -->
+  <update id="bind" timeout="2">UPDATE principals SET account_id=#{account},claimed_at=#{now},updated_at=#{now} WHERE id=#{id} AND kind='guest' AND account_id IS NULL AND claimed_at IS NULL</update>
+  <update id="revokeAll" timeout="2">UPDATE guest_credentials SET revoked_at=COALESCE(revoked_at,#{now}),updated_at=#{now} WHERE principal_id=#{id}</update>
+  <select id="receipt" resultMap="receipt" timeout="2">SELECT request_hash,expires_at FROM idempotency_records WHERE actor_key=#{actor} AND method='POST' AND route_key='/v1/me/guest-claims' AND key=#{key}</select>
+  <!-- 回执只有摘要和资源ID；重放重新核对权限并读取当前数量，不保存秘密响应。 -->
+  <insert id="insertReceipt" timeout="2">INSERT INTO idempotency_records(actor_key,method,route_key,key,request_hash,status,resource_type,resource_id,response_code,created_at,updated_at,expires_at) VALUES(#{actor},'POST','/v1/me/guest-claims',#{key},#{digest},'completed','guest_claim',#{principal},200,#{now},#{now},#{expiry})</insert>
+  <select id="counts" resultMap="counts" timeout="2">
+    SELECT (SELECT count(*)::int FROM posts WHERE author_principal_id=#{id} AND deleted_at IS NULL AND status NOT IN ('deleted','expired') AND (expires_at IS NULL OR expires_at &gt; #{now})) AS posts,
+    (SELECT count(*)::int FROM comments WHERE author_principal_id=#{id} AND deleted_at IS NULL AND status NOT IN ('deleted','expired') AND (expires_at IS NULL OR expires_at &gt; #{now})) AS comments
+  </select>
+</mapper>

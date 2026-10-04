@@ -21,9 +21,11 @@ add('Capabilities',obj('仅指导界面，服务端每次操作仍重新鉴权�
 add('Image',obj('受控展示图片，不暴露存储对象键。',{id:uuid(),url:str('短时受控展示URL，不能长于内容剩余寿命。',{format:'uri'}),width:integer('展示宽度。',1),height:integer('展示高度。',1),expiresAt:time()}));
 add('AuthorDisplay',{description:'游客只显示同帖标签；注册作者只返回普通公开资料。',oneOf:[obj('游客标签。',{kind:{const:'guest',type:'string'},label:str('同帖稳定显示标签。')}),obj('注册作者。',{kind:{const:'account',type:'string'},accountId:uuid(),nickname:str('公开昵称。'),avatar:nullable(ref('Image'))})]});
 add('PublicProfile',obj('普通公开资料，无邮箱、游客主体、恋爱偏好或活动记录。',{id:uuid(),nickname:str('公开昵称。'),bio:str('公开简介。'),avatar:nullable(ref('Image')),region:nullable(ref('Region')),interests:arr(ref('Interest')),capabilities:ref('Capabilities')}));
+// 本人草稿沿用纯文本/字典显示字段；审核状态不能混入普通公开主页。
+add('OwnerProfile',obj('本人最新普通资料，可为未发布草稿；id始终为账号ID。',{...schemas.PublicProfile.properties,moderationStatus:en('本人最新版本审核状态；pending不表示公开。','pending/approved/rejected')}));
 add('Settings',obj('陌生私聊默认开放；关闭不影响已有成功联系，拉黑仍禁止双方通信。',{allowStrangerDm:{...bool('允许新陌生人私聊。'),default:true},pushEnabled:bool('允许推送，默认值仍为工程建议。'),lockscreenPreview:bool('显示锁屏预览，建议默认false。')}));
 add('AgeDeclaration',obj('自我声明而非证件核验。',{status:en('声明状态，无verified。','not_declared/self_declared/withdrawn'),declaredAt:nullable(time()),withdrawnAt:nullable(time())}));
-add('Me',obj('仅本人可读的账号与资料。',{id:uuid(),email:str('本人邮箱，禁止进入公开DTO。',{format:'email'}),status:en('账号状态。','active/restricted/deleting/deleted'),profile:nullable(ref('PublicProfile')),settings:ref('Settings'),ageDeclaration:ref('AgeDeclaration'),onboardingRequired:bool('是否需要完善基本资料。')}));
+add('Me',obj('仅本人可读的账号与资料。',{id:uuid(),email:str('本人邮箱，禁止进入公开DTO。',{format:'email'}),status:en('账号状态。','active/restricted/deleting/deleted'),profile:nullable(ref('OwnerProfile')),settings:ref('Settings'),ageDeclaration:ref('AgeDeclaration'),onboardingRequired:bool('是否需要完善基本资料；按本人草稿是否存在决定，与审核发布独立。')}));
 add('GuestSession',obj('首次发言建立的本机秘密凭证，禁止写入URL或日志。',{guestToken:str('高熵游客秘密凭证。'),principalId:uuid(),expiresAt:time()}));
 add('AuthSession',obj('仅登录/注册成功返回的令牌；禁止缓存到公开请求或记录日志。',{accessToken:str('短期账号令牌。'),refreshToken:str('可轮换刷新令牌。'),account:ref('Me'),onboardingRequired:bool('是否需要基本资料。'),claimStatus:en('游客接续不成功不应丢失登录结果。','not_requested/claimed/failed')}));
 // 当前政策版本只供主动同意，不暴露认证密钥或邮件渠道配置。

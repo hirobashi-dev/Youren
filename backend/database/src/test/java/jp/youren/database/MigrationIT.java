@@ -90,18 +90,18 @@ class MigrationIT extends DatabaseTestSupport {
         () -> LegacyMigrationAdoption.adopt(dataSource, fingerprint, "a".repeat(64)));
   }
 
-  // 新库执行V1及V2，54张业务表齐全，重复部署无DDL。
+  // 新库执行V1/V2/V3，55张业务表齐全，重复部署无DDL；冻结基线仍为V1。
   @Test
   void migratesEmptyDatabaseAndRepeatedDeploymentIsNoOp() {
-    assertEquals(2, flyway.migrate().migrationsExecuted);
+    assertEquals(3, flyway.migrate().migrationsExecuted);
     assertEquals(
-        54,
+        55,
         jdbc.queryForObject(
             "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' AND table_name <> 'flyway_schema_history'",
             Integer.class));
     assertEquals(0, flyway.migrate().migrationsExecuted);
     assertEquals(
-        2,
+        3,
         jdbc.queryForObject(
             "SELECT count(*) FROM flyway_schema_history WHERE success", Integer.class));
     assertEquals(6, jdbc.queryForObject("SELECT count(*) FROM policy_configs", Integer.class));
@@ -126,7 +126,7 @@ class MigrationIT extends DatabaseTestSupport {
             .locations("classpath:db/migration")
             .cleanDisabled(true)
             .load();
-    assertEquals(1, flyway.migrate().migrationsExecuted);
+    assertEquals(2, flyway.migrate().migrationsExecuted);
     assertEquals(
         "2026-10-01T00:00:00Z",
         jdbc.queryForObject(
@@ -157,6 +157,28 @@ class MigrationIT extends DatabaseTestSupport {
             .target("1")
             .cleanDisabled(true)
             .load();
+  }
+
+  // V2到V3只新增草稿与审核标记；旧资料没有批准证据，默认待审且原文本/version不变。
+  @Test
+  void upgradesProfilesWithoutPublishingUnreviewedLegacyValues() {
+    var v2 =
+        Flyway.configure()
+            .dataSource(dataSource)
+            .locations("classpath:db/migration")
+            .target("2")
+            .load();
+    v2.migrate();
+    jdbc.execute(
+        "INSERT INTO accounts(id,email_normalized) VALUES('00000000-0000-0000-0000-000000000004','profile-upgrade@example.test')");
+    jdbc.execute(
+        "INSERT INTO profiles(account_id,nickname,bio,version) VALUES('00000000-0000-0000-0000-000000000004','旧资料','原简介',7)");
+    assertEquals(1, flyway.migrate().migrationsExecuted);
+    assertEquals(
+        "pending", jdbc.queryForObject("SELECT moderation_status FROM profiles", String.class));
+    assertEquals("原简介", jdbc.queryForObject("SELECT bio FROM profiles", String.class));
+    assertEquals(7, jdbc.queryForObject("SELECT version FROM profiles", Integer.class));
+    assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM profile_drafts", Integer.class));
   }
 
   // 未审计的非空库拒绝自动baseline，clean禁止删除结构。

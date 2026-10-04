@@ -38,10 +38,11 @@ public class AuthConfiguration {
 
   @Bean
   @ConditionalOnMissingBean(GuestClaimHandler.class)
-  public GuestClaimHandler guestClaimHandler(jp.youren.api.guest.GuestSessionService guests) {
+  public GuestClaimHandler guestClaimHandler(jp.youren.api.guest.GuestClaimService guests) {
     return (account, token) -> {
-      guests.requirePrincipal(token);
-      return false;
+      // 成功认证已提交；接续领域失败由认证服务映射failed并保留登录会话。
+      guests.claim(account, token, UUID.randomUUID());
+      return true;
     };
   }
 }

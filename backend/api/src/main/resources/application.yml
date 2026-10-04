@@ -13,6 +13,13 @@ spring:
 
 # 邮箱认证参数由服务端环境注入，开发条款版本不代表政策正文可以正式发布。
 youren:
+  # 资料限额为未获用户确认的暂定工程默认；服务端配置是权威，按Unicode扩展字素计数。
+  profile:
+    nickname-graphemes: ${YOUREN_PROFILE_NICKNAME_GRAPHEMES:30}
+    bio-graphemes: ${YOUREN_PROFILE_BIO_GRAPHEMES:500}
+  guest:
+    # 幂等回执窗口不是游客令牌有效期，不为普通资料发明清理期限。
+    claim-receipt-seconds: ${YOUREN_GUEST_CLAIM_RECEIPT_SECONDS:86400}
   auth:
     challenge-secret: ${YOUREN_AUTH_CHALLENGE_SECRET:}
     code-ttl: ${YOUREN_AUTH_CODE_TTL:600}

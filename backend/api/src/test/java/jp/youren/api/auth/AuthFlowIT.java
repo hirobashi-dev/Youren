@@ -560,10 +560,11 @@ class AuthFlowIT {
             .statusCode());
   }
 
-  // 未实现游客接续必须独立失败且保留登录结果，不能伪造接续成功。
+  // 无效游客接续必须独立失败且保留登录结果，真实处理器不能伪造接续成功。
   @Test
   void optionalGuestClaimFailureNeverDiscardsAuthenticatedSession() throws Exception {
     var guest = data(post("/v1/guest-sessions", Map.of()));
+    jdbc.update("UPDATE guest_credentials SET revoked_at=CURRENT_TIMESTAMP");
     var id = challenge("claim@example.com", "register");
     var body = new HashMap<>(registration(id, inbox.codes.get(id)));
     body.put("guestToken", guest.get("guestToken").asText());
