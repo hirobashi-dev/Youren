@@ -26994,5 +26994,19 @@
         "additionalProperties": false
       }
     }
+  },
+  "x-auth-policy": {
+    "configurable": true,
+    "codeDigits": 6,
+    "codeTtlSeconds": 600,
+    "maxWrongAttempts": 5,
+    "cooldownSeconds": 60,
+    "emailHourlyLimit": 5,
+    "emailDailyLimit": 20,
+    "ipHourlyLimit": 30,
+    "ipDailyLimit": 100,
+    "accessTtlSeconds": 900,
+    "refreshTtlSeconds": 2592000,
+    "guestTtlSeconds": 2592000
   }
 }

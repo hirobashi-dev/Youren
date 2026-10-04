@@ -17,6 +17,8 @@ schemas.Me.properties.profileVersion={type:['integer','null'],minimum:1,descript
 schemas.Me.required.push('profileVersion');
 delete schemas.EventPatchInput.properties.saveAsDraft;
 const doc={openapi:'3.1.0',jsonSchemaDialect:'https://json-schema.org/draft/2020-12/schema',info:{title:'Youren API 接口合同',version:'0.1.0',description:'面向日本中国用户的移动应用合同草案。接口尚未实现。文字长度按Unicode可见字符计算；x-grapheme-max需要服务端校验。所有对象访问必须重新验证权限。保留期为原始公开/发送时间起一个UTC日历年，闰日钳位，编辑不续期。标记待确认的内容不是已批准需求。'},servers:[{url:'/',description:'相对于未来部署地址；不表示已有运行服务。'}],paths:{},components:{securitySchemes:{UserBearer:{type:'http',scheme:'bearer',bearerFormat:'opaque',description:'高熵不透明注册账号访问令牌，服务器只保存摘要；不得接受管理端audience。'},GuestToken:{type:'apiKey',in:'header',name:'X-Guest-Token',description:'本机游客秘密凭证，禁止放入URL或日志。'},AdminBearer:{type:'http',scheme:'bearer',bearerFormat:'JWT',description:'独立管理端audience和角色，普通账号令牌无效。'}},schemas}};
+// 认证初值是可配置合同元数据，不代替服务端状态机验证。
+doc['x-auth-policy']=require('../src/auth-policy.cjs');
 const auth={P:[],G:[{GuestToken:[]},{UserBearer:[]}],U:[{UserBearer:[]}],D:[{UserBearer:[]}],A:[{AdminBearer:[]}]};
 // 错误名称沿用详细设计；额外幂等/配额错误是工程级细化。
 const errors={400:['INVALID_CURSOR','INVALID_REQUEST'],401:['AUTH_REQUIRED','SESSION_REVOKED'],403:['ACCOUNT_RESTRICTED','DATING_REQUIRED','FORBIDDEN'],404:['CONTENT_UNAVAILABLE'],409:['EVENT_FULL','EVENT_CLOSED','GROUP_FULL','MEDIA_NOT_READY','REQUEST_IN_PROGRESS','RESULT_EXPIRED','QUOTA_EXCEEDED','IDEMPOTENCY_CONFLICT'],412:['VERSION_CONFLICT'],422:['VALIDATION_FAILED'],428:['VERSION_REQUIRED'],429:['RATE_LIMITED'],503:['TEMPORARILY_UNAVAILABLE']};

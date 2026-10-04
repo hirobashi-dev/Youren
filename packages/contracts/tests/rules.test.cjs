@@ -107,3 +107,49 @@ test('邮箱认证仅接受六位代码及注册必需条款，登录不能伪�
   assert.ok(validate('RegisterInput',{challengeId:id,code:'012345',termsVersion:'2026-10-04',privacyVersion:'2026-10-04'}));
   assert.ok(!validate('EmailCodeInput',{email:'a@example.test',purpose:'dating'}));
 });
+
+// 合同默认值用于配置对照；可配置的状态机限流行为另由真实API测试验证。
+test('认证默认策略在合同中可读取且明确允许部署配置覆盖',()=>{
+  assert.deepEqual(doc['x-auth-policy'],{
+    configurable:true,codeDigits:6,codeTtlSeconds:600,maxWrongAttempts:5,cooldownSeconds:60,
+    emailHourlyLimit:5,emailDailyLimit:20,ipHourlyLimit:30,ipDailyLimit:100,
+    accessTtlSeconds:900,refreshTtlSeconds:2592000,guestTtlSeconds:2592000,
+  });
+});
+
+// 响应只能公开挑战标识和等待时间，不能用附加字段枚举邮箱或泄漏验证码。
+test('匿名验证码响应拒绝验证码邮箱和账号存在信息并验证时间边界',()=>{
+  const challenge={challengeId:id,expiresIn:600,retryAfter:60};
+  assert.ok(validate('Challenge',challenge));
+  assert.ok(!validate('Challenge',{...challenge,expiresIn:0}));
+  assert.ok(!validate('Challenge',{...challenge,retryAfter:-1}));
+  for(const key of ['email','code','accountExists'])assert.ok(!validate('Challenge',{...challenge,[key]:'secret'}));
+  assert.ok(!validate('Challenge',{challengeId:id,expiresIn:600}));
+});
+
+// 游客接续失败仍是成功登录结果；既有邮箱和新注册必须返回相同会话DTO。
+test('注册200与201共享会话合同，接续失败结果仍保有登录凭证',()=>{
+  const responses=doc.paths['/v1/auth/register'].post.responses;
+  assert.deepEqual(responses[200].content,responses[201].content);
+  const session={accessToken:'access-secret',refreshToken:'refresh-secret',claimStatus:'failed',onboardingRequired:true,
+    account:{id,email:'a@example.test',status:'active',profile:null,profileVersion:null,
+      settings:{allowStrangerDm:true,pushEnabled:true,lockscreenPreview:false},
+      ageDeclaration:{status:'not_declared',declaredAt:null,withdrawnAt:null},onboardingRequired:true}};
+  assert.ok(validate('AuthSession',session));
+  assert.ok(!validate('AuthSession',{...session,claimStatus:'claimed_by_email'}));
+  assert.ok(!validate('AuthSession',{...session,refreshHash:'secret'}));
+  const {accessToken,...missingToken}=session;void accessToken;
+  assert.ok(!validate('AuthSession',missingToken));
+});
+
+// 空更新和客户端指定所有者均不得进入服务；设置布尔值不能由字符串冒充。
+test('资料和设置部分更新拒绝空请求与越权字段',()=>{
+  assert.ok(validate('ProfileInput',{nickname:'测试用户',bio:'你好'}));
+  assert.ok(!validate('ProfileInput',{}));
+  assert.ok(!validate('ProfileInput',{nickname:'   '}));
+  assert.ok(!validate('ProfileInput',{nickname:'测试',accountId:id}));
+  assert.ok(validate('SettingsInput',{allowStrangerDm:false}));
+  assert.ok(!validate('SettingsInput',{}));
+  assert.ok(!validate('SettingsInput',{pushEnabled:'false'}));
+  assert.ok(!validate('SettingsInput',{allowStrangerDm:true,accountId:id}));
+});
