@@ -5,7 +5,8 @@
 - [x] 将用户确认的8阶段路线保存到docs/superpowers/plans/2026-10-03-phased-development-acceptance.md。
 - [ ] 阶段1工程基础。
 - 原TS任务5后台基础已有历史验证；现按docs/superpowers/plans/2026-10-03-stage-1-engineering-foundation.md恢复Java/Spring Boot、Maven、MyBatis开发；旧测试证据不计为Java验收。
-- [x] Java改修任务1至5已完成并提交；任务6手机基础和Android模拟器验证已通过，iOS及任务7双工具链CI待完成。
+- [x] Java改修任务1至5已完成并提交；手机基础与Android模拟器通过；任务7统一检查及CI已实现，验证详情见验收记录。
+- [ ] iOS原生测试按用户决定延期；GitHub hosted runner待后续推送实际运行。
 - [ ] 阶段2身份与普通资料。
 - [ ] 阶段3留言板与图片审核。
 - [ ] 阶段4群聊与普通私聊。
@@ -14,7 +15,7 @@
 - [ ] 阶段7运营与数据生命周期。
 - [ ] 阶段8全链路验收与发布准备。
 
-第1阶段未整体验收。任务1至5通过；手机基础、10项测试、两端JS导出及Android开发构建/模拟器操作通过，iOS未验收，CI待开发。后续阶段尚未开始。
+第1阶段不宣称所有平台通过。任务1至5、手机基础及Android已有证据；任务7本地验证与未执行项见docs/development/stage-1-acceptance.md。后续阶段尚未开始。
 
 ## 目标
 将已确认的页面交互方案转换为可离线浏览的线框图和视觉稿，目前覆盖手机端 28 个页面、关键变体及管理后台。

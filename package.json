@@ -11,16 +11,22 @@
     "packages/*"
   ],
   "scripts": {
-    "test:engineering": "node --test tests/engineering.test.cjs",
+    "test:engineering": "node --test tests/engineering.test.cjs tests/check.test.cjs tests/java-reports.test.cjs",
+    "check": "node tools/check.cjs",
+    "check:frontend": "node tools/check.cjs --frontend",
+    "check:backend": "node tools/check.cjs --backend",
+    "check:browser": "node tools/check.cjs --browser",
+    "check:java-reports": "node tools/check-java-reports.cjs",
     "lint": "eslint .",
-    "format:check": "prettier --check tools tests apps README.md package.json tsconfig.base.json eslint.config.mjs",
+    "format:check": "prettier --check .github/workflows tools tests apps README.md package.json tsconfig.base.json eslint.config.mjs",
     "check:engineering": "node tools/check-engineering.cjs"
   },
   "devDependencies": {
-    "typescript": "6.0.3",
+    "@types/node": "22.19.15",
     "eslint": "9.39.5",
-    "typescript-eslint": "8.71.0",
+    "fast-xml-parser": "5.11.2",
     "prettier": "3.8.1",
-    "@types/node": "22.19.15"
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0"
   }
 }

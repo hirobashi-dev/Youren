@@ -2,7 +2,26 @@
 
 ## 当前状态
 
-最新（任务6）：手机端基础已建立，10项测试、类型/lint/格式、Expo兼容及iOS/Android JS导出通过；Android开发客户端在Android14模拟器完成启动、重载、真实Java API成功/503/恢复、中文及安全区验收。iOS开发构建/设备未验收：EAS未登录，Apple账号和设备/macOS条件未确认。任务7 CI未开始，第1阶段仍未整体验收。
+最新（任务7）：统一检查、JUnit报告门槛及三个GitHub CI任务已实现；本地结果见下方记录。手机基础及Android已有证据，用户决定延期iOS原生测试，保持未验收；GitHub hosted runner尚未运行。不宣称第1阶段所有平台通过。
+
+### 统一检查与CI验证证据（2026-10-04）
+
+| 检查 | 实际命令/步骤与结果 |
+|---|---|
+| 测试驱动 | 新增9项编排/报告测试，实现前7项失败（2项拒绝输入已成立）；实现后9项通过，连同工程2项共11项 |
+| 前端组 | `npm run check:frontend`退出0：工程11、历史数据库11、合同9、后台5、手机10项，共46项；类型、lint/格式、生成一致性、后台构建、Expo兼容及两端JS导出通过 |
+| Java组 | `npm run check:backend`退出0：Docker必需检查、Flyway来源、Wrapper clean verify、JUnit六组共30项；无失败/错误/跳过 |
+| 浏览器组 | `npm run check:browser`退出0：Chrome模拟操作1项及真实Java故障/恢复1项；375px与宽屏操作通过 |
+| Docker缺失 | 当前进程DOCKER_BIN指向不存在工具，后端组退出非零，未执行Flyway或Maven；真实daemon和其他终端不受影响 |
+| 工作流 | 官方actionlint1.7.12校验下载SHA256后检查`ci.yml`退出0；Prettier检查包含工作流；官方Actions固定提交 |
+| 干净源码 | Git暂存树导出到新目录，排除旧node_modules/target/dist，`npm ci --no-audit --no-fund`固定安装1407包；修正路径配置后`npm run check`完整退出0，共78项测试，包含重新Java clean verify和两项浏览器检查 |
+| 原目录回归 | 最终`npm run format:check`及手机10项测试退出0，检查源码/配置中文注释和差分 |
+
+干净源码复验发现并修正两项问题：系统Git的core.autocrlf使导出文本变为CRLF，Prettier拒绝44个文件；仓库`.gitattributes`统一文本LF、cmd保留CRLF，未修改系统Git设置。Jest将含`.local`的Windows绝对路径拼入glob后找不到测试；改为相对匹配，原路径失败、新路径两套10项通过，随后完整复验成功。干净目录仅更新这份已验证配置，未复制旧构建产物。
+
+这是全新源码目录的本地验证，不称为GitHub实际检出运行。使用既有独立Node/JDK、Docker、Chrome及隔离测试环境配置；固定安装、各组及完整日志保留于忽略的`.local/stage7-*.log`。GitHub报告和API产物传递仍待后续推送实际确认，仓库未推送；iOS原生测试按用户决定延期，两端JS导出不计平台验收。
+
+测试只停止本次启动的redis-test，保留原有postgres-test和卷；Testcontainers临时实例自行清理。未改变系统默认JDK/PATH，不提交本地环境、依赖、JAR、截图或日志。操作与JSON配置说明见[CI说明](ci.md)。
 
 ### 手机端验证证据（2026-10-04）
 
@@ -55,8 +74,8 @@ Metro首次localhost绑定IPv6导致模拟器加载空白；检查端口和Expo�
 ## 当前继续顺序
 
 1. 阅读[详细计划](../superpowers/plans/2026-10-03-stage-1-engineering-foundation.md)、本文件及根README，确认分支和工作区状态；不要从头重建项目。
-2. Java任务1至5及手机基础/Android模拟器已有证据，不重复开发。任务6剩余iOS开发构建与设备操作；账号或设备缺失时保持平台未验收。
-3. 完成任务7双工具链CI和干净检出验收。根完整check尚未定义；Java用Maven verify、前端/合同用npm，不能声称整仓已通过。
+2. Java任务1至5及手机基础/Android模拟器已有证据，不重复开发。iOS开发构建与设备操作已由用户决定延期，保持平台未验收。
+3. 使用`npm run check`复现本地验收；后续推送后查看GitHub三个任务和报告，当前不计云端通过。下一阶段开发需要先细化身份与普通资料计划。
 
 ## 环境与重启
 

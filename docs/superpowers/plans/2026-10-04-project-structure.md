@@ -48,7 +48,7 @@ Youren/
 │  ├─ superpowers/plans/      开发路线与实施计划
 │  ├─ development/            验收证据和恢复记录
 │  └─ design/                 线框图、视觉稿及相关工具
-├─ .github/workflows/         [规划] 双工具链CI
+├─ .github/workflows/         已有双工具链CI；hosted runner尚未实跑
 ├─ package.json               npm工作区，仅前端/合同及历史工具
 ├─ package-lock.json          根npm依赖锁
 └─ README.md                  安装、启动和文档入口
@@ -250,8 +250,8 @@ worker短事务领取任务并设置租约 → 事务外执行审核/推送等�
 ## 10. 落地顺序与验证
 
 
-1. 第1阶段任务6：建立手机基础目录，先测试状态和重试，再实现；运行类型、组件、JS导出及Android/iOS开发构建验收。
-2. 第1阶段任务7：建立CI与统一检查；Maven `verify`和npm前端/合同检查分别执行，子命令失败必须传递非零状态。
+1. 第1阶段任务6：手机基础、组件、类型、两端JS导出及Android模拟器已有证据；用户决定延期iOS原生验收。
+2. 第1阶段任务7：已有CI与统一检查；Maven `clean verify`和npm前端/合同检查分别执行，子命令失败立即停止，JUnit数量与结果独立检查。GitHub实际运行待后续推送，操作见`docs/development/ci.md`。
 3. 阶段2至7：随业务新增上述规划目录，明确模块接口后开发，避免为目录完整性生成空代码。
 4. 每步核对中文注释、依赖边界、对应测试及差分，保存一次本地提交；更新README说明实际新增目录。
 

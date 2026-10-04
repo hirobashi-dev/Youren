@@ -1,6 +1,6 @@
 # 第1阶段：工程基础实施计划
 
-状态（2026-10-04）：任务1至5已完成并提交；任务6手机基础、10项测试、两端JS导出及Android开发构建/模拟器操作已验证，iOS开发构建和设备验收待账号/环境。任务7双工具链CI尚未开始，第1阶段未整体验收通过。
+状态（2026-10-04）：任务1至5已完成并提交；任务6手机基础、10项测试、两端JS导出及Android开发构建/模拟器操作已验证，iOS原生验收按用户决定延期。任务7统一检查与CI已实现，本地验收结果见记录；GitHub hosted runner待首次推送实跑，第1阶段不宣称全部平台通过。
 
 本文件是第1阶段唯一实施计划，已合并Java/Maven改修内容；[验收记录](../../development/stage-1-acceptance.md)保存当前验证和历史证据。原TypeScript后端及独立改修计划可通过Git历史查阅，当前不再执行旧NestJS/runtime命令。
 
@@ -30,13 +30,13 @@
 | `apps/admin/`、`tools/test-admin-java.cjs` | 已有：中文状态页、组件和真实Java浏览器测试 |
 | `packages/contracts/`、`packages/database/` | 已有：OpenAPI合同、旧数据库规范源和历史回归工具 |
 | `apps/mobile/` | 已有：Expo工程、状态页、API客户端、主题、测试和开发构建配置 |
-| `.github/workflows/ci.yml`、`tools/check.cjs` | 待建立或调整：双工具链CI、统一检查和失败传播 |
+| `.github/workflows/ci.yml`、`tools/check.cjs`、`tools/check-java-reports.cjs` | 已有：双工具链CI、统一检查、失败传播与JUnit数量门槛 |
 
 旧数据库包保留只读参考；同一库禁止同时由Prisma和Flyway修改结构。新增DDL由Flyway管理，不生成54套空Mapper。
 
 ## 全局执行要求
 
-按executing-plans逐任务实施、记录验证与提交；当前下一步为任务6。
+按executing-plans逐任务实施、记录验证与提交；任务7完成本地检查后，保留GitHub实跑及延期iOS验收事项。
 
 - 在`develop/stage-1-foundation`开发；每步先写对应失败测试，再实现、验证、差分审查并本地提交，未要求不推送。
 - 代码及测试加入中文注释；JSON使用邻近中文README说明。界面中文，服务时间UTC；页面实际渲染和操作。
@@ -99,19 +99,20 @@ Windows使用`backend/build.ps1`临时选择独立JDK，退出后恢复环境；
 - [ ] 实时协议仍待确认，建议Spring WebSocket＋JSON，在阶段4前确认；手机骨架不提前绑定Socket.IO。
 - [x] 定义并执行`test`、`typecheck`、`build:js`，运行`expo install --check`，iOS/Android JS导出通过；JS导出不等于原生构建通过。
 - [x] Android使用Expo prebuild、Gradle assembleDebug及adb安装，Android14模拟器验证启动、重载、真实API200/503/恢复、中文和安全区；证据见验收记录。
-- [ ] iOS使用EAS开发构建及登记真机，或macOS模拟器路径；当前EAS未登录，账号/设备条件尚未确认。
+- [ ] iOS使用EAS开发构建及登记真机，或macOS模拟器路径；用户决定暂缓账号/设备准备及原生测试，保持未验收。
 - [ ] 两端分别验证启动、重载、API成功/故障/恢复、中文和安全区；记录OS、设备、SDK、构建ID、截图及结果。
 - [ ] 缺账号/设备时平台保持未验收；Expo Go不代替开发构建。仅配置完成时提交记录明确缺少平台证据。
 
 Windows不运行Xcode；iOS账号、Apple开发者资格及设备条件在构建前确认。[Expo开发构建说明](https://docs.expo.dev/develop/development-builds/introduction/)。
 
-## 任务7：双工具链CI与整体验收 — 待开发
+## 任务7：双工具链CI与整体验收 — 已实现，云端实跑待执行
 
-- [ ] 编排测试先验证失败传播，再实现`tools/check.cjs`和根`check`；必要命令失败立即非零退出，不忽略缺失脚本。
-- [ ] CI固定JDK、Maven和Node/npm；后端Wrapper执行`verify`，前端执行固定安装、类型、格式、测试、构建和合同检查。
-- [ ] 使用Testcontainers隔离依赖，缺Docker时报失败、不跳过IT；核对报告数量和容器清理。
-- [ ] 干净检出复现README及后台浏览器检查、手机JS导出；云构建和人工设备证据单独记录。
-- [ ] 汇总结果、平台证据和未实施原因；核对中文注释、秘密、锁文件和差分，保存验收提交。
+- [x] 编排测试先验证失败传播，再实现`tools/check.cjs`和根`check`；必要命令失败立即非零退出，不忽略缺失脚本。
+- [x] CI固定JDK、Maven和Node/npm；后端Wrapper执行`clean verify`，前端执行固定安装、类型、格式、测试、构建和合同检查；官方Actions固定提交，actionlint检查通过。
+- [x] 使用Testcontainers隔离依赖，缺Docker时报失败、不跳过IT；JUnit检查六组实际数量及零失败/错误/跳过。
+- [x] 干净源码固定安装后完整执行统一检查退出0，78项测试及构建通过；记录并修正CRLF和Windows Jest路径问题，详情见验收记录。
+- [ ] GitHub hosted runner实际执行并留存产物；当前未推送，云端不计通过。
+- [x] 汇总结果、平台证据和未实施原因；核对中文注释、秘密、锁文件和差分，保存本地验收版本，不推送。
 
 ## 命令矩阵
 
@@ -128,7 +129,8 @@ Windows不运行Xcode；iOS账号、Apple开发者资格及设备条件在构建
 | `npm test -w @youren/contracts`、`npm run check:generated -w @youren/contracts` | 已有：合同及生成一致性 |
 | `npm test -w @youren/mobile -- --runInBand` | 已有：手机10项组件/客户端测试 |
 | `npm run build:js -w @youren/mobile`、`npm run android -w @youren/mobile` | 已有：JS导出、Android开发构建；后者需配置SDK/JDK及设备 |
-| `npm run check` | 待任务7定义：整仓编排，当前不能执行 |
+| `npm run check` | 已有：依次检查前端、Java后端和浏览器；任何失败立即停止 |
+| `npm run check:frontend`、`npm run check:backend`、`npm run check:browser` | 已有：分组定位；浏览器需要先构建后端及准备infra/.env |
 | `git diff --check` | 每步完成前：差分格式检查 |
 
 ## 第1阶段整体验收清单
@@ -136,16 +138,16 @@ Windows不运行Xcode；iOS账号、Apple开发者资格及设备条件在构建
 以下12项是最终门槛，尚未整体签核；已完成的局部验证见任务记录。
 
 - [ ] 全新检出按README固定安装、检查、启动成功。
-- [ ] 前后端依赖边界清晰，手机端不导入服务端秘密或数据库实现。
-- [ ] 重复迁移无副作用，54表、MyBatis读写/事务及迁移接续验证完整。
-- [ ] API存活/就绪正常，数据库或Redis故障503并可恢复。
-- [ ] worker失败可检测、重复关闭安全，无遗留连接或业务副作用。
-- [ ] 日志脱敏、格式、类型、合同和迁移源一致性通过。
-- [ ] 后台实际渲染，失败/恢复/重试操作通过。
-- [ ] Android开发构建安装并连接API，设备与截图证据完整。
+- [x] 前后端依赖边界清晰，手机端不导入服务端秘密或数据库实现。
+- [x] 重复迁移无副作用，54表、MyBatis读写/事务及迁移接续验证完整。
+- [x] API存活/就绪正常，数据库或Redis故障503并可恢复。
+- [x] worker失败可检测、重复关闭安全，无遗留连接或业务副作用。
+- [x] 日志脱敏、格式、类型、合同和迁移源一致性通过。
+- [x] 后台实际渲染，失败/恢复/重试操作通过。
+- [x] Android开发构建安装并连接API，设备与截图证据完整。
 - [ ] iOS开发构建安装并连接API，设备与截图证据完整。
-- [ ] 统一检查传播真实失败，CI集成和浏览器检查通过。
-- [ ] 开发/测试数据隔离，秘密和构建产物未提交。
-- [ ] 每步测试和本地提交记录完整；必要验收缺失时阶段保持未完成。
+- [ ] 统一检查与浏览器本地通过，CI配置通过静态检查；GitHub实际运行仍待推送。
+- [x] 开发/测试数据隔离，秘密和构建产物未提交。
+- [x] 每步测试和本地提交记录完整；iOS延期、GitHub待实跑均明确记录，不计通过。
 
-下一步补齐任务6的iOS平台条件与验收，不将其标为通过；任务7尚未执行。全部门槛通过后进入阶段2。
+用户已决定iOS测试延期，保持未验收。GitHub实际执行待后续推送；本地结果见[验收记录](../../development/stage-1-acceptance.md)，操作说明见[CI说明](../../development/ci.md)。后续阶段的计划与开发另行推进，不把延期事项标为通过。

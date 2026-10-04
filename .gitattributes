@@ -1,0 +1,4 @@
+# 文本统一LF，避免Windows的core.autocrlf使干净检出违反Prettier默认规则。
+* text=auto eol=lf
+# Windows批处理仍使用本机CRLF；不修改系统Git设置。
+*.cmd text eol=crlf
