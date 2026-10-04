@@ -4,7 +4,7 @@
 
 **目标：** 建成游客凭证、邮箱注册与登录、会话安全、游客内容接续、普通个人资料和设置的可测试端到端基础。
 
-**架构：** Java API 负责身份、权限、事务与资料过滤；MyBatis 访问现有 PostgreSQL/Flyway 数据结构，Redis 承担短期验证码和限流。Expo 手机端封装认证 API，并将秘密凭证存于 SecureStore；EmailDelivery 作为后端端口，开发测试使用可断言的替身，生产邮件供应商由上线配置决定。
+**架构：** Java API 负责身份、权限、事务与资料过滤；MyBatis 访问现有 PostgreSQL/Flyway 数据结构，Redis 承担短期认证辅助状态和限流；验证码权威状态与 PostgreSQL 的分工在任务1锁定。Expo 手机端封装认证 API，并将秘密凭证存于 SecureStore；EmailDelivery 作为后端端口，开发测试使用可断言的替身，生产邮件供应商由上线配置决定。
 
 **技术栈：** Java 21、Spring Boot 3.5、Maven、MyBatis、PostgreSQL、Redis、JUnit/MockMvc/Testcontainers；React Native、Expo、TypeScript、Jest、React Native Testing Library。
 
@@ -13,7 +13,7 @@
 ## 全局约束
 
 - 只实现普通账号与普通资料，不提前实现恋爱资料、年龄声明、留言板写入、群聊、活动或管理后台。
-- 现有 `V1__initial.sql` 已冻结；复用 `accounts`、`principals`、`guest_credentials`、`sessions`、`email_challenges`、`profiles`、`account_settings`。若验证发现结构无法满足合同，只能新增带中文注释的 Flyway V2，禁止改写 V1。
+- 现有 `V1__initial.sql` 已冻结；复用 `accounts`、`principals`、`guest_credentials`、`sessions`、`email_challenges`、`consent_records`、`profiles`、`account_settings`。若验证发现结构无法满足合同，只能新增带中文注释的 Flyway V2，禁止改写 V1。
 - 所有代码与测试就近写简明中文注释，说明业务规则、权限、事务、边界及场景期望；不得记录验证码、令牌、邮箱正文或认证头。
 - 注册成功必须先有邮箱验证及服务端条款/隐私版本接受记录；资料公开响应不得包含邮箱、游客主体、恋爱字段或活动记录。
 - Token 必须高熵、只存摘要、刷新单次轮换；重放撤销同一会话族。游客凭证仅证明其持有者，接续失败不得影响登录或关联他人内容。
@@ -31,12 +31,27 @@
 
 在改动业务代码前确认以下建议；它们目前是设计建议，不是已批准规则：验证码用于注册和登录、六位数字、有效10分钟、最多错误5次、同邮箱60秒冷却、响应不暴露邮箱是否已注册；访问令牌15分钟、刷新令牌30天（技术方案建议）；邮件服务供应商及密钥注入方式。默认验证码参数可配置。若服务端暂不具备真实发信配置，以 EmailDelivery 测试替身完成本地自动化，但不得宣称真实邮箱验收通过。注册条款版本从服务端配置读取，前端记录用户主动勾选，不得代替服务端校验。
 
+## 开工前准备与决策记录
+
+用户已授权执行以下准备流程；此前列出的验证码和令牌数值仍为建议，不能把流程授权当作具体参数已经确认。
+
+- [ ] 确认验证码与令牌参数，并补齐游客凭证有效期、邮箱和 IP 的发送窗口与总量上限。记录配置名、默认值、边界和决定状态；生产邮件供应商可以延期，密钥只由环境注入。
+- [ ] 在当前提交执行一次 `npm run check`，记录提交号、Node/JDK、PostgreSQL/Redis、命令结果和测试数量；全部通过才进入后续开发。历史 CI 或健康检查成功不替代本次基线；失败先修复并复验。
+- [ ] 对照合同与冻结的 V1，检查条款接受记录、验证码消费、刷新令牌摘要、轮换历史及会话族撤销是否有足够字段、约束和索引。形成需求到表/字段的对照记录；不足时只新增 V2，并验证空库和既有 V1 升级。
+- [ ] 统一已注册邮箱再次注册的状态码、错误或受验证登录结果；明确登录用途验证码遇到未注册邮箱的行为，以及哪些响应必须保持一致以避免邮箱枚举。同步详细设计、合同源与测试，不能由实现临时决定。
+- [ ] 明确 PostgreSQL 与 Redis 中验证码状态的权威来源、消费原子性、错误次数竞争、发送失败和依赖故障处理；外部邮件不得在持锁事务中等待。并发提交同一挑战只允许一次成功，失败不能留下可复用的已消费验证码。
+- [ ] 明确刷新响应丢失时的处理：手机端串行刷新，禁止盲目重放已轮换的旧令牌；临时断网、超时或 503 保留 SecureStore 凭证并进入待恢复状态，不开放需有效认证的操作。服务端明确确认凭证过期、撤销或重放时才清除会话；用户主动退出清除本地凭证。
+- [ ] 准备 Android 可获取验证码的隔离测试邮件渠道，例如仅测试环境启用的邮件收件箱；测试配置默认关闭，生产启动不得暴露读取验证码入口，普通日志不输出秘密。分别记录替身验收与真实邮件投递验收。
+
+以上结果写入 `docs/development/stage-2-acceptance.md`；未执行项保持未勾选。iOS 原生验收继续延期，生产邮件供应商不阻塞本地开发。
+
 ## 任务与验收
 
 ### 任务1：锁定合同、参数与错误语义
 
 **文件：** 修改 `packages/contracts/src/operations.cjs`、`schemas.cjs`、对应合同测试与 `openapi.json`；创建 `docs/development/stage-2-acceptance.md`。
 
+- [ ] 完成开工前基线、参数决定和合同/数据库对照；将已注册邮箱处理、验证码存储分工、并发消费及刷新网络恢复语义同步到详细设计和合同。
 - [ ] 先为验证码用途、过期/尝试/冷却、匿名响应、注册条款版本、登录结果、游客接续失败状态、资料字段和设置字段补合同断言。
 - [ ] 核实 POST `/guest-sessions`、`/auth/email-code`、`/auth/register`、`/auth/login`、`/auth/refresh`、`/auth/logout`、`/me/guest-claims`、`/me`、PATCH `/me/profile`、PATCH `/me/settings`、GET `/profiles/{accountId}` 全部有请求/响应及权限约束。
 - [ ] 运行 `npm test -w @youren/contracts` 与 `npm run check:generated -w @youren/contracts`；预期合同测试通过、生成文件无差异。
@@ -53,10 +68,11 @@
 
 ### 任务3：邮箱挑战、注册、登录和令牌
 
-**文件：** 新增 `api/auth/`、`api/email/`、`api/security/` 类；数据库 challenge/session Mapper；`EmailChallengeServiceTest`、`AuthControllerTest`、`AuthFlowIT`。
+**文件：** 新增 `api/auth/`、`api/email/`、`api/security/` 类；数据库 challenge/session/consent Mapper（文件地图补充 ConsentRecordMapper.java 与同名 XML）；`EmailChallengeServiceTest`、`AuthControllerTest`、`AuthFlowIT`。
 
 - [ ] 先测正确/错误用途、过期、超限、冷却、重复消费、账号存在与否响应一致、未验证注册被拒绝、已注册邮箱不覆盖账号、条款版本由服务端要求。
 - [ ] 实现 EmailDelivery 端口及测试替身，Redis 限速、challenge 单次消费、账号事务创建、短期 access/rotation refresh、退出撤销；登录先成功签发会话，游客接续作为独立可重试结果。
+- [ ] 测同一验证码并发消费仅一次成功、邮箱/IP发送总量限制、邮件发送失败及Redis故障；验证条款接受记录与注册账号同事务提交。
 - [ ] 测刷新轮换与并发重放：旧 refresh 再用必须撤销该会话族；退出后 access/refresh 均不可继续访问。错误响应遵守 OpenAPI 且日志无秘密。
 - [ ] 运行 `.\backend\build.ps1 -pl api -am verify`；预期 MockMvc 和 PostgreSQL/Redis 集成通过。
 - [ ] 审查事务、中文测试说明和脱敏后提交 `feat: implement email authentication`。
@@ -76,7 +92,8 @@
 **文件：** 更新 mobile `package.json`/lockfile；新增 `apps/mobile/src/api/auth.ts`、`profile.ts`、认证状态/SecureStore 封装和相关 screens/components；新增 `tests/auth.test.tsx`、`profile.test.tsx`、`sessionStore.test.ts`；更新 mobile README。
 
 - [ ] 先测试邮箱格式/验证码提交、注册条款主动勾选、错误与限流信息、游客浏览进入登录、登录后接续失败可重试、资料编辑/加载/冲突、退出清理会话。
-- [ ] 实现 API 封装、请求超时与安全错误映射、SecureStore 持久化；启动时刷新会话，失败清空秘密并回游客浏览。普通主页不得呈现恋爱字段。
+- [ ] 实现 API 封装、请求超时与安全错误映射、SecureStore 持久化；启动时串行刷新会话；明确失效才清空秘密并回游客浏览，临时断网/超时/503保留凭证并提示恢复，禁止盲目重放已轮换的刷新令牌。普通主页不得呈现恋爱字段。
+- [ ] 测临时断网/超时/503不清除凭证、明确失效清除凭证、并发请求仅一次刷新及刷新响应丢失后的恢复。
 - [ ] 运行 `npm test -w @youren/mobile -- --runInBand`、`npm run typecheck -w @youren/mobile`、`npm run build:js -w @youren/mobile`；均应通过。
 - [ ] 在 Android 模拟器实际操作注册/登录（测试邮件替身或已配置测试邮箱）、资料读取编辑、重新启动恢复、退出及失败重试；记录设备、截图和结果。iOS实机/原生构建列为延期，不通过模拟截图替代。
 - [ ] 审查交互与中文注释后提交 `feat: add mobile account flows`。
