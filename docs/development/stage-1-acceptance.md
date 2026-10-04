@@ -2,6 +2,34 @@
 
 ## 当前状态
 
+最新（任务6）：手机端基础已建立，10项测试、类型/lint/格式、Expo兼容及iOS/Android JS导出通过；Android开发客户端在Android14模拟器完成启动、重载、真实Java API成功/503/恢复、中文及安全区验收。iOS开发构建/设备未验收：EAS未登录，Apple账号和设备/macOS条件未确认。任务7 CI未开始，第1阶段仍未整体验收。
+
+### 手机端验证证据（2026-10-04）
+
+| 检查 | 实际命令/步骤与结果 |
+|---|---|
+| 测试驱动 | 初始两个实现缺失；补充边界占位后10项测试均因功能缺失失败。实现后`npm test -w @youren/mobile -- --runInBand`：2套、10项通过 |
+| 类型/兼容 | `npm run typecheck -w @youren/mobile`及`npm exec -w @youren/mobile -- expo install --check`退出0；React类型按Expo要求修正至19.2.4 |
+| 两端JS | `npm run build:js -w @youren/mobile`退出0，生成Android和iOS各1个Hermes包；config限定手机两平台，不扩展Web依赖 |
+| 静态/回归 | 根lint、format:check通过；工程2项、后台5项、合同9项通过，后台build通过 |
+| 固定安装复验 | 更新根锁后`npm ci --no-audit --no-fund`退出0；重新运行手机10项、类型及根格式检查全部通过，生成物和截图保持忽略 |
+| 原生构建 | Expo prebuild android no-install，生成目录运行Gradle `assembleDebug -PreactNativeArchitectures=x86_64 --no-daemon --console=plain`；BUILD SUCCESSFUL，447任务，5m35s |
+| 原生环境 | 独立JDK21、Gradle9.3.1、SDK36/BuildTools36、NDK27.1.12297006；构建另自动安装已许可的BuildTools35及CMake3.22.1，未修改系统默认设置 |
+| 安装/设备 | `adb -s emulator-5556 install .../app-debug.apk`成功；Pixel_3a_API_34只读、无快照模式，Android14，1080×2220；包名jp.youren.app.dev，Expo57.0.26、RN0.86.3 |
+| API真实验证 | 独立Java端口3008、测试PG5442/Redis6382；手机地址10.0.2.2:3008。初始200/连接成功 → 停止仅测试Redis → API503/手机重试连接失败 → 恢复Redis并有限等待Java重连 → 再重试连接成功 |
+| 重载/显示 | 开发菜单Reload重新加载Metro包后恢复成功、重试可操作；成功、失败、恢复、重载截图均保存且视觉复核中文、按钮和安全区 |
+| iOS限制 | 固定EAS CLI24.10.0，whoami为Not logged in；未上传、未云构建、未安装iOS设备，不计平台通过 |
+
+APK SHA256：`19e09ba7dbaaa07dfd0fcb95f712d5eb58b279c55a3600055343f7f10c1609af`。截图为忽略产物：`artifacts/mobile-android-ready.png`、`mobile-android-unavailable.png`、`mobile-android-recovered.png`、`mobile-android-reloaded.png`。
+
+Metro首次localhost绑定IPv6导致模拟器加载空白；检查端口和Expo日志定位后，仅当前Metro进程使用`NODE_OPTIONS=--dns-result-order=ipv4first`，IPv4状态端点200并成功加载原生页面。未修改系统网络配置。Redis刚健康时Java可能暂未重连，验收采用有限轮询，不立即假定恢复完成。
+
+验证后核对进程命令与独立端口，停止本次Metro/API及只读模拟器，停止本次新启动的测试Redis；原有postgres-test继续运行，数据卷未删除，其他项目进程未操作。
+
+构建出现第三方Kotlin/Gradle弃用提示、SDK工具XML版本提示，以及外部NO_COLOR/FORCE_COLOR提示；实际构建和检查未失败。不把开发APK作为商店发布包或生产依赖认证。
+
+### 任务1至5及早期历史记录
+
 开发已恢复，Java改修任务1已验收：Maven四模块、Wrapper、shared配置验证及安全日志通过。7项JUnit测试、clean verify和格式检查成功；Java8被Enforcer拒绝、JAVA_HOME退出后恢复。MyBatis/Flyway新增11项数据库集成测试通过，现有测试库已审计baseline且业务数据不变；Java API新增6项HTTP单元及1项真实依赖IT通过，合同9项及生成一致性通过；worker新增3项单元及2项真实JAR进程IT通过，SIGINT/SIGTERM及JDBC连接释放验证成功。旧TS后端移除。前端Java兼容回归已通过：5项组件/客户端、模拟浏览器1项、真实Java浏览器1项，窄屏375px截图已复核；下一步手机端及CI，以下暂停说明保留为历史记录。
 
 历史（恢复前）2026-10-04补充决策：后端目标已改为Java/Spring Boot、Maven、MyBatis，当前代码尚未迁移。下方已执行验证均为原TypeScript/Prisma证据，不能视为Java/MyBatis通过。恢复执行依据为[第1阶段实施计划](../superpowers/plans/2026-10-03-stage-1-engineering-foundation.md)。
@@ -27,7 +55,7 @@
 ## 当前继续顺序
 
 1. 阅读[详细计划](../superpowers/plans/2026-10-03-stage-1-engineering-foundation.md)、本文件及根README，确认分支和工作区状态；不要从头重建项目。
-2. Java改修任务1至5已有当前证据和提交，不重复开发。接下来执行第1阶段任务6：手机端、两端开发构建和设备操作；账号或设备缺失时记录平台未验收。
+2. Java任务1至5及手机基础/Android模拟器已有证据，不重复开发。任务6剩余iOS开发构建与设备操作；账号或设备缺失时保持平台未验收。
 3. 完成任务7双工具链CI和干净检出验收。根完整check尚未定义；Java用Maven verify、前端/合同用npm，不能声称整仓已通过。
 
 ## 环境与重启

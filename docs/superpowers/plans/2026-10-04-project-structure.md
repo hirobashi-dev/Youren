@@ -12,7 +12,7 @@
 
 | 工程 | 根目录 | 职责 | 当前状态 |
 |---|---|---|---|
-| 手机端 | `apps/mobile/` | 普通用户使用，支持iOS与Android | 尚未建立，第1阶段任务6 |
+| 手机端 | `apps/mobile/` | 普通用户使用，支持iOS与Android | 已有基础页及Android模拟器证据，iOS尚未验收 |
 | 管理后台 | `apps/admin/` | 审核、举报和用户管理界面 | 已有连接状态页，业务后续开发 |
 | API服务 | `backend/api/` | HTTP接口、权限、业务事务与后续实时通信 | 已有健康接口及错误处理 |
 | worker服务 | `backend/worker/` | 到期清理、审核、推送等异步任务 | 已有启动/关闭骨架，尚无业务消费 |
@@ -27,7 +27,7 @@
 Youren/
 ├─ apps/
 │  ├─ admin/                  管理后台
-│  └─ mobile/                 [规划] iOS/Android共用手机工程
+│  └─ mobile/                 iOS/Android共用手机工程
 ├─ backend/
 │  ├─ pom.xml                 Maven聚合：shared/database/api/worker
 │  ├─ mvnw、mvnw.cmd          固定Maven Wrapper
@@ -54,7 +54,7 @@ Youren/
 └─ README.md                  安装、启动和文档入口
 ```
 
-## 3. 手机端目录（全部为规划）
+## 3. 手机端目录（基础已有，业务目录为规划）
 
 ```text
 apps/mobile/
@@ -63,15 +63,15 @@ apps/mobile/
 ├─ eas.json                  Android/iOS开发构建配置
 ├─ package.json、tsconfig.json
 ├─ jest.config.cjs           组件测试配置
-├─ assets/                   图标、启动图和静态资源
+├─ assets/                   [规划] 图标、启动图和静态资源
 ├─ src/
 │  ├─ screens/
 │  │  └─ FoundationScreen.tsx  第1阶段连接状态页
 │  ├─ api/health.ts           第1阶段健康请求、超时与取消
 │  ├─ theme.ts               绿色主色、粉色恋爱辅助色
-│  ├─ components/            后续复用按钮、卡片及状态提示
-│  ├─ navigation/            后续导航和页面路由
-│  └─ features/              后续业务模块，见下方约定
+│  ├─ components/            [规划] 后续复用按钮、卡片及状态提示
+│  ├─ navigation/            [规划] 后续导航和页面路由
+│  └─ features/              [规划] 后续业务模块，见下方约定
 ├─ tests/FoundationScreen.test.tsx
 └─ README.md                 本机运行、设备地址与构建验收
 ```
@@ -232,7 +232,7 @@ worker短事务领取任务并设置租约 → 事务外执行审核/推送等�
 | Java API/worker | 已有各模块`src/main/resources/application.yml`；进程环境变量 | 必需`SPRING_DATASOURCE_URL`、独立用户名/密码、`SPRING_DATA_REDIS_URL`；Java不自动读取`.env` |
 | Java可选配置 | `SERVER_PORT`、`READINESS_TIMEOUT_MS`、`LOG_LEVEL` | 当前默认3000、1500ms、info；字段边界以shared验证和后端README为准 |
 | 管理后台 | 规划`apps/admin/.env.example`；Vite实际环境文件 | `VITE_API_BASE_URL`是公开地址；现有客户端缺省为`http://127.0.0.1:3000` |
-| 手机端 | 规划`apps/mobile/.env.example`和`app.config.ts` | `EXPO_PUBLIC_API_BASE_URL`是公开地址；模拟器/真机地址分别记录，不能照搬本机localhost |
+| 手机端 | 已有`apps/mobile/.env.example`和`app.config.ts` | `EXPO_PUBLIC_API_BASE_URL`是公开地址；模拟器/真机地址分别记录，不能照搬本机localhost |
 | 云构建/CI | 平台环境变量和秘密管理 | 仅注入该任务需要的配置，不提交密钥文件或账号凭据 |
 
 环境示例和README可提交，实际`.env`及秘密不得提交；`VITE_*`、`EXPO_PUBLIC_*`会进入客户端产物，禁止放密码、签名密钥或管理员凭据。新增Java配置示例放`backend/.env.example`（规划），仅作为变量说明，不能暗示Java会自动加载。

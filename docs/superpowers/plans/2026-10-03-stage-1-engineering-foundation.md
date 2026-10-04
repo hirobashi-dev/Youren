@@ -1,6 +1,6 @@
 # 第1阶段：工程基础实施计划
 
-状态（2026-10-04）：开发已恢复，任务1至5已完成、测试并本地提交；任务6手机端和任务7双工具链CI尚未开始。第1阶段尚未整体验收通过。
+状态（2026-10-04）：任务1至5已完成并提交；任务6手机基础、10项测试、两端JS导出及Android开发构建/模拟器操作已验证，iOS开发构建和设备验收待账号/环境。任务7双工具链CI尚未开始，第1阶段未整体验收通过。
 
 本文件是第1阶段唯一实施计划，已合并Java/Maven改修内容；[验收记录](../../development/stage-1-acceptance.md)保存当前验证和历史证据。原TypeScript后端及独立改修计划可通过Git历史查阅，当前不再执行旧NestJS/runtime命令。
 
@@ -29,7 +29,7 @@
 | `infra/` | 已有：隔离开发/测试数据库和Redis、环境示例 |
 | `apps/admin/`、`tools/test-admin-java.cjs` | 已有：中文状态页、组件和真实Java浏览器测试 |
 | `packages/contracts/`、`packages/database/` | 已有：OpenAPI合同、旧数据库规范源和历史回归工具 |
-| `apps/mobile/` | 待新增：Expo工程、状态页、API客户端、主题、测试和构建配置 |
+| `apps/mobile/` | 已有：Expo工程、状态页、API客户端、主题、测试和开发构建配置 |
 | `.github/workflows/ci.yml`、`tools/check.cjs` | 待建立或调整：双工具链CI、统一检查和失败传播 |
 
 旧数据库包保留只读参考；同一库禁止同时由Prisma和Flyway修改结构。新增DDL由Flyway管理，不生成54套空Mapper。
@@ -89,16 +89,17 @@ Windows使用`backend/build.ps1`临时选择独立JDK，退出后恢复环境；
 - [x] 中文连接状态页调用Java API；5项组件/客户端测试覆盖超时、取消和状态。
 - [x] 模拟及真实Java浏览器测试各1项通过；Redis故障→重试→恢复、375px窄屏截图复核及类型/构建/静态检查通过。
 
-## 任务6：手机端与两端开发构建 — 待开发
+## 任务6：手机端与两端开发构建 — 部分完成，iOS未验收
 
 接口：独立`getReadiness(signal?: AbortSignal)`返回`ready`或`unavailable`；`FoundationScreen`展示中文状态与重试。`EXPO_PUBLIC_API_BASE_URL`仅放公开地址，真机不能使用自身localhost。
 
-- [ ] 先写成功、失败、超时、取消及重试测试，确认失败后实现最小页面。
-- [ ] 新增`App.tsx`、`src/screens/FoundationScreen.tsx`、`src/api/health.ts`、`src/theme.ts`、测试及README；沿用绿色主色和粉色恋爱辅助色，不实现业务页面。
-- [ ] 固定Expo配套依赖和EAS CLI；新增`app.config.ts`、`eas.json`，配置开发客户端/internal与iOS模拟器构建。
+- [x] 先写成功、失败、超时、取消及重试测试，确认10项失败后实现页面，10项通过。
+- [x] 新增`App.tsx`、`src/screens/FoundationScreen.tsx`、`src/api/health.ts`、`src/theme.ts`、测试及README；沿用绿色主色和粉色恋爱辅助色，不实现业务页面。
+- [x] 固定Expo配套依赖和EAS CLI；新增`app.config.ts`、`eas.json`，配置开发客户端/internal与iOS模拟器构建。
 - [ ] 实时协议仍待确认，建议Spring WebSocket＋JSON，在阶段4前确认；手机骨架不提前绑定Socket.IO。
-- [ ] 定义并执行`test`、`typecheck`、`build:js`，运行`expo install --check`。JS导出不等于原生构建通过。
-- [ ] Android执行`expo run:android`构建安装；iOS使用EAS开发构建及登记真机，或macOS模拟器路径。
+- [x] 定义并执行`test`、`typecheck`、`build:js`，运行`expo install --check`，iOS/Android JS导出通过；JS导出不等于原生构建通过。
+- [x] Android使用Expo prebuild、Gradle assembleDebug及adb安装，Android14模拟器验证启动、重载、真实API200/503/恢复、中文和安全区；证据见验收记录。
+- [ ] iOS使用EAS开发构建及登记真机，或macOS模拟器路径；当前EAS未登录，账号/设备条件尚未确认。
 - [ ] 两端分别验证启动、重载、API成功/故障/恢复、中文和安全区；记录OS、设备、SDK、构建ID、截图及结果。
 - [ ] 缺账号/设备时平台保持未验收；Expo Go不代替开发构建。仅配置完成时提交记录明确缺少平台证据。
 
@@ -125,8 +126,8 @@ Windows不运行Xcode；iOS账号、Apple开发者资格及设备条件在构建
 | `npm run test:e2e -w @youren/admin` | 已有：模拟浏览器检查 |
 | `npm run test:e2e:java -w @youren/admin` | 已有：真实Java浏览器检查 |
 | `npm test -w @youren/contracts`、`npm run check:generated -w @youren/contracts` | 已有：合同及生成一致性 |
-| `npm test -w @youren/mobile -- --runInBand` | 待任务6定义：手机组件测试 |
-| `npm run build:js -w @youren/mobile`、`npm run android -w @youren/mobile` | 待任务6定义：JS导出、Android开发构建 |
+| `npm test -w @youren/mobile -- --runInBand` | 已有：手机10项组件/客户端测试 |
+| `npm run build:js -w @youren/mobile`、`npm run android -w @youren/mobile` | 已有：JS导出、Android开发构建；后者需配置SDK/JDK及设备 |
 | `npm run check` | 待任务7定义：整仓编排，当前不能执行 |
 | `git diff --check` | 每步完成前：差分格式检查 |
 
@@ -147,4 +148,4 @@ Windows不运行Xcode；iOS账号、Apple开发者资格及设备条件在构建
 - [ ] 开发/测试数据隔离，秘密和构建产物未提交。
 - [ ] 每步测试和本地提交记录完整；必要验收缺失时阶段保持未完成。
 
-下一步执行任务6，不重复实施已通过的Java基础任务；全部门槛通过后进入阶段2。
+下一步补齐任务6的iOS平台条件与验收，不将其标为通过；任务7尚未执行。全部门槛通过后进入阶段2。
