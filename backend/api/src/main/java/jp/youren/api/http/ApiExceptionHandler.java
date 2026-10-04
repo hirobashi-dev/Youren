@@ -19,6 +19,15 @@ public final class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         .body(new ApiError("AUTH_REQUIRED", "身份凭证不可用", java.util.UUID.randomUUID().toString()));
   }
 
+  // 认证失败保持稳定合同字段；限流等待由服务端计算。
+  @ExceptionHandler(jp.youren.api.auth.AuthFailure.class)
+  public ResponseEntity<Object> authentication(jp.youren.api.auth.AuthFailure error) {
+    var builder = ResponseEntity.status(error.status()).header("Cache-Control", "no-store");
+    if (error.status() == 429) builder.header("Retry-After", Long.toString(error.retryAfter()));
+    return builder.body(
+        new ApiError(error.code(), "认证操作不可用", java.util.UUID.randomUUID().toString()));
+  }
+
   @Override
   protected ResponseEntity<Object> handleExceptionInternal(
       Exception error,
@@ -26,6 +35,8 @@ public final class ApiExceptionHandler extends ResponseEntityExceptionHandler {
       HttpHeaders headers,
       HttpStatusCode status,
       WebRequest request) {
+    headers = new HttpHeaders(headers);
+    headers.setCacheControl("no-store");
     String code = status.value() == 404 ? "CONTENT_UNAVAILABLE" : "INVALID_REQUEST";
     String message = status.value() == 404 ? "内容不可用" : "请求参数不正确";
     return new ResponseEntity<>(
@@ -35,6 +46,7 @@ public final class ApiExceptionHandler extends ResponseEntityExceptionHandler {
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Object> unexpected(Exception error) {
     return ResponseEntity.status(500)
+        .header("Cache-Control", "no-store")
         .body(new ApiError("INTERNAL_ERROR", "服务暂时不可用", java.util.UUID.randomUUID().toString()));
   }
 }

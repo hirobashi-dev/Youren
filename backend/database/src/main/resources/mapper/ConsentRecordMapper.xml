@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="jp.youren.database.mapper.ConsentRecordMapper">
+  <!-- 服务端当前版本与服务器接受时间只在成功创建新账号时写入。 -->
+  <insert id="insert" timeout="2">INSERT INTO consent_records(id,account_id,terms_version,privacy_version,accepted_at,created_at,updated_at) VALUES(#{id},#{accountId},#{terms},#{privacy},#{now},#{now},#{now})</insert>
+</mapper>

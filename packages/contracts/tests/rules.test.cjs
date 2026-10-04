@@ -28,7 +28,16 @@ test('全部路径有唯一操作ID，路径参数必填，204没有正文',()=>
       if(op.responses[204])assert.equal(op.responses[204].content,undefined);
     }
   }
-  assert.equal(count,92);
+  assert.equal(count,93);
+});
+// 手机端读取当前政策版本后主动同意；公共入口不得返回认证配置或秘密。
+test('公开政策版本只包含服务端要求的条款与隐私版本',()=>{
+  const policy=doc.paths['/v1/auth/policy']?.get;
+  assert.ok(policy);
+  assert.deepEqual(policy.security,[]);
+  assert.ok(validate('AuthPolicy',{termsVersion:'2026-10-04',privacyVersion:'2026-10-04'}));
+  assert.equal(validate('AuthPolicy',{termsVersion:'',privacyVersion:'2026-10-04'}),false);
+  assert.equal(validate('AuthPolicy',{termsVersion:'2026-10-04',privacyVersion:'2026-10-04',secret:'forbidden'}),false);
 });
 test('详细设计REST目录全部覆盖，请求示例符合对应DTO',()=>{
   const design=fs.readFileSync(path.resolve(__dirname,'../../../docs/superpowers/specs/2026-10-03-social-app-database-api-design.md'),'utf8').split('## 7.')[1].split('## 8.')[0];
@@ -90,6 +99,8 @@ test('普通资料首次创建使用0版本，更新使用正版本且保持冲�
 test('认证秘密无效时有401合同且成功响应不泄露存储摘要',()=>{
   for(const route of ['register','login','refresh']){
     assert.ok(doc.paths[`/v1/auth/${route}`].post.responses[401],route);
+    // 验证邮箱并不解除账号限制，受限账号保持统一403语义。
+    assert.ok(doc.paths[`/v1/auth/${route}`].post.responses[403],route);
   }
   const guest=doc.components.schemas.GuestSession;
   assert.ok(guest.required.includes('expiresAt'));

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="jp.youren.database.mapper.SessionMapper">
+  <!-- 不输出原始秘密，UUID及时间类型显式映射。 -->
+  <resultMap id="row" type="jp.youren.database.mapper.SessionMapper$SessionRow">
+    <constructor>
+      <idArg column="id" javaType="java.util.UUID" typeHandler="jp.youren.database.type.UuidTypeHandler"/>
+      <arg column="account_id" javaType="java.util.UUID" typeHandler="jp.youren.database.type.UuidTypeHandler"/>
+      <arg column="family_id" javaType="java.util.UUID" typeHandler="jp.youren.database.type.UuidTypeHandler"/>
+      <arg column="refresh_hash" javaType="java.lang.String"/>
+      <arg column="access_hash" javaType="java.lang.String"/>
+      <arg column="expires_at" javaType="java.time.OffsetDateTime"/>
+      <arg column="access_expires_at" javaType="java.time.OffsetDateTime"/>
+      <arg column="revoked_at" javaType="java.time.OffsetDateTime"/>
+      <arg column="replaced_by_id" javaType="java.util.UUID" typeHandler="jp.youren.database.type.UuidTypeHandler"/>
+    </constructor>
+  </resultMap>
+  <sql id="columns">id,account_id,family_id,refresh_hash,access_hash,expires_at,access_expires_at,revoked_at,replaced_by_id</sql>
+  <select id="findRefresh" resultMap="row" timeout="2">SELECT <include refid="columns"/> FROM sessions WHERE refresh_hash=#{hash}</select>
+  <select id="findAccess" resultMap="row" timeout="2">SELECT <include refid="columns"/> FROM sessions WHERE access_hash=#{hash}</select>
+  <select id="lock" resultMap="row" timeout="3" flushCache="true" useCache="false">SELECT <include refid="columns"/> FROM sessions WHERE id=#{id} FOR UPDATE</select>
+  <!-- API尚无客户端平台字段，以unknown内部值记录，不从攻击者输入推断平台。 -->
+  <insert id="insert" timeout="2">INSERT INTO sessions(id,account_id,family_id,refresh_hash,access_hash,created_at,updated_at,expires_at,access_expires_at,platform) VALUES(#{id},#{accountId},#{familyId},#{refreshHash},#{accessHash},#{now},#{now},#{expires},#{accessExpires},'unknown')</insert>
+  <update id="replace" timeout="2">UPDATE sessions SET replaced_by_id=#{next},revoked_at=#{now},updated_at=#{now} WHERE id=#{id} AND revoked_at IS NULL</update>
+  <!-- 撤销覆盖全部后继，旧摘要保留；必须先锁账号再读取锁定会话，避免并发创建逃逸。 -->
+  <update id="revokeFamily" timeout="2">UPDATE sessions SET revoked_at=COALESCE(revoked_at,#{now}),updated_at=#{now} WHERE family_id=#{family}</update>
+</mapper>

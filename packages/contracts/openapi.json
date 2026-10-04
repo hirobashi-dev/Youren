@@ -190,6 +190,152 @@
         "x-authorization-level": "P"
       }
     },
+    "/v1/auth/policy": {
+      "get": {
+        "operationId": "get_auth_policy",
+        "summary": "读取当前条款与隐私版本",
+        "description": "客户端须主动接受这些服务端版本；开发版本号不代表正式政策正文已发布。",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功；异步202仅表示受理。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "统一成功响应，requestId用于脱敏追踪。",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AuthPolicy"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "description": "请求追踪ID。"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_CURSOR / INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INVALID_CURSOR",
+                            "INVALID_REQUEST"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION_FAILED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "headers": {
+              "Retry-After": {
+                "description": "重试等待秒数。",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "TEMPORARILY_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "TEMPORARILY_UNAVAILABLE"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-authorization-level": "P"
+      }
+    },
     "/v1/auth/email-code": {
       "post": {
         "operationId": "post_auth_email_code",
@@ -489,6 +635,32 @@
               }
             }
           },
+          "403": {
+            "description": "ACCOUNT_RESTRICTED / DATING_REQUIRED / FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "ACCOUNT_RESTRICTED",
+                            "DATING_REQUIRED",
+                            "FORBIDDEN"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "409": {
             "description": "EVENT_FULL / EVENT_CLOSED / GROUP_FULL / MEDIA_NOT_READY / REQUEST_IN_PROGRESS / RESULT_EXPIRED / QUOTA_EXCEEDED / IDEMPOTENCY_CONFLICT",
             "content": {
@@ -702,6 +874,32 @@
               }
             }
           },
+          "403": {
+            "description": "ACCOUNT_RESTRICTED / DATING_REQUIRED / FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "ACCOUNT_RESTRICTED",
+                            "DATING_REQUIRED",
+                            "FORBIDDEN"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "409": {
             "description": "EVENT_FULL / EVENT_CLOSED / GROUP_FULL / MEDIA_NOT_READY / REQUEST_IN_PROGRESS / RESULT_EXPIRED / QUOTA_EXCEEDED / IDEMPOTENCY_CONFLICT",
             "content": {
@@ -906,6 +1104,32 @@
                           "enum": [
                             "AUTH_REQUIRED",
                             "SESSION_REVOKED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_RESTRICTED / DATING_REQUIRED / FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "ACCOUNT_RESTRICTED",
+                            "DATING_REQUIRED",
+                            "FORBIDDEN"
                           ]
                         }
                       }
@@ -22993,6 +23217,27 @@
         ],
         "additionalProperties": false
       },
+      "AuthPolicy": {
+        "type": "object",
+        "description": "服务端要求的条款与隐私版本。",
+        "properties": {
+          "termsVersion": {
+            "type": "string",
+            "description": "当前条款版本。",
+            "minLength": 1
+          },
+          "privacyVersion": {
+            "type": "string",
+            "description": "当前隐私版本。",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "termsVersion",
+          "privacyVersion"
+        ],
+        "additionalProperties": false
+      },
       "Challenge": {
         "type": "object",
         "description": "统一响应，不泄漏邮箱是否注册。",
@@ -24741,7 +24986,7 @@
       },
       "EmailCodeInput": {
         "type": "object",
-        "description": "申请验证码，参数仍为可调整工程配置。",
+        "description": "申请验证码，参数仍为可调整工程配置；第二阶段只支持login/register，delete_account留待注销功能阶段并安全拒绝。",
         "properties": {
           "email": {
             "type": "string",

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="jp.youren.database.mapper.EmailChallengeMapper">
+  <!-- 挑战只保存HMAC；内部行不能作为公开响应。 -->
+  <resultMap id="row" type="jp.youren.database.mapper.EmailChallengeMapper$ChallengeRow">
+    <constructor>
+      <idArg column="id" javaType="java.util.UUID" typeHandler="jp.youren.database.type.UuidTypeHandler"/>
+      <arg column="email_normalized" javaType="java.lang.String"/>
+      <arg column="purpose" javaType="java.lang.String"/>
+      <arg column="code_hmac" javaType="java.lang.String"/>
+      <arg column="attempts" javaType="_int"/>
+      <arg column="expires_at" javaType="java.time.OffsetDateTime"/>
+      <arg column="consumed_at" javaType="java.time.OffsetDateTime"/>
+    </constructor>
+  </resultMap>
+  <sql id="columns">id,email_normalized,purpose,code_hmac,attempts,expires_at,consumed_at</sql>
+  <select id="find" resultMap="row" timeout="2">SELECT <include refid="columns"/> FROM email_challenges WHERE id=#{id}</select>
+  <select id="lock" resultMap="row" timeout="2">SELECT <include refid="columns"/> FROM email_challenges WHERE id=#{id} FOR UPDATE</select>
+  <!-- 规范邮箱即使尚无账号也可串行化；锁顺序为邮箱、账号、挑战，避免并发注册唯一键异常。 -->
+  <select id="lockEmail" resultType="int" timeout="3">SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtextextended(#{email},0))) AS locked</select>
+  <!-- 初始标记不可消费，外部邮件不持有数据库锁；只有发送成功才解除标记。 -->
+  <insert id="insert" timeout="2">INSERT INTO email_challenges(id,email_normalized,purpose,code_hmac,created_at,updated_at,expires_at,consumed_at) VALUES(#{id},#{email},#{purpose},#{hmac},#{now},#{now},#{expires},#{now})</insert>
+  <update id="activate" timeout="2">UPDATE email_challenges SET consumed_at=NULL WHERE id=#{id} AND consumed_at=created_at</update>
+  <update id="attempt" timeout="2">UPDATE email_challenges SET attempts=attempts+1,updated_at=#{now} WHERE id=#{id}</update>
+  <update id="consume" timeout="2">UPDATE email_challenges SET consumed_at=#{now},updated_at=#{now} WHERE id=#{id} AND consumed_at IS NULL</update>
+</mapper>

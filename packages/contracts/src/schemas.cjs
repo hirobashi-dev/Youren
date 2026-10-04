@@ -26,6 +26,8 @@ add('AgeDeclaration',obj('自我声明而非证件核验。',{status:en('声明�
 add('Me',obj('仅本人可读的账号与资料。',{id:uuid(),email:str('本人邮箱，禁止进入公开DTO。',{format:'email'}),status:en('账号状态。','active/restricted/deleting/deleted'),profile:nullable(ref('PublicProfile')),settings:ref('Settings'),ageDeclaration:ref('AgeDeclaration'),onboardingRequired:bool('是否需要完善基本资料。')}));
 add('GuestSession',obj('首次发言建立的本机秘密凭证，禁止写入URL或日志。',{guestToken:str('高熵游客秘密凭证。'),principalId:uuid(),expiresAt:time()}));
 add('AuthSession',obj('仅登录/注册成功返回的令牌；禁止缓存到公开请求或记录日志。',{accessToken:str('短期账号令牌。'),refreshToken:str('可轮换刷新令牌。'),account:ref('Me'),onboardingRequired:bool('是否需要基本资料。'),claimStatus:en('游客接续不成功不应丢失登录结果。','not_requested/claimed/failed')}));
+// 当前政策版本只供主动同意，不暴露认证密钥或邮件渠道配置。
+add('AuthPolicy',obj('服务端要求的条款与隐私版本。',{termsVersion:str('当前条款版本。',{minLength:1}),privacyVersion:str('当前隐私版本。',{minLength:1})}));
 add('Challenge',obj('统一响应，不泄漏邮箱是否注册。',{challengeId:uuid(),expiresIn:integer('有效秒数。',1),retryAfter:integer('最短等待秒数。')}));
 const published={publishedAt:time(),expiresAt:time()};
 const submit={id:uuid(),status:en('公开与待审必须区分。','pending/visible/rejected/hidden/deleted/expired'),publishedAt:nullable(time()),expiresAt:nullable(time()),version:integer('资源版本。',1)};
@@ -69,7 +71,8 @@ add('Error',obj('统一失败格式，不泄漏内部异常或拉黑关系。',{
 add('JobAccepted',obj('异步受理，不代表清理已完成。',{deletionJobId:uuid()}));
 add('GuestClaim',obj('游客接续结果，不公开关联历史身份。',{claimedContentCounts:obj('接续数量。',{posts:integer('帖子数。'),comments:integer('回复数。')})}));
 // 请求只允许明确列出的字段，禁止客户端写author/owner/verified/status。
-add('EmailCodeInput',obj('申请验证码，参数仍为可调整工程配置。',{email:str('邮箱。',{format:'email'}),purpose:en('用途。','login/register/delete_account')}));
+// 合同保留后续注销用途，第二阶段只发送注册与登录验证码，注销请求安全拒绝。
+add('EmailCodeInput',obj('申请验证码，参数仍为可调整工程配置；第二阶段只支持login/register，delete_account留待注销功能阶段并安全拒绝。',{email:str('邮箱。',{format:'email'}),purpose:en('用途。','login/register/delete_account')}));
 const challengeInput={challengeId:uuid(),code:str('邮箱验证码。',{pattern:'^[0-9]{6}$','x-decision-status':'confirmed'}),guestToken:str('可选原游客秘密，证明接续所有权。')};
 add('RegisterInput',obj('注册接受指定条款版本，可选游客接续。',{...challengeInput,termsVersion:str('条款版本。',{minLength:1}),privacyVersion:str('隐私政策版本。',{minLength:1})},['challengeId','code','termsVersion','privacyVersion']));
 add('LoginInput',obj('邮箱验证码登录；用途和单次消费由服务端验证。',challengeInput,['challengeId','code']));
