@@ -70,12 +70,12 @@
 
 **文件：** 新增 `api/auth/`、`api/email/`、`api/security/` 类；数据库 challenge/session/consent Mapper（文件地图补充 ConsentRecordMapper.java 与同名 XML）；`EmailChallengeServiceTest`、`AuthControllerTest`、`AuthFlowIT`。
 
-- [ ] 先测正确/错误用途、过期、超限、冷却、重复消费、账号存在与否响应一致、未验证注册被拒绝、已注册邮箱不覆盖账号、条款版本由服务端要求。
-- [ ] 实现 EmailDelivery 端口及测试替身，Redis 限速、challenge 单次消费、账号事务创建、短期 access/rotation refresh、退出撤销；登录先成功签发会话，游客接续作为独立可重试结果。
-- [ ] 测同一验证码并发消费仅一次成功、邮箱/IP发送总量限制、邮件发送失败及Redis故障；验证条款接受记录与注册账号同事务提交。
-- [ ] 测刷新轮换与并发重放：旧 refresh 再用必须撤销该会话族；退出后 access/refresh 均不可继续访问。错误响应遵守 OpenAPI 且日志无秘密。
-- [ ] 运行 `.\backend\build.ps1 -pl api -am verify`；预期 MockMvc 和 PostgreSQL/Redis 集成通过。
-- [ ] 审查事务、中文测试说明和脱敏后提交 `feat: implement email authentication`。
+- [x] 先测正确/错误用途、过期、超限、冷却、重复消费、账号存在与否响应一致、未验证注册被拒绝、已注册邮箱不覆盖账号、条款版本由服务端要求。
+- [x] 实现 EmailDelivery 端口及测试替身，Redis 限速、challenge 单次消费、账号事务创建、短期 access/rotation refresh、退出撤销；登录先成功签发会话，游客接续作为独立可重试结果。
+- [x] 测同一验证码并发消费仅一次成功、邮箱/IP发送总量限制、邮件发送失败及Redis故障；验证条款接受记录与注册账号同事务提交。
+- [x] 测刷新轮换与并发重放：旧 refresh 再用必须撤销该会话族；退出后 access/refresh 均不可继续访问。错误响应遵守 OpenAPI 且日志无秘密。
+- [x] 运行 `.\backend\build.ps1 -pl api -am verify`；预期 MockMvc 和 PostgreSQL/Redis 集成通过。
+- [x] 审查事务、中文测试说明和脱敏后提交 `feat: implement email authentication`。
 
 ### 任务4：游客接续与普通资料 API
 
