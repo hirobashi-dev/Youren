@@ -1,6 +1,6 @@
 # 第1阶段：工程基础实施计划
 
-状态（2026-10-04）：任务1至5已完成并提交；任务6手机基础、10项测试、两端JS导出及Android开发构建/模拟器操作已验证，iOS原生验收按用户决定延期。任务7统一检查与CI已实现，本地验收结果见记录；GitHub hosted runner已推送，修正后运行37168830294的前端、后端、浏览器均成功，第1阶段不宣称全部平台通过。
+状态（2026-10-04）：任务1至5已完成并提交；任务6手机基础、10项测试、两端JS导出及Android开发构建/模拟器操作已验证。EAS项目关联和动态公开配置解析已验证并提交（169c396）；iOS原生云构建与设备验收按用户决定延期。任务7统一检查与CI已实现，本地验收结果见记录；GitHub hosted runner已推送，修正后运行37168830294的前端、后端、浏览器均成功，第1阶段不宣称全部平台通过。
 
 本文件是第1阶段唯一实施计划，已合并Java/Maven改修内容；[验收记录](../../development/stage-1-acceptance.md)保存当前验证和历史证据。原TypeScript后端及独立改修计划可通过Git历史查阅，当前不再执行旧NestJS/runtime命令。
 
@@ -96,6 +96,7 @@ Windows使用`backend/build.ps1`临时选择独立JDK，退出后恢复环境；
 - [x] 先写成功、失败、超时、取消及重试测试，确认10项失败后实现页面，10项通过。
 - [x] 新增`App.tsx`、`src/screens/FoundationScreen.tsx`、`src/api/health.ts`、`src/theme.ts`、测试及README；沿用绿色主色和粉色恋爱辅助色，不实现业务页面。
 - [x] 固定Expo配套依赖和EAS CLI；新增`app.config.ts`、`eas.json`，配置开发客户端/internal与iOS模拟器构建。
+- [x] EAS项目ID及iOS标准/豁免加密声明已加入动态配置；用户本机运行`expo config --type public --json`确认解析值，提交`169c396`。云构建未开始，等待Apple开发者账号条件。
 - [ ] 实时协议仍待确认，建议Spring WebSocket＋JSON，在阶段4前确认；手机骨架不提前绑定Socket.IO。
 - [x] 定义并执行`test`、`typecheck`、`build:js`，运行`expo install --check`，iOS/Android JS导出通过；JS导出不等于原生构建通过。
 - [x] Android使用Expo prebuild、Gradle assembleDebug及adb安装，Android14模拟器验证启动、重载、真实API200/503/恢复、中文和安全区；证据见验收记录。

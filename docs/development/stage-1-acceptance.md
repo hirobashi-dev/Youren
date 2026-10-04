@@ -1,5 +1,9 @@
 # 第1阶段进度与恢复入口
 
+## EAS项目关联与配置验证补充（2026-10-04）
+
+用户在本机PowerShell登录EAS并创建项目，项目ID为`a0d99061-5c20-4cc8-b75b-141ae378932a`。`apps/mobile/app.config.ts`已绑定该ID，并设置`ios.infoPlist.ITSAppUsesNonExemptEncryption=false`。用户运行`npm exec -w @youren/mobile -- expo config --type public --json`，输出确认动态配置包含项目ID字段及上述iOS声明；配置变更已提交`169c396`。这只验证EAS关联和本地配置解析，不代表iOS云构建通过。用户尚无Apple开发者账号，因此没有继续云构建或设备验收，iOS仍保持未验收。
+
 ## GitHub CI修正后验收（2026-10-04）
 
 [运行37168830294](https://github.com/hirobashi-dev/Youren/actions/runs/37168830294)对应修复提交`914bd0f`，已结束且conclusion为success。frontend、backend、browser三个任务均success；java-test-reports（32714字节）、verified-java-api（33427793字节）、browser-evidence（30597字节）均上传且未过期。
@@ -51,7 +55,7 @@ GitHub后端check-run注释明确：`21.0.12.1+1`不是setup-java接受的SemVer
 | 安装/设备 | `adb -s emulator-5556 install .../app-debug.apk`成功；Pixel_3a_API_34只读、无快照模式，Android14，1080×2220；包名jp.youren.app.dev，Expo57.0.26、RN0.86.3 |
 | API真实验证 | 独立Java端口3008、测试PG5442/Redis6382；手机地址10.0.2.2:3008。初始200/连接成功 → 停止仅测试Redis → API503/手机重试连接失败 → 恢复Redis并有限等待Java重连 → 再重试连接成功 |
 | 重载/显示 | 开发菜单Reload重新加载Metro包后恢复成功、重试可操作；成功、失败、恢复、重载截图均保存且视觉复核中文、按钮和安全区 |
-| iOS限制 | 固定EAS CLI24.10.0，whoami为Not logged in；未上传、未云构建、未安装iOS设备，不计平台通过 |
+| iOS限制 | 首次本地记录时EAS CLI24.10.0的whoami为Not logged in；后续用户已登录并创建EAS项目、验证动态配置解析。仍未云构建、未安装iOS设备，不计平台通过 |
 
 APK SHA256：`19e09ba7dbaaa07dfd0fcb95f712d5eb58b279c55a3600055343f7f10c1609af`。截图为忽略产物：`artifacts/mobile-android-ready.png`、`mobile-android-unavailable.png`、`mobile-android-recovered.png`、`mobile-android-reloaded.png`。
 
