@@ -10,6 +10,8 @@
 
 ## 1. 工程清单
 
+第1阶段同步（2026-10-04）：四个应用基础均已建立，Java四模块共30项测试，统一检查本地共78项测试及构建通过；Android模拟器有原生验收证据，iOS按用户决定延期。已推送到GitHub的`develop/stage-1-foundation`；CI配置已上传，云端运行结果尚未核验。产品显示名称为`Youren`，重要更改先与用户确认。
+
 | 工程 | 根目录 | 职责 | 当前状态 |
 |---|---|---|---|
 | 手机端 | `apps/mobile/` | 普通用户使用，支持iOS与Android | 已有基础页及Android模拟器证据，iOS尚未验收 |
@@ -41,14 +43,16 @@ Youren/
 │  ├─ contracts/              OpenAPI合同、生成源和检查
 │  └─ database/               原数据库规范源、历史Prisma工具
 ├─ infra/                     Compose、环境示例和本地依赖说明
-├─ tools/                     工程检查、浏览器集成测试编排
-├─ tests/                     仓库级工程测试
+├─ tools/                     check.cjs统一检查、check-java-reports.cjs报告门槛
+│                            check-engineering.cjs、docker.cjs、浏览器联调启动/编排
+├─ tests/                     engineering.test.cjs、check.test.cjs、java-reports.test.cjs
 ├─ docs/
 │  ├─ superpowers/specs/      产品、技术、页面、数据库/API方案
 │  ├─ superpowers/plans/      开发路线与实施计划
 │  ├─ development/            验收证据和恢复记录
 │  └─ design/                 线框图、视觉稿及相关工具
-├─ .github/workflows/         已有双工具链CI；hosted runner尚未实跑
+├─ .github/workflows/ci.yml    前端、Java、浏览器三个任务；云端结果尚未核验
+├─ .gitattributes             文本LF、Windows cmd保留CRLF
 ├─ package.json               npm工作区，仅前端/合同及历史工具
 ├─ package-lock.json          根npm依赖锁
 └─ README.md                  安装、启动和文档入口
@@ -72,13 +76,17 @@ apps/mobile/
 │  ├─ components/            [规划] 后续复用按钮、卡片及状态提示
 │  ├─ navigation/            [规划] 后续导航和页面路由
 │  └─ features/              [规划] 后续业务模块，见下方约定
-├─ tests/FoundationScreen.test.tsx
+├─ tests/
+│  ├─ FoundationScreen.test.tsx  页面状态与重试
+│  ├─ health.test.ts             请求、超时、取消与响应边界
+│  └─ setup.ts                  原生测试环境
+├─ .env.example                 公开API地址示例
 └─ README.md                 本机运行、设备地址与构建验收
 ```
 
 后续`features/`按`auth/`、`profile/`、`board/`、`chat/`、`activities/`、`dating/`、`settings/`组织，每个模块按需包含`screens/`、`components/`、`api.ts`、`types.ts`和测试。第1阶段只建立入口、状态页和连接测试。
 
-`android/`、`ios/`可能由Expo原生生成流程产生；是否提交根据实际构建策略确定并记录，不作为手工维护两套业务工程。手机端不包含服务器密码或数据库访问代码。
+`android/`、`ios/`由Expo原生生成流程产生，当前均忽略、不提交；Android已用prebuild/Gradle构建并安装模拟器，iOS原生测试延期。若未来需要长期维护原生改动，先确认策略再同步忽略规则。手机端不包含服务器密码或数据库访问代码。
 
 ## 4. 管理后台目录
 
@@ -251,7 +259,7 @@ worker短事务领取任务并设置租约 → 事务外执行审核/推送等�
 
 
 1. 第1阶段任务6：手机基础、组件、类型、两端JS导出及Android模拟器已有证据；用户决定延期iOS原生验收。
-2. 第1阶段任务7：已有CI与统一检查；Maven `clean verify`和npm前端/合同检查分别执行，子命令失败立即停止，JUnit数量与结果独立检查。GitHub实际运行待后续推送，操作见`docs/development/ci.md`。
+2. 第1阶段任务7：已有CI与统一检查；Maven `clean verify`和npm前端/合同检查分别执行，子命令失败立即停止，JUnit数量与结果独立检查。本地完整检查已通过，已推送GitHub，云端结果尚未核验；操作见`docs/development/ci.md`。
 3. 阶段2至7：随业务新增上述规划目录，明确模块接口后开发，避免为目录完整性生成空代码。
 4. 每步核对中文注释、依赖边界、对应测试及差分，保存一次本地提交；更新README说明实际新增目录。
 

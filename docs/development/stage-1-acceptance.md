@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-最新（任务7）：统一检查、JUnit报告门槛及三个GitHub CI任务已实现；本地结果见下方记录。手机基础及Android已有证据，用户决定延期iOS原生测试，保持未验收；GitHub hosted runner尚未运行。不宣称第1阶段所有平台通过。
+最新（任务7）：统一检查、JUnit报告门槛及三个GitHub CI任务已实现；本地结果见下方记录。手机基础及Android已有证据，用户决定延期iOS原生测试，保持未验收；GitHub hosted runner运行结果尚未核验。不宣称第1阶段所有平台通过。
 
 ### 统一检查与CI验证证据（2026-10-04）
 
@@ -19,7 +19,7 @@
 
 干净源码复验发现并修正两项问题：系统Git的core.autocrlf使导出文本变为CRLF，Prettier拒绝44个文件；仓库`.gitattributes`统一文本LF、cmd保留CRLF，未修改系统Git设置。Jest将含`.local`的Windows绝对路径拼入glob后找不到测试；改为相对匹配，原路径失败、新路径两套10项通过，随后完整复验成功。干净目录仅更新这份已验证配置，未复制旧构建产物。
 
-这是全新源码目录的本地验证，不称为GitHub实际检出运行。使用既有独立Node/JDK、Docker、Chrome及隔离测试环境配置；固定安装、各组及完整日志保留于忽略的`.local/stage7-*.log`。GitHub报告和API产物传递仍待后续推送实际确认，仓库未推送；iOS原生测试按用户决定延期，两端JS导出不计平台验收。
+这是全新源码目录的本地验证，不称为GitHub实际检出运行。使用既有独立Node/JDK、Docker、Chrome及隔离测试环境配置；固定安装、各组及完整日志保留于忽略的`.local/stage7-*.log`。GitHub配置已推送，报告和API产物传递的云端结果尚未核验；iOS原生测试按用户决定延期，两端JS导出不计平台验收。
 
 测试只停止本次启动的redis-test，保留原有postgres-test和卷；Testcontainers临时实例自行清理。未改变系统默认JDK/PATH，不提交本地环境、依赖、JAR、截图或日志。操作与JSON配置说明见[CI说明](ci.md)。
 
@@ -75,7 +75,7 @@ Metro首次localhost绑定IPv6导致模拟器加载空白；检查端口和Expo�
 
 1. 阅读[详细计划](../superpowers/plans/2026-10-03-stage-1-engineering-foundation.md)、本文件及根README，确认分支和工作区状态；不要从头重建项目。
 2. Java任务1至5及手机基础/Android模拟器已有证据，不重复开发。iOS开发构建与设备操作已由用户决定延期，保持平台未验收。
-3. 使用`npm run check`复现本地验收；后续推送后查看GitHub三个任务和报告，当前不计云端通过。下一阶段开发需要先细化身份与普通资料计划。
+3. 使用`npm run check`复现本地验收；查看已推送GitHub的三个任务和报告，当前不计云端通过。下一阶段开发需要先细化身份与普通资料计划。
 
 ## 环境与重启
 

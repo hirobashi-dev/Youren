@@ -1,6 +1,6 @@
 # 第1阶段：工程基础实施计划
 
-状态（2026-10-04）：任务1至5已完成并提交；任务6手机基础、10项测试、两端JS导出及Android开发构建/模拟器操作已验证，iOS原生验收按用户决定延期。任务7统一检查与CI已实现，本地验收结果见记录；GitHub hosted runner待首次推送实跑，第1阶段不宣称全部平台通过。
+状态（2026-10-04）：任务1至5已完成并提交；任务6手机基础、10项测试、两端JS导出及Android开发构建/模拟器操作已验证，iOS原生验收按用户决定延期。任务7统一检查与CI已实现，本地验收结果见记录；GitHub hosted runner已推送，运行结果尚未核验，第1阶段不宣称全部平台通过。
 
 本文件是第1阶段唯一实施计划，已合并Java/Maven改修内容；[验收记录](../../development/stage-1-acceptance.md)保存当前验证和历史证据。原TypeScript后端及独立改修计划可通过Git历史查阅，当前不再执行旧NestJS/runtime命令。
 
@@ -9,8 +9,8 @@
 建立可复现、可测试的手机端、API、后台及worker工程，完成隔离依赖、自动检查和Android/iOS开发构建验收。账号、留言板、聊天、活动及恋爱业务属于后续阶段。
 
 - 后端：Java 21、Spring Boot、Maven Wrapper、MyBatis、Flyway、PostgreSQL和Redis；JUnit、MockMvc、Testcontainers。
-- 前端：TypeScript；手机端React Native/Expo，后台React/Vite；后台Vitest、Testing Library、Playwright，手机端拟采用jest-expo及React Native Testing Library。
-- 已固定JDK21.0.12.1+1、Maven3.9.9、Spring Boot3.5.16、MyBatis Starter3.0.5、Node22.23.3；手机端依赖随任务6核实并固定。
+- 前端：TypeScript；手机端React Native/Expo，后台React/Vite；后台Vitest、Testing Library、Playwright，手机端使用jest-expo及React Native Testing Library。
+- 已固定JDK21.0.12.1+1、Maven3.9.9、Spring Boot3.5.16、MyBatis Starter3.0.5、Node22.23.3；手机端已固定Expo57.0.26、React Native0.86.3、React19.2.3、jest-expo57.0.5及EAS CLI24.10.0。
 - 模块化单体，API/worker共用Java模块；手机端和后台通过HTTP访问API，不直接访问数据库。npm负责前端和合同，Maven负责Java后端。
 
 依据：[八阶段路线](2026-10-03-phased-development-acceptance.md)、[技术方案](../specs/2026-10-03-social-app-technical-design.md)、[数据库/API设计](../specs/2026-10-03-social-app-database-api-design.md)、[合同说明](../../../packages/contracts/README.md)。
@@ -111,7 +111,7 @@ Windows不运行Xcode；iOS账号、Apple开发者资格及设备条件在构建
 - [x] CI固定JDK、Maven和Node/npm；后端Wrapper执行`clean verify`，前端执行固定安装、类型、格式、测试、构建和合同检查；官方Actions固定提交，actionlint检查通过。
 - [x] 使用Testcontainers隔离依赖，缺Docker时报失败、不跳过IT；JUnit检查六组实际数量及零失败/错误/跳过。
 - [x] 干净源码固定安装后完整执行统一检查退出0，78项测试及构建通过；记录并修正CRLF和Windows Jest路径问题，详情见验收记录。
-- [ ] GitHub hosted runner实际执行并留存产物；当前未推送，云端不计通过。
+- [ ] GitHub hosted runner实际执行并留存产物；已推送，云端结果尚未核验，不计通过。
 - [x] 汇总结果、平台证据和未实施原因；核对中文注释、秘密、锁文件和差分，保存本地验收版本，不推送。
 
 ## 命令矩阵
@@ -146,8 +146,8 @@ Windows不运行Xcode；iOS账号、Apple开发者资格及设备条件在构建
 - [x] 后台实际渲染，失败/恢复/重试操作通过。
 - [x] Android开发构建安装并连接API，设备与截图证据完整。
 - [ ] iOS开发构建安装并连接API，设备与截图证据完整。
-- [ ] 统一检查与浏览器本地通过，CI配置通过静态检查；GitHub实际运行仍待推送。
+- [ ] 统一检查与浏览器本地通过，CI配置通过静态检查；GitHub配置已推送，实际运行结果尚未核验。
 - [x] 开发/测试数据隔离，秘密和构建产物未提交。
 - [x] 每步测试和本地提交记录完整；iOS延期、GitHub待实跑均明确记录，不计通过。
 
-用户已决定iOS测试延期，保持未验收。GitHub实际执行待后续推送；本地结果见[验收记录](../../development/stage-1-acceptance.md)，操作说明见[CI说明](../../development/ci.md)。后续阶段的计划与开发另行推进，不把延期事项标为通过。
+用户已决定iOS测试延期，保持未验收。GitHub已推送，实际执行结果尚未核验；本地结果见[验收记录](../../development/stage-1-acceptance.md)，操作说明见[CI说明](../../development/ci.md)。后续阶段的计划与开发另行推进，不把延期事项标为通过。
