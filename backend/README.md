@@ -37,7 +37,7 @@ Java 不自动读取 Node `.env`。数据库用户名/密码使用独立字段�
 
 API增加邮箱挑战、注册、登录、公开策略读取、刷新轮换及退出；数据库只保存HMAC/SHA256摘要。
 `GET /v1/auth/policy` 返回当前 `termsVersion` / `privacyVersion`，客户端先读取并让用户接受，不能硬编码版本。
-`AccountMeQuery` 是任务4接入本人资料的共享查询入口；本任务的新账号返回空资料、`not_declared` 年龄声明及初始化设置。
+`AccountMeQuery` 返回本人资料草稿、资料版本及设置；新账号返回空资料、`not_declared` 年龄声明及初始化设置。
 认证事务按规范邮箱、账号、挑战顺序加锁；错误尝试提交后才返回401。刷新按账号、会话锁顺序处理，旧令牌重放提交整个族的撤销后返回401。
 邮件发送不持有数据库锁，失败挑战不可消费；Redis故障返回503，不放宽配额。IP取连接远端地址，默认不信任转发头。
 
@@ -89,7 +89,7 @@ $inbox = Invoke-RestMethod -Uri "http://127.0.0.1:3000/__test/mail/$challengeId"
 
 调试入口只接受连接地址127.0.0.1或IPv6本机地址及请求头密钥；Android的10.0.2.2直连读取会被拒绝。
 手机API可用 `adb reverse tcp:3000 tcp:3000` 与本机3000映射；验证码由上述主机读取步骤取得。
-任务4通过 `GuestClaimHandler.claim(accountId, guestToken)` 接入实际接续；当前默认验证游客凭证后返回失败，认证会话已提交且不丢失，不能据此宣称已接续。
+`GuestClaimHandler.claim(accountId, guestToken)` 已接入真实接续事务；认证会话先提交，接续领域失败只返回failed，不丢失成功登录的会话。接续权限与幂等规则见下方资料说明。
 
 ### 本任务验证
 

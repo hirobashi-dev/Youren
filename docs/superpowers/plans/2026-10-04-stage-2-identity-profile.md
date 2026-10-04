@@ -81,11 +81,11 @@
 
 **文件：** 新增 `api/guest/`、`api/profile/`、相关 Mapper；新增 `GuestClaimIT`、`ProfileControllerTest`、`ProfilePrivacyIT`。
 
-- [ ] 测本人接续成功且幂等、他人凭证拒绝、无效凭证仅报告 claim 失败而登录成功；游客 principal 与公开游客身份不泄漏。
-- [ ] 测账号可读写本人 `/me`、资料版本冲突拒绝、设置仅改本人；公开主页不含 email、principal、dating、events，未发布资料不公开；普通私聊设置按合同输出。
-- [ ] 实现服务端所有权检查和事务绑定；游客原有内容作者显示身份保持不变；公开 DTO 单独映射，严禁直接序列化数据库实体。
-- [ ] 运行 `.\backend\build.ps1 -pl api -am verify`；预期越权、隐私和DB集成用例通过。
-- [ ] 审查权限与DTO字段后提交 `feat: add guest claims and profiles`。
+- [x] 测本人接续成功且幂等、他人凭证拒绝、无效凭证仅报告 claim 失败而登录成功；游客 principal 与公开游客身份不泄漏。
+- [x] 测账号可读写本人 `/me`、资料版本冲突拒绝、设置仅改本人；公开主页不含 email、principal、dating、events，未发布资料不公开；普通私聊设置按合同输出。
+- [x] 实现服务端所有权检查和事务绑定；游客原有内容作者显示身份保持不变；公开 DTO 单独映射，严禁直接序列化数据库实体。
+- [x] 运行 `.\backend\build.ps1 -pl api -am verify`；预期越权、隐私和DB集成用例通过。
+- [x] 审查权限与DTO字段后提交 `feat: add guest claims and profiles`。
 
 ### 任务5：手机认证与资料流程
 
