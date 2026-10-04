@@ -2,6 +2,8 @@
 
 ## 执行顺序与依赖
 
+CI的`setup-java`使用官方Adoptium元数据标识`21.0.12+101.0.LTS`，对应Temurin发布`21.0.12.1+1`；四段Java版本加build不能直接作为其SemVer输入。后端和浏览器保持相同精确发布。本机JDK目录和系统默认设置不变。
+
 根目录先`npm ci --no-audit --no-fund`，再`npm run check`。统一入口依次执行前端、后端、浏览器；任何非零退出、启动异常或信号中断立即停止。`check:frontend`、`check:backend`、`check:browser`可单独定位问题。
 
 固定Node22.23.3、npm10.5.0、JDK21.0.12.1+1和Maven3.9.9 Wrapper。Windows使用独立JDK和PowerShell 7，Linux使用JAVA_HOME。依赖由根锁文件固定；报告解析器fast-xml-parser5.11.2用于检查真实XML，不读取日志估算数量。

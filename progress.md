@@ -1,5 +1,11 @@
 # 工作记录
 
+## CI JDK版本配置修正（2026-10-04）
+
+- 用户授权修正并重新运行核验；核对固定setup-java源码的normalizeVersion/isVersionSatisfies及Adoptium官方Linux发布元数据。
+- 官方jdk-21.0.12.1+1的SemVer为21.0.12+101.0.LTS；同步后端与浏览器输入，保持同一精确发布，不改本地工具、系统设置或浮动主版本。
+- 修正前GitHub注释已经复现拒绝旧版本；修正后检查两个输入与官方元数据精确匹配、合法SemVer、actionlint和Prettier及差分，提交推送后以实际新运行验收，静态检查不计云端通过。
+
 ## GitHub CI结果核验（2026-10-04）
 
 - 按用户要求读取GitHub REST运行、任务与check-run注释；最新已推送5b9200d运行37168061562结论failure：frontend成功、backend失败、browser跳过；前次运行也失败。
