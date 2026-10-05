@@ -4,7 +4,7 @@
 
 ## 安装与检查
 
-仓库根使用Node22.23.3、npm10.5.0执行`npm ci`。
+仓库根使用Node22.23.3；2026-10-05整仓验证实际使用npm10.9.9。执行`npm ci`安装锁定依赖。
 固定Expo57.0.26、React19.2.3、React Native0.86.3和expo-secure-store57.0.4；安全区、开发客户端及安全存储版本按本地Expo配套元数据固定。JSON配置由本文件解释：tsconfig开启严格类型；package.json增加配套SecureStore；eas.json固定CLI和内部开发客户端/模拟器构建，不自动上传或发布。app.config.ts启用SecureStore插件和Android备份排除，iOS钥匙串仅设备解锁时可读且限本机。
 
 ```powershell
@@ -38,7 +38,7 @@ npm run android -w @youren/mobile
 npm run start -w @youren/mobile
 ```
 
-Android需要SDK/JDK及设备；项目命令使用当前进程环境选择工具，不修改系统默认。`android`构建并安装开发客户端，`start`启动Metro。`android/`、`ios/`由Expo生成并保持忽略，不使用clean重建已有手工原生改动。
+Android需要SDK/JDK及设备；项目命令使用当前进程环境选择工具，不修改系统默认。`android`构建并安装开发客户端，`start`启动Metro。`android/`、`ios/`由Expo生成并保持忽略。2026-10-05为本阶段开发APK运行Expo prebuild时，工具实际输出`Clearing android`并重新生成既有被忽略目录；后续如在生成目录加入手工原生改动，应先备份并核对prebuild影响。
 
 Windows本机验证使用独立JDK21和现有SDK，以下变量只影响当前终端；其他电脑按实际工具路径调整：
 
@@ -49,7 +49,7 @@ $env:GRADLE_USER_HOME='D:\MyWork\01_developer\Ai\.youren-tools\gradle'
 npm run android -w @youren/mobile
 ```
 
-本次隔离模拟器验收使用`Pixel_3a_API_34`只读模式、`emulator-5556`、Java API3008和Metro8083。手动构建可在生成的android目录执行`gradlew.bat assembleDebug -PreactNativeArchitectures=x86_64 --no-daemon`，再用指定设备的`adb install`安装APK。
+本次隔离模拟器验收使用`Pixel_3a_API_34`只读模式、`emulator-5556`、Java API3008和Metro8083。含SecureStore的开发APK已重新构建安装；手动构建可在生成的android目录执行`gradlew.bat assembleDebug -PreactNativeArchitectures=x86_64 --no-daemon`，再用指定设备的`adb install`安装APK。
 Metro使用localhost时，本机需在当前终端设置`$env:NODE_OPTIONS='--dns-result-order=ipv4first'`，确保Android的`10.0.2.2`能访问IPv4监听；不更改系统网络配置。独立验证示例：
 
 ```powershell
@@ -69,4 +69,4 @@ npm exec -- eas build --platform ios --profile development
 
 可用macOS时使用development-simulator配置并实际安装验收。EAS项目绑定/账号条件未确认前不宣称构建成功，也不把Expo Go或JS导出当作平台验收。
 
-本阶段Android须重新执行Expo prebuild（保留既有目录）、生成并安装含SecureStore的新APK，再实际验收注册/登录、资料读写、重启恢复、退出和失败重试，记录中文、安全区、设备/OS/SDK及截图。旧APK不能作为本次证据；JS导出也不代表原生成功。第二阶段结果记录于docs/development/stage-2-acceptance.md；首阶段历史保留在stage-1-acceptance.md。iOS实机与原生构建延期，本次不执行EAS构建或上传。
+2026-10-05模拟器现场确认游客连接、隔离测试邮箱注册、资料草稿保存、设置页和退出；资料保存提示待审核，不代表公开发布。重启后的会话恢复与明确API断线重试尚未取得现场结果；Android实机和iOS原生验收按用户决定延期。手机63项测试、类型、lint、格式、Expo依赖与两端JS导出已通过，不能把JS导出当作原生验收。完整结果和限制见[第二阶段验收记录](../../docs/development/stage-2-acceptance.md)；首阶段历史保留在[第一阶段记录](../../docs/development/stage-1-acceptance.md)。本次未执行EAS构建或上传。
