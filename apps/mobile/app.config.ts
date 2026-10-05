@@ -16,7 +16,11 @@ const config: ExpoConfig = {
     supportsTablet: false,
   },
   android: { package: 'jp.youren.app.dev' },
-  plugins: ['expo-dev-client'],
+  // 安全存储密钥不能随Android自动备份恢复到无法解密的新设备。
+  plugins: [
+    'expo-dev-client',
+    ['expo-secure-store', { configureAndroidBackup: true }],
+  ],
   // 将动态Expo配置绑定到用户刚创建的EAS项目，供云构建解析项目身份。
   extra: { eas: { projectId: 'a0d99061-5c20-4cc8-b75b-141ae378932a' } },
 };
