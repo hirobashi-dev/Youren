@@ -69,4 +69,4 @@ npm exec -- eas build --platform ios --profile development
 
 可用macOS时使用development-simulator配置并实际安装验收。EAS项目绑定/账号条件未确认前不宣称构建成功，也不把Expo Go或JS导出当作平台验收。
 
-2026-10-05模拟器现场确认游客连接、隔离测试邮箱注册、资料草稿保存、设置页和退出；资料保存提示待审核，不代表公开发布。重启后的会话恢复与明确API断线重试尚未取得现场结果；Android实机和iOS原生验收按用户决定延期。手机63项测试、类型、lint、格式、Expo依赖与两端JS导出已通过，不能把JS导出当作原生验收。完整结果和限制见[第二阶段验收记录](../../docs/development/stage-2-acceptance.md)；首阶段历史保留在[第一阶段记录](../../docs/development/stage-1-acceptance.md)。本次未执行EAS构建或上传。
+2026-10-05模拟器现场确认游客连接、隔离测试邮箱注册、资料草稿保存、设置页和退出；资料保存提示待审核，不代表公开发布。2026-10-06注册页发送测试验证码后显示“验证码已发送，请查收邮箱”，不代表外部邮箱实际投递。会话刷新期间保留资料草稿的回归修复新增测试，手机64项测试、类型、lint、格式通过；历史整仓检查中的手机63项结果按当时记录保留。重启后的会话恢复与明确API断线重试尚未取得现场结果；Android实机和iOS原生验收按用户决定延期，不能把JS导出当作原生验收。完整结果和限制见[第二阶段验收记录](../../docs/development/stage-2-acceptance.md)；首阶段历史保留在[第一阶段记录](../../docs/development/stage-1-acceptance.md)。本次未执行EAS构建或上传。
