@@ -18,6 +18,8 @@ Java构建执行 `.\backend\build.ps1 clean verify`，使用独立JDK21，不改
 
 使用Node **22.23.3**及npm **10.5.0**，根目录执行`npm ci`。Windows如使用专用Node安装，将其bin目录加入当前PowerShell PATH；不改变系统默认版本。根package-lock.json为唯一安装依据，所有依赖由npm生成锁定。
 
+Windows本机开发环境（Docker数据库/Redis、Java API、Android模拟器与Metro）的详细首次安装、日常启动和停止步骤见[本机开发环境手册](docs/development/local-environment.md)。
+
 ```powershell
 npm run test:engineering
 npm run check:engineering

@@ -7,6 +7,8 @@ Spotless 在 `verify` 检查 Java 格式。数据库和HTTP使用临时PostgreSQ
 
 ## Windows 本地构建
 
+本机数据库初始化、JDK/Android环境变量、开发API与模拟器联调手顺见[本机开发环境手册](../docs/development/local-environment.md)。
+
 ```powershell
 .\backend\build.ps1 clean verify
 .\backend\build.ps1 -pl shared -am test

@@ -18,6 +18,8 @@ npm exec -- prettier --check apps/mobile
 
 ## 本机启动
 
+Windows首次安装、数据库/Redis启动、API与Android模拟器的完整逐步说明见[本机开发环境手册](../../docs/development/local-environment.md)。
+
 复制`.env.example`为本目录忽略的`.env`。Android模拟器用`10.0.2.2`，真机使用可达的本机局域网地址；iOS模拟器可使用宿主机localhost。Vite的CORS配置不影响原生客户端。
 Java API需按backend/README配置并启动；手机只使用公开`EXPO_PUBLIC_API_BASE_URL`。认证/资料请求十秒超时，连接状态探测仍为两秒；页面卸载会取消表单请求，错误展示固定安全提示，不暴露响应原文。生产部署必须配置真实可达的HTTPS地址；默认localhost只用于开发。不在公开配置、URL或日志放置令牌、测试收件箱密钥、HMAC或其他服务端凭据。
 
