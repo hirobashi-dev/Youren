@@ -97,7 +97,7 @@ Windows使用`backend/build.ps1`临时选择独立JDK，退出后恢复环境；
 - [x] 新增`App.tsx`、`src/screens/FoundationScreen.tsx`、`src/api/health.ts`、`src/theme.ts`、测试及README；沿用绿色主色和粉色恋爱辅助色，不实现业务页面。
 - [x] 固定Expo配套依赖和EAS CLI；新增`app.config.ts`、`eas.json`，配置开发客户端/internal与iOS模拟器构建。
 - [x] EAS项目ID及iOS标准/豁免加密声明已加入动态配置；用户本机运行`expo config --type public --json`确认解析值，提交`169c396`。云构建未开始，等待Apple开发者账号条件。
-- [ ] 实时协议仍待确认，建议Spring WebSocket＋JSON，在阶段4前确认；手机骨架不提前绑定Socket.IO。
+- [ ] 实时协议建议Spring WebSocket＋JSON，在阶段4前确认；这是后续聊天设计决策，不构成第1阶段未完成项，手机骨架不提前绑定Socket.IO。
 - [x] 定义并执行`test`、`typecheck`、`build:js`，运行`expo install --check`，iOS/Android JS导出通过；JS导出不等于原生构建通过。
 - [x] Android使用Expo prebuild、Gradle assembleDebug及adb安装，Android14模拟器验证启动、重载、真实API200/503/恢复、中文和安全区；证据见验收记录。
 - [ ] iOS使用EAS开发构建及登记真机，或macOS模拟器路径；用户决定暂缓账号/设备准备及原生测试，保持未验收。

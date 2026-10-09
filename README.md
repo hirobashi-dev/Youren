@@ -4,11 +4,11 @@
 
 手机端基础已建立，运行、构建及设备地址见[手机端说明](apps/mobile/README.md)。10项测试、两端JS导出和Android14模拟器操作已验证；用户决定延期iOS原生验收，不计为通过。
 
-后端采用Java/Spring Boot、Maven、MyBatis；开发已恢复，Maven四模块和shared配置/日志基础已建立。MyBatis/Flyway数据库基础已通过，Java API健康接口及错误映射已通过，Java worker启动及信号关闭已通过，旧TypeScript后端已移除并保留Git历史。当前执行[第1阶段实施计划](docs/superpowers/plans/2026-10-03-stage-1-engineering-foundation.md)。手机端与管理后台继续TypeScript；前端与合同继续Node/npm。
+后端采用Java/Spring Boot、Maven、MyBatis；开发已恢复，Maven四模块和shared配置/日志基础已建立。MyBatis/Flyway数据库基础已通过，Java API健康接口及错误映射已通过，Java worker启动及信号关闭已通过，旧TypeScript后端已移除并保留Git历史。第1阶段主体工作已完成，Android与统一检查/CI已验证；iOS原生构建和设备验收按决定延期，阶段验收仍保留未完全通过状态。当前进行[第2阶段身份与普通资料](docs/superpowers/plans/2026-10-04-stage-2-identity-profile.md)：任务1至4完成，任务5手机流程待完成。手机端与管理后台继续TypeScript；前端与合同继续Node/npm。
 
 Java构建执行 `.\backend\build.ps1 clean verify`，使用独立JDK21，不改变系统默认Java。详见[后端说明](backend/README.md)。
 
-面向日本中国用户的交友应用。第一阶段工程建设进行中；产品与数据库/API设计见`docs/superpowers/specs/`，验收计划见`docs/superpowers/plans/2026-10-03-stage-1-engineering-foundation.md`。
+面向日本中国用户的交友应用。第1阶段主体工程建设已完成，iOS原生验收延期；第2阶段身份与普通资料正在进行。产品与数据库/API设计见`docs/superpowers/specs/`，阶段计划见`docs/superpowers/plans/`。
 
 ## 更改确认约定
 
