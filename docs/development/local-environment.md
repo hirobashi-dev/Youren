@@ -214,6 +214,22 @@ Invoke-RestMethod 'http://127.0.0.1:3000/health/ready'
 
 两者都应返回`status: ok`。`ready`失败时，先检查数据库和Redis健康状态。新的API进程意味着测试收件箱密钥也更新；应在启动它的PowerShell窗口读取验证码。
 
+### 快速前台启动（游客浏览与移动端验收）
+
+若只验证游客首页、会话恢复与服务不可用/重试，不需要测试收件箱时，可在专用PowerShell窗口设置开发库连接后以前台方式运行`run.ps1`。`run.ps1`不会自动读取`infra/.env`；密码从文件载入当前进程，不会打印到终端：
+
+```powershell
+$passwordLine = Get-Content 'infra/.env' | Where-Object { $_ -match '^\s*POSTGRES_PASSWORD\s*=' } | Select-Object -Last 1
+if (-not $passwordLine) { throw 'infra/.env 中没有找到 POSTGRES_PASSWORD' }
+$env:SPRING_DATASOURCE_URL = 'jdbc:postgresql://127.0.0.1:5441/youren_dev'
+$env:SPRING_DATASOURCE_USERNAME = 'youren_dev'
+$env:SPRING_DATASOURCE_PASSWORD = (($passwordLine -split '=', 2)[1]).Trim().Trim('"').Trim("'")
+$env:SPRING_DATA_REDIS_URL = 'redis://127.0.0.1:6381/0'
+pwsh -NoProfile -File .\backend\run.ps1
+```
+
+看到`{"event":"started","service":"api"}`后保持窗口运行。停止时按`Ctrl+C`；重启时，在仍保留上述变量的同一个窗口再次运行最后一行。
+
 ## 6. 启动Android模拟器并转发API
 
 可在Android Studio的Device Manager点击AVD旁的启动按钮；或在单独终端执行（将名称替换为本机AVD名称）：
