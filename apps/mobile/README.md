@@ -45,7 +45,8 @@ Android需要SDK/JDK及设备；项目命令使用当前进程环境选择工具
 Windows本机验证使用独立JDK21和现有SDK，以下变量只影响当前终端；其他电脑按实际工具路径调整：
 
 ```powershell
-$env:JAVA_HOME='D:\MyWork\01_developer\Ai\.youren-tools\jdk-21.0.12.1+1'
+$env:JAVA_HOME='C:\pleiades\java\21'
+$env:YOUREN_JDK_HOME=$env:JAVA_HOME
 $env:ANDROID_HOME='C:\Users\hbs\AppData\Local\Android\Sdk'
 $env:GRADLE_USER_HOME='D:\MyWork\01_developer\Ai\.youren-tools\gradle'
 npm run android -w @youren/mobile

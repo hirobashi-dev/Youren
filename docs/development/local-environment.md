@@ -36,14 +36,14 @@ Node应为`v22.23.3`，npm建议使用仓库声明的`10.5.0`，JDK主版本应�
 
 ### 可选：设置当前Windows用户的永久环境变量
 
-下面命令把JDK和Android SDK设为当前Windows用户的默认开发工具，并将工具目录幂等地加入用户PATH；不需要管理员权限。修改后关闭并重新打开PowerShell、Android Studio和VS Code，使新环境变量生效。仓库构建脚本会优先使用`YOUREN_JDK_HOME`，并在构建子进程中设置`JAVA_HOME`。
+下面命令把JDK和Android SDK设为当前Windows用户的开发工具，并将工具目录幂等地加入用户PATH；不需要管理员权限。修改后关闭并重新打开PowerShell、Android Studio和VS Code，使新环境变量生效。仓库构建脚本优先使用`YOUREN_JDK_HOME`，并在构建子进程中设置`JAVA_HOME`。`java -version`按PATH顺序选择可执行文件；仅设置`JAVA_HOME`不会改变命令解析顺序，因此JDK21的`bin`目录必须排在旧Java目录前面。
 
-先确认JDK实际安装位置。仓库常用的独立JDK路径如下；如果本机路径不同，只修改`$jdk`：
+先确认JDK实际安装位置。本机当前使用`C:\pleiades\java\21`；如果JDK移动或其他电脑路径不同，只修改`$jdk`：
 
 ```powershell
-$jdk = 'D:\MyWork\01_developer\Ai\.youren-tools\jdk-21.0.12.1+1'
+$jdk = 'C:\pleiades\java\21'
 $sdk = Join-Path $env:LOCALAPPDATA 'Android\Sdk'
-if (-not (Test-Path (Join-Path $jdk 'bin\java.exe'))) { throw "JDK路径不存在：$jdk" }
+if (-not (Test-Path (Join-Path $jdk 'bin\java.exe')) -or -not (Test-Path (Join-Path $jdk 'bin\javac.exe'))) { throw "JDK路径无效：$jdk" }
 if (-not (Test-Path (Join-Path $sdk 'platform-tools\adb.exe'))) { throw "Android SDK路径不存在：$sdk" }
 
 [Environment]::SetEnvironmentVariable('YOUREN_JDK_HOME', $jdk, 'User')
@@ -65,7 +65,7 @@ $pathEntries = @($additions + $pathEntries | Select-Object -Unique)
 确认Node安装器或版本管理器也把Node 22.23.3放进当前用户PATH。避免用`setx PATH`覆盖或截断已有PATH。若不希望永久改变量，可只在当前PowerShell中运行：
 
 ```powershell
-$env:YOUREN_JDK_HOME = 'D:\MyWork\01_developer\Ai\.youren-tools\jdk-21.0.12.1+1'
+$env:YOUREN_JDK_HOME = 'C:\pleiades\java\21'
 $env:JAVA_HOME = $env:YOUREN_JDK_HOME
 $env:ANDROID_HOME = Join-Path $env:LOCALAPPDATA 'Android\Sdk'
 $env:PATH = "$env:ANDROID_HOME\platform-tools;$env:ANDROID_HOME\emulator;$env:JAVA_HOME\bin;$env:PATH"
@@ -77,9 +77,13 @@ $env:PATH = "$env:ANDROID_HOME\platform-tools;$env:ANDROID_HOME\emulator;$env:JA
 $env:YOUREN_JDK_HOME
 $env:ANDROID_HOME
 & (Join-Path $env:YOUREN_JDK_HOME 'bin/java.exe') -version
+Get-Command java -All | Select-Object -ExpandProperty Source
+java -version
 adb version
 emulator -version
 ```
+
+`java -version`应显示JDK21；若仍显示旧版本，检查JDK21的`bin`是否在用户PATH前部，并在新终端重试。仓库`build.ps1`、`run.ps1`和`migrate.ps1`使用`YOUREN_JDK_HOME`；本机若将JDK安装在其他位置，应同步更新该变量。
 
 ## 2. 安装仓库依赖（首次或锁文件更新后）
 
