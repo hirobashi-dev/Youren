@@ -40,6 +40,11 @@ public class AccessTokenFilter extends OncePerRequestFilter {
     }
     boolean required =
         path.equals("/v1/me") || path.startsWith("/v1/me/") || path.equals("/v1/auth/logout");
+    // 内容列表也支持游客凭证，具体身份由控制器校验；其他本人路由仍必须使用账号令牌。
+    if (path.matches(
+        "^/v1/me/content/(posts|comments)/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"))
+      required = false;
+    if (path.equals("/v1/me/content")) required = false;
     String header = request.getHeader("Authorization");
     try {
       if (header != null) {

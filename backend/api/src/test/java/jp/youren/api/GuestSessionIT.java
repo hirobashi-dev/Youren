@@ -259,4 +259,197 @@ class GuestSessionIT {
               .statusCode());
     }
   }
+
+  // 游客发布先进入待审；公开列表不返回草稿，本人内容入口仍能读取自己的状态。
+  @Test
+  void submitsPendingPostAndKeepsItOutOfPublicList() throws Exception {
+    String token = json.readTree(create().body()).at("/data/guestToken").asText();
+    try (var http = HttpClient.newHttpClient()) {
+      var createPost =
+          http.send(
+              HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/v1/posts"))
+                  .header("X-Guest-Token", token)
+                  .header("Idempotency-Key", UUID.randomUUID().toString())
+                  .header("Content-Type", "application/json")
+                  .POST(
+                      HttpRequest.BodyPublishers.ofString(
+                          "{\"title\":\"东京散步\",\"body\":\"周末一起散步。\",\"category\":\"city\"}"))
+                  .build(),
+              HttpResponse.BodyHandlers.ofString());
+      assertEquals(201, createPost.statusCode(), createPost.body());
+      assertEquals("pending", json.readTree(createPost.body()).at("/data/status").asText());
+      assertTrue(json.readTree(createPost.body()).at("/data/publishedAt").isNull());
+      UUID postId = UUID.fromString(json.readTree(createPost.body()).at("/data/id").asText());
+
+      var publicPosts =
+          http.send(
+              HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/v1/posts"))
+                  .GET()
+                  .build(),
+              HttpResponse.BodyHandlers.ofString());
+      assertEquals(200, publicPosts.statusCode());
+      assertEquals(0, json.readTree(publicPosts.body()).at("/data").size());
+      assertTrue(json.readTree(publicPosts.body()).at("/page/nextCursor").isNull());
+
+      var invalidFilter =
+          http.send(
+              HttpRequest.newBuilder(
+                      URI.create("http://127.0.0.1:" + port + "/v1/posts?category=unknown"))
+                  .GET()
+                  .build(),
+              HttpResponse.BodyHandlers.ofString());
+      // 无效筛选必须明确拒绝，不能伪装成合法的空搜索结果。
+      assertEquals(422, invalidFilter.statusCode(), invalidFilter.body());
+
+      var ownContent =
+          http.send(
+              HttpRequest.newBuilder(
+                      URI.create("http://127.0.0.1:" + port + "/v1/me/content?kind=posts"))
+                  .header("X-Guest-Token", token)
+                  .GET()
+                  .build(),
+              HttpResponse.BodyHandlers.ofString());
+      assertEquals(200, ownContent.statusCode(), ownContent.body());
+      assertEquals(postId.toString(), json.readTree(ownContent.body()).at("/data/0/id").asText());
+      assertEquals("pending", json.readTree(ownContent.body()).at("/data/0/status").asText());
+
+      var ownDetail =
+          http.send(
+              HttpRequest.newBuilder(
+                      URI.create("http://127.0.0.1:" + port + "/v1/me/content/posts/" + postId))
+                  .header("X-Guest-Token", token)
+                  .GET()
+                  .build(),
+              HttpResponse.BodyHandlers.ofString());
+      assertEquals(200, ownDetail.statusCode(), ownDetail.body());
+      assertEquals(postId.toString(), json.readTree(ownDetail.body()).at("/data/id").asText());
+    }
+  }
+
+  @Test
+  void ownerCanEditPendingPostAndStaleVersionIsRejected() throws Exception {
+    String token = json.readTree(create().body()).at("/data/guestToken").asText();
+    try (var http = HttpClient.newHttpClient()) {
+      var created =
+          http.send(
+              HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/v1/posts"))
+                  .header("X-Guest-Token", token)
+                  .header("Idempotency-Key", UUID.randomUUID().toString())
+                  .header("Content-Type", "application/json")
+                  .POST(
+                      HttpRequest.BodyPublishers.ofString(
+                          "{\"title\":\"旧标题\",\"body\":\"正文\",\"category\":\"general\"}"))
+                  .build(),
+              HttpResponse.BodyHandlers.ofString());
+      UUID postId = UUID.fromString(json.readTree(created.body()).at("/data/id").asText());
+      String url = "http://127.0.0.1:" + port + "/v1/posts/" + postId;
+      var update =
+          http.send(
+              HttpRequest.newBuilder(URI.create(url))
+                  .header("X-Guest-Token", token)
+                  .header("If-Match", "\"1\"")
+                  .header("Content-Type", "application/json")
+                  .method(
+                      "PATCH",
+                      HttpRequest.BodyPublishers.ofString(
+                          "{\"title\":\"新标题\",\"body\":\"已修改\",\"category\":\"general\"}"))
+                  .build(),
+              HttpResponse.BodyHandlers.ofString());
+      assertEquals(200, update.statusCode(), update.body());
+      assertEquals(2, json.readTree(update.body()).at("/data/version").asInt());
+      assertEquals("pending", json.readTree(update.body()).at("/data/status").asText());
+
+      var stale =
+          http.send(
+              HttpRequest.newBuilder(URI.create(url))
+                  .header("X-Guest-Token", token)
+                  .header("If-Match", "\"1\"")
+                  .header("Content-Type", "application/json")
+                  .method(
+                      "PATCH",
+                      HttpRequest.BodyPublishers.ofString(
+                          "{\"title\":\"覆盖尝试\",\"body\":\"旧版本\",\"category\":\"general\"}"))
+                  .build(),
+              HttpResponse.BodyHandlers.ofString());
+      // 旧版本不得覆盖已保存的新版本，响应以冲突状态提示客户端重新加载。
+      assertEquals(412, stale.statusCode(), stale.body());
+    }
+  }
+
+  @Test
+  void ownerDeleteHidesPostImmediatelyAndCanRetrySafely() throws Exception {
+    String token = json.readTree(create().body()).at("/data/guestToken").asText();
+    try (var http = HttpClient.newHttpClient()) {
+      var created =
+          http.send(
+              HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/v1/posts"))
+                  .header("X-Guest-Token", token)
+                  .header("Idempotency-Key", UUID.randomUUID().toString())
+                  .header("Content-Type", "application/json")
+                  .POST(
+                      HttpRequest.BodyPublishers.ofString(
+                          "{\"title\":\"待删标题\",\"body\":\"正文\",\"category\":\"general\"}"))
+                  .build(),
+              HttpResponse.BodyHandlers.ofString());
+      UUID postId = UUID.fromString(json.readTree(created.body()).at("/data/id").asText());
+      URI uri = URI.create("http://127.0.0.1:" + port + "/v1/posts/" + postId);
+      var first =
+          http.send(
+              HttpRequest.newBuilder(uri)
+                  .header("X-Guest-Token", token)
+                  .header("Idempotency-Key", UUID.randomUUID().toString())
+                  .DELETE()
+                  .build(),
+              HttpResponse.BodyHandlers.ofString());
+      assertEquals(204, first.statusCode(), first.body());
+      var hidden =
+          http.send(
+              HttpRequest.newBuilder(uri).GET().build(), HttpResponse.BodyHandlers.ofString());
+      assertEquals(404, hidden.statusCode());
+      var retry =
+          http.send(
+              HttpRequest.newBuilder(uri)
+                  .header("X-Guest-Token", token)
+                  .header("Idempotency-Key", UUID.randomUUID().toString())
+                  .DELETE()
+                  .build(),
+              HttpResponse.BodyHandlers.ofString());
+      // 重试删除保持相同终态，不再次产生可见内容或泄露资源是否归他人所有。
+      assertEquals(204, retry.statusCode(), retry.body());
+    }
+  }
+
+  @Test
+  void repeatedPostSubmissionWithSameKeyCreatesOnlyOnePost() throws Exception {
+    String token = json.readTree(create().body()).at("/data/guestToken").asText();
+    String key = UUID.randomUUID().toString();
+    String body = "{\"title\":\"幂等标题\",\"body\":\"同一请求\",\"category\":\"general\"}";
+    try (var http = HttpClient.newHttpClient()) {
+      var first = submitPost(http, token, key, body);
+      var repeated = submitPost(http, token, key, body);
+      assertEquals(201, first.statusCode(), first.body());
+      assertEquals(201, repeated.statusCode(), repeated.body());
+      assertEquals(
+          json.readTree(first.body()).at("/data/id").asText(),
+          json.readTree(repeated.body()).at("/data/id").asText());
+      assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM posts", Integer.class));
+
+      var conflict = submitPost(http, token, key, body.replace("同一请求", "不同请求"));
+      // 同一主体复用键但更换请求正文必须冲突，不能创建第二条内容。
+      assertEquals(409, conflict.statusCode(), conflict.body());
+      assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM posts", Integer.class));
+    }
+  }
+
+  private HttpResponse<String> submitPost(HttpClient http, String token, String key, String body)
+      throws Exception {
+    return http.send(
+        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/v1/posts"))
+            .header("X-Guest-Token", token)
+            .header("Idempotency-Key", key)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(body))
+            .build(),
+        HttpResponse.BodyHandlers.ofString());
+  }
 }

@@ -33,4 +33,47 @@ class AccessTokenFilterTest {
     assertFalse(body.contains("internal-token-secret"));
     assertFalse(body.contains("submitted-secret"));
   }
+
+  @Test
+  void guestOwnedContentRouteReachesControllerWithoutAccountToken() throws Exception {
+    var verifier = mock(SessionService.class);
+    var http =
+        MockMvcBuilders.standaloneSetup(new AuthController(null, null, null, null))
+            .addFilter(new AccessTokenFilter(verifier, new ObjectMapper()))
+            .build();
+    // 游客内容路由交由控制器验证游客凭证；过滤器不应先要求账号令牌。
+    var result = http.perform(get("/v1/me/content").param("kind", "posts")).andReturn();
+    assertEquals(404, result.getResponse().getStatus());
+    verifyNoInteractions(verifier);
+
+    var detail =
+        http.perform(get("/v1/me/content/posts/123e4567-e89b-12d3-a456-426614174000")).andReturn();
+    // 仅允许明确的帖子/回复UUID详情形状通过过滤器，控制器仍负责验证主体凭证。
+    assertEquals(404, detail.getResponse().getStatus());
+    verifyNoInteractions(verifier);
+  }
+
+  // 游客例外只能匹配完整posts/comments UUID详情；相邻本人路径仍要求账号认证。
+  @Test
+  void guestDetailExceptionCannotExpandToAdjacentMeRoutes() throws Exception {
+    var verifier = mock(SessionService.class);
+    var http =
+        MockMvcBuilders.standaloneSetup(new AuthController(null, null, null, null))
+            .addFilter(new AccessTokenFilter(verifier, new ObjectMapper()))
+            .build();
+    for (String path :
+        java.util.List.of(
+            "/v1/me/content/posts/not-uuid",
+            "/v1/me/content/accounts/123e4567-e89b-12d3-a456-426614174000",
+            "/v1/me/content/comments/123e4567-e89b-12d3-a456-426614174000/deeper",
+            "/v1/me/settings"))
+      assertEquals(401, http.perform(get(path)).andReturn().getResponse().getStatus());
+    assertEquals(
+        404,
+        http.perform(get("/v1/me/content/comments/123e4567-e89b-12d3-a456-426614174000"))
+            .andReturn()
+            .getResponse()
+            .getStatus());
+    verifyNoInteractions(verifier);
+  }
 }
