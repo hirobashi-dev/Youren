@@ -92,7 +92,9 @@ class WorkerDependenciesIT {
               "SPRING_DATASOURCE_PASSWORD",
               postgres.getPassword(),
               "SPRING_DATA_REDIS_URL",
-              "redis://redis:6379");
+              "redis://redis:6379",
+              "YOUREN_MEDIA_ROOT",
+              "/var/lib/youren/media");
       for (String signal : new String[] {"SIGTERM", "SIGINT"}) {
         try (var process =
             worker(network, environment)

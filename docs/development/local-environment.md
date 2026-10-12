@@ -106,7 +106,7 @@ if (-not (Test-Path 'infra/.env')) { Copy-Item 'infra/.env.example' 'infra/.env'
 notepad.exe infra/.env
 ```
 
-文件中保留一行`POSTGRES_PASSWORD=<本机随机密码>`。建议使用只含英数字的高熵随机值，避免dotenv转义歧义。迁移脚本会从该文件读取密码，但不会把密码打印出来。PostgreSQL首次初始化后，Compose卷内已保存数据库角色；之后单纯修改`.env`不会更改已有数据库密码。若已初始化过，应保留原密码，或另行执行明确的本机改密操作；不要删除卷来“重置”。
+文件中保留`POSTGRES_PASSWORD=<本机随机密码>`。首次管理员初始化前，再添加`YOUREN_ADMIN_MFA_ENCRYPTION_KEY=<本机32字节Base64密钥>`；该密钥用于保护管理员MFA种子，后续启动API也必须使用同一个密钥。建议使用安全随机生成器，不要提交该文件。迁移和初始化脚本读取这些本机值时不会把密码或密钥打印出来。PostgreSQL首次初始化后，Compose卷内已保存数据库角色；之后单纯修改`.env`不会更改已有数据库密码。若已初始化过，应保留原密码，或另行执行明确的本机改密操作；不要删除卷来“重置”。
 
 ### 每次开机后启动
 
@@ -147,6 +147,28 @@ powershell.exe -NoProfile -File backend/tests/local-migrate.test.ps1
 
 成功时最后输出类似`{"status":"ok","operation":"migrate"}`。若开发库已有当前迁移，重复运行应为无变更成功。任何失败都不要继续启动API；先检查Docker健康、`.env`密码和目标端口。此脚本不用于接续旧库；`audit-legacy`/`adopt-legacy`属于另一个需备份和人工确认的操作，不要用于此本机新库。
 
+### 首次管理员初始化（仅运行一次）
+
+管理员MFA加密密钥必须长期保存在未提交的`infra/.env`中。若还未生成，可在仓库根目录用PowerShell生成并写入文件；命令不会输出密钥：
+
+```powershell
+$bytes = New-Object byte[] 32
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
+$key = [Convert]::ToBase64String($bytes)
+if ((Get-Content infra/.env) -match '^YOUREN_ADMIN_MFA_ENCRYPTION_KEY=') { throw '密钥已存在，不要覆盖已有管理员密钥。' }
+Add-Content -LiteralPath infra/.env -Value "YOUREN_ADMIN_MFA_ENCRYPTION_KEY=$key" -Encoding utf8
+$key = $null
+```
+
+确保开发数据库已启动并迁移，然后在可交互的PowerShell 7终端执行：
+
+```powershell
+pwsh -NoProfile -File .\backend\admin-init.ps1
+```
+
+命令会提示输入管理员登录名、至少16位口令，并在控制台短暂显示一次TOTP二维码URI；把URI导入认证器后输入六位验证码。命令不接受命令行凭据、不会打印口令或MFA种子，也不创建默认账户。成功后首管理员已存在，再次执行会安全拒绝。备份`YOUREN_ADMIN_MFA_ENCRYPTION_KEY`到本机密码管理器；密钥丢失会使已存MFA种子无法解密，切勿为“修复”而随意替换。
+
 ## 5. 构建并启动Java API
 
 首次启动、后端源码更新或迁移后，打开一个专用PowerShell窗口。在仓库根目录构建API及其模块：
@@ -175,6 +197,10 @@ $env:SPRING_DATASOURCE_USERNAME = 'youren_dev'
 $passwordLine = Get-Content 'infra/.env' | Where-Object { $_ -match '^\s*POSTGRES_PASSWORD\s*=' } | Select-Object -Last 1
 $env:SPRING_DATASOURCE_PASSWORD = (($passwordLine -split '=', 2)[1]).Trim().Trim('"').Trim("'")
 $env:SPRING_DATA_REDIS_URL = 'redis://127.0.0.1:6381/0'
+$env:YOUREN_MEDIA_ROOT = Join-Path (Get-Location).Path '.local/media-private'
+$mfaKeyLine = Get-Content 'infra/.env' | Where-Object { $_ -match '^YOUREN_ADMIN_MFA_ENCRYPTION_KEY=' } | Select-Object -Last 1
+if (-not $mfaKeyLine) { throw 'infra/.env 中没有找到管理员 MFA 密钥' }
+$env:YOUREN_ADMIN_MFA_ENCRYPTION_KEY = (($mfaKeyLine -split '=', 2)[1]).Trim().Trim('"').Trim("'")
 $env:SERVER_ADDRESS = '127.0.0.1'
 $env:SERVER_PORT = '3000'
 $repoRoot = (Get-Location).Path
@@ -225,10 +251,31 @@ $env:SPRING_DATASOURCE_URL = 'jdbc:postgresql://127.0.0.1:5441/youren_dev'
 $env:SPRING_DATASOURCE_USERNAME = 'youren_dev'
 $env:SPRING_DATASOURCE_PASSWORD = (($passwordLine -split '=', 2)[1]).Trim().Trim('"').Trim("'")
 $env:SPRING_DATA_REDIS_URL = 'redis://127.0.0.1:6381/0'
+$env:YOUREN_MEDIA_ROOT = Join-Path (Get-Location).Path '.local/media-private'
+$mfaKeyLine = Get-Content 'infra/.env' | Where-Object { $_ -match '^YOUREN_ADMIN_MFA_ENCRYPTION_KEY=' } | Select-Object -Last 1
+if (-not $mfaKeyLine) { throw 'infra/.env 中没有找到管理员 MFA 密钥' }
+$env:YOUREN_ADMIN_MFA_ENCRYPTION_KEY = (($mfaKeyLine -split '=', 2)[1]).Trim().Trim('"').Trim("'")
 pwsh -NoProfile -File .\backend\run.ps1
 ```
 
 看到`{"event":"started","service":"api"}`后保持窗口运行。停止时按`Ctrl+C`；重启时，在仍保留上述变量的同一个窗口再次运行最后一行。
+
+到期帖子和图片清理、24小时未绑定媒体回收及72小时待审告警由独立worker执行。API启动后，在另一个PowerShell窗口用同一开发库、Redis、媒体目录和MFA密钥环境启动worker：
+
+```powershell
+$passwordLine = Get-Content 'infra/.env' | Where-Object { $_ -match '^\s*POSTGRES_PASSWORD\s*=' } | Select-Object -Last 1
+$env:SPRING_DATASOURCE_URL = 'jdbc:postgresql://127.0.0.1:5441/youren_dev'
+$env:SPRING_DATASOURCE_USERNAME = 'youren_dev'
+$env:SPRING_DATASOURCE_PASSWORD = (($passwordLine -split '=', 2)[1]).Trim().Trim('"').Trim("'")
+$env:SPRING_DATA_REDIS_URL = 'redis://127.0.0.1:6381/0'
+$env:YOUREN_MEDIA_ROOT = Join-Path (Get-Location).Path '.local/media-private'
+$mfaKeyLine = Get-Content 'infra/.env' | Where-Object { $_ -match '^YOUREN_ADMIN_MFA_ENCRYPTION_KEY=' } | Select-Object -Last 1
+if (-not $mfaKeyLine) { throw 'infra/.env 中没有找到管理员 MFA 密钥' }
+$env:YOUREN_ADMIN_MFA_ENCRYPTION_KEY = (($mfaKeyLine -split '=', 2)[1]).Trim().Trim('"').Trim("'")
+pwsh -NoProfile -File .\backend\run.ps1 -Service worker
+```
+
+worker每分钟分批处理；停止后再次启动会重新领取停机前未完成的删除任务。待审告警写入数据库outbox并保持内容待审，审核台仍需人工操作。
 
 ## 6. 启动Android模拟器并转发API
 

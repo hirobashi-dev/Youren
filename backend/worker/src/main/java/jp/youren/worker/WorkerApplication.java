@@ -13,7 +13,11 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 
 // 独立后台进程；首阶段没有任务消费，Spring管理依赖资源生命周期。
 @SpringBootApplication
-@Import({DatabaseConfiguration.class, RuntimeDependenciesConfiguration.class})
+@Import({
+  DatabaseConfiguration.class,
+  RuntimeDependenciesConfiguration.class,
+  WorkerJobsConfiguration.class
+})
 public class WorkerApplication {
   @Bean(initMethod = "start", destroyMethod = "close")
   public WorkerLifecycle workerLifecycle(

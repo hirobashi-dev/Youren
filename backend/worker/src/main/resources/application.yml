@@ -8,3 +8,8 @@ spring:
   sql:
     init:
       mode: never
+
+# 清理器必须使用与API相同的私有本机媒体根目录。
+youren:
+  media:
+    root: ${YOUREN_MEDIA_ROOT:}
