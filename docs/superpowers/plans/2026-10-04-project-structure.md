@@ -10,20 +10,20 @@
 
 ## 1. 工程清单
 
-第1阶段同步（2026-10-04）：四个应用基础均已建立，Java四模块共30项测试，统一检查本地共78项测试及构建通过；Android模拟器有原生验收证据，iOS按用户决定延期。GitHub运行37168830294（基于`914bd0f`）的前端、后端、浏览器均成功；EAS项目关联和动态配置解析已验证，配置提交为`169c396`。`develop/stage-1-foundation`最新提交`40b1757`已推送并与远端同步；上述CI运行基于较早的`914bd0f`，不代表后续提交均已在CI验证。产品显示名称为`Youren`，重要更改先与用户确认。
+第1阶段主体工程已建立，第2阶段身份与普通资料任务1至6按已约定范围完成（2026-10-10）；Android模拟器的会话恢复和API断线重试已有记录，Android实机与iOS原生验收仍按用户决定延期。第3阶段设计与实施计划已记录，当前尚未开始实施。阶段进度以[阶段总计划](2026-10-03-phased-development-acceptance.md)和各阶段验收文档为准；本文件只说明实际目录和后续结构约定。
 
 | 工程 | 根目录 | 职责 | 当前状态 |
 |---|---|---|---|
-| 手机端 | `apps/mobile/` | 普通用户使用，支持iOS与Android | 已有基础页及Android模拟器证据，iOS尚未验收 |
-| 管理后台 | `apps/admin/` | 审核、举报和用户管理界面 | 已有连接状态页，业务后续开发 |
-| API服务 | `backend/api/` | HTTP接口、权限、业务事务与后续实时通信 | 已有健康接口及错误处理 |
-| worker服务 | `backend/worker/` | 到期清理、审核、推送等异步任务 | 已有启动/关闭骨架，尚无业务消费 |
+| 手机端 | apps/mobile/ | 普通用户使用，支持iOS与Android | 已有游客、账号认证、普通资料和设置；Android模拟器证据已记录，原生iOS验收延期 |
+| 管理后台 | apps/admin/ | 管理员工作台 | 目前仍是API连接状态基础页；业务审核和举报界面待第3阶段 |
+| API服务 | backend/api/ | HTTP接口、权限、业务事务 | 已有健康、身份认证、游客凭证及普通资料 API |
+| worker服务 | backend/worker/ | 到期清理、媒体处理和其他异步任务 | 目前仍只有启动、依赖检查和关闭骨架，业务任务未实现 |
 
-`backend/shared/`、`backend/database/`是两个Java共享模块，不增加应用工程数量。PostgreSQL与Redis是基础设施服务，不是本仓库应用源码工程。
+backend/shared/、backend/database/是两个Java共享模块，不增加应用工程数量。PostgreSQL与Redis是基础设施服务，不是本仓库应用源码工程。
 
 ## 2. 仓库总目录
 
-下列目录树中，`[规划]`表示尚未实现；未标注的路径已有。业务目录按对应阶段创建，不提前生成空模块。
+下列目录树说明当前跟踪的源码/文档和明确标注的规划项；依赖、构建产物、被忽略的本机环境与工具状态不列出。`[规划]`表示尚未实现，业务目录随对应阶段创建，不提前生成空模块。
 
 ```text
 Youren/
@@ -44,12 +44,11 @@ Youren/
 │  ├─ contracts/              OpenAPI合同、生成源和检查
 │  └─ database/               原数据库规范源、历史Prisma工具
 ├─ infra/                     Compose、环境示例和本地依赖说明
-├─ tools/                     check.cjs统一检查、check-java-reports.cjs报告门槛
-│                            check-engineering.cjs、docker.cjs、浏览器联调启动/编排
+├─ tools/                     统一检查、Java报告门槛、Docker及API联调辅助脚本
 ├─ tests/                     engineering.test.cjs、check.test.cjs、java-reports.test.cjs
 ├─ docs/
-│  ├─ superpowers/specs/      产品、技术、页面、数据库/API方案
-│  ├─ superpowers/plans/      开发路线与实施计划
+│  ├─ superpowers/specs/      产品/技术规格；含第三阶段留言板与图片审核设计
+│  ├─ superpowers/plans/      开发路线、阶段实施计划与目录组织说明；含第三阶段实施计划
 │  ├─ development/            验收证据和恢复记录
 │  └─ design/                 线框图、视觉稿及相关工具
 ├─ .github/workflows/ci.yml    前端、Java、浏览器三个任务；修正后的云端验收已通过
@@ -67,37 +66,27 @@ Youren/
 
 旧TypeScript API曾在本地留下被`.gitignore`排除的`apps/api/dist/`编译产物；已按用户确认清理该目录。它不属于当前Git源码结构或活动工程，当前API实现位于`backend/api/`。
 
-## 3. 手机端目录（基础已有，业务目录为规划）
+## 3. 手机端目录（第1、2阶段已实现，后续业务模块按需增加）
 
-```text
-apps/mobile/
-├─ App.tsx、index.ts          应用入口
-├─ app.config.ts             动态Expo配置、应用标识、EAS项目ID及iOS加密声明
-├─ eas.json                  Android/iOS开发构建配置
-├─ package.json、tsconfig.json
-├─ jest.config.cjs           组件测试配置
-├─ assets/                   [规划] 图标、启动图和静态资源
-├─ src/
-│  ├─ screens/
-│  │  └─ FoundationScreen.tsx  第1阶段连接状态页
-│  ├─ api/health.ts           第1阶段健康请求、超时与取消
-│  ├─ theme.ts               绿色主色、粉色恋爱辅助色
-│  ├─ components/            [规划] 后续复用按钮、卡片及状态提示
-│  ├─ navigation/            [规划] 后续导航和页面路由
-│  └─ features/              [规划] 后续业务模块，见下方约定
-├─ tests/
-│  ├─ FoundationScreen.test.tsx  页面状态与重试
-│  ├─ health.test.ts             请求、超时、取消与响应边界
-│  └─ setup.ts                  原生测试环境
-├─ .env.example                 公开API地址示例
-└─ README.md                 本机运行、设备地址与构建验收
-```
+以下列出当前源码和主要测试；不包括依赖、构建产物及被忽略的本机 IDE 文件。
 
-根目录`app.json`当前只保留EAS项目ID参考值，须与`apps/mobile/app.config.ts`中的`extra.eas.projectId`一致；手机工程实际解析结果以动态`app.config.ts`为准。EAS项目关联已完成，iOS云构建仍因Apple开发者账号条件暂缓。
+    apps/mobile/
+    ├─ App.tsx、index.ts                  应用入口
+    ├─ app.config.ts、eas.json            动态 Expo 与开发构建配置
+    ├─ package.json、tsconfig.json、jest.config.cjs
+    ├─ src/
+    │  ├─ api/                            API 客户端、认证、资料和健康请求
+    │  ├─ auth/                           SecureStore 和会话状态
+    │  ├─ components/Form.tsx             共享表单组件
+    │  ├─ screens/                        基础页、登录注册、账号导航、资料和设置
+    │  └─ theme.ts                        主题色
+    ├─ tests/                             认证、会话、资料、API 和基础页面测试
+    ├─ .env.example                       公开 API 地址示例
+    └─ README.md                          本机运行、设备地址与构建验收
 
-后续`features/`按`auth/`、`profile/`、`board/`、`chat/`、`activities/`、`dating/`、`settings/`组织，每个模块按需包含`screens/`、`components/`、`api.ts`、`types.ts`和测试。第1阶段只建立入口、状态页和连接测试。
+认证及资料已放在 src/auth、src/api 和 src/screens；旧提议的 src/features/auth、src/features/profile、src/navigation 目前并未创建，后续按阶段计划增量组织，不为了目录完整而创建空目录。第3阶段具体文件路径以[第三阶段实施计划](2026-10-12-stage-3-content-board.md)为准。
 
-`android/`、`ios/`由Expo原生生成流程产生，当前均忽略、不提交；Android已用prebuild/Gradle构建并安装模拟器，iOS原生测试延期。若未来需要长期维护原生改动，先确认策略再同步忽略规则。手机端不包含服务器密码或数据库访问代码。
+根目录 app.json 只保留 EAS 项目 ID 参考，须与 apps/mobile/app.config.ts 中的 extra.eas.projectId 一致。android/、ios/由 Expo 原生生成流程产生并忽略；Android开发构建/模拟器有验收记录，iOS原生验收延期。手机端不包含服务器密码或数据库访问代码。
 
 ## 4. 管理后台目录
 
@@ -124,29 +113,24 @@ apps/admin/
 
 ## 5. API服务目录
 
-```text
-backend/api/
-├─ pom.xml、README.md
-└─ src/
-   ├─ main/
-   │  ├─ java/jp/youren/api/
-   │  │  ├─ ApiApplication.java
-   │  │  ├─ health/                      已有健康控制器和就绪检查
-   │  │  ├─ http/ApiExceptionHandler.java 已有安全HTTP错误处理
-   │  │  ├─ security/                    [规划] 身份和权限入口
-   │  │  └─ features/                    [规划] 按业务组织
-   │  └─ resources/
-   │     ├─ application.yml
-   │     └─ logback-spring.xml
-   └─ test/
-      ├─ java/jp/youren/api/
-      │  ├─ HealthControllerTest.java
-      │  ├─ ApiErrorTest.java
-      │  └─ ReadinessIT.java
-      └─ resources/logback-test.xml
-```
+API 已有健康、邮箱认证、游客凭证/接续和普通资料实现。业务代码采用按职责分开的顶层 package，而不是尚未建立的 features/ 目录。
 
-后续`features/`包含`auth/`、`profile/`、`board/`、`chat/`、`activities/`、`dating/`、`moderation/`，各模块按需建立`controller/`、`service/`、`dto/`。控制器处理HTTP，服务层协调权限与事务，DTO维护公开合同；Mapper和SQL放数据库模块。实时协议确认后再创建对应通信目录。
+    backend/api/
+    ├─ pom.xml、README.md
+    └─ src/
+       ├─ main/java/jp/youren/api/
+       │  ├─ ApiApplication.java
+       │  ├─ auth/                         邮箱挑战、登录、会话与账号查询
+       │  ├─ email/                        邮件发送端口及隔离测试收件箱
+       │  ├─ guest/                        游客凭证及游客内容接续
+       │  ├─ health/                       健康和就绪检查
+       │  ├─ http/                         安全 HTTP 错误处理
+       │  ├─ profile/                      普通资料服务与 API
+       │  └─ security/                     令牌、请求身份与认证过滤器
+       ├─ main/resources/                  application.yml、日志配置
+       └─ test/                            健康、认证、游客及资料测试
+
+第3阶段计划在同一职责分组下增量增加 board、media、moderation、reports、admin 等 package，具体边界见阶段计划。控制器处理HTTP，服务层协调权限与事务，DTO维护公开合同；Mapper和SQL放database模块。API不直接依赖worker启动代码。
 
 ## 6. worker服务目录
 
@@ -172,51 +156,32 @@ worker独立运行，不依赖API控制器。业务任务随对应阶段加入�
 
 ## 7. Java共享模块
 
-```text
-backend/shared/
-├─ pom.xml
-└─ src/
-   ├─ main/java/jp/youren/shared/
-   │  ├─ config/                         配置校验、依赖连接工厂
-   │  └─ logging/SafeLog.java             白名单安全日志
-   └─ test/java/jp/youren/shared/         配置与日志单元测试
+    backend/shared/
+    ├─ pom.xml
+    └─ src/main/java/jp/youren/shared/
+       ├─ config/                         运行配置校验与依赖连接工厂
+       └─ logging/SafeLog.java            白名单安全日志
 
-backend/database/
-├─ pom.xml、README.md
-├─ tools/sync-initial.cjs                初始SQL来源一致性检查
-└─ src/
-   ├─ main/
-   │  ├─ java/jp/youren/database/
-   │  │  ├─ DatabaseConfiguration.java
-   │  │  ├─ MigrationCommand.java
-   │  │  ├─ LegacyMigrationAdoption.java
-   │  │  ├─ mapper/                      MyBatis接口，按业务逐步扩展
-   │  │  └─ type/UuidTypeHandler.java
-   │  └─ resources/
-   │     ├─ mapper/                      XML与接口对应
-   │     ├─ db/migration/V1__initial.sql
-   │     ├─ db/v1-schema.sha256
-   │     ├─ db/legacy-checksums.txt
-   │     └─ logback.xml
-   └─ test/                              迁移、读写、事务和约束测试
-```
+    backend/database/
+    ├─ pom.xml、README.md
+    ├─ tools/sync-initial.cjs             初始 SQL 来源一致性检查
+    └─ src/
+       ├─ main/java/jp/youren/database/   配置、迁移命令、Mapper 与类型处理
+       ├─ main/resources/mapper/          当前账号、同意、认证、游客和资料 Mapper XML
+       ├─ main/resources/db/migration/    V1 初始迁移、V2 身份、V3 资料草稿
+       └─ test/                           迁移、读写、事务和约束测试
+
+第3阶段开始前须核对 V1-V3 与现有 Mapper；只在现有结构确有缺口时新增后续迁移，不能修改已使用的旧迁移或重复建表。
 
 ### 模块依赖约定
 
-```text
-手机端 ──HTTP──┐
-              ├── API ──→ database ──→ shared
-管理后台 ─HTTP─┘      └───────────────→ shared
-                  worker ─→ database
-                         └→ shared
-```
+    手机端 ──HTTP──┐
+                  ├── API ──→ database ──→ shared
+    管理后台 ─HTTP─┘      └───────────────→ shared
+                      worker ─→ database
+                             └→ shared
 
-HTTP是运行时通信，箭头`→`是Java代码依赖；以上Java依赖已由当前`pom.xml`声明。
-
-- `api`与`worker`不能互相导入代码或依赖对方启动；通过持久任务记录衔接异步工作。
-- `database`依赖`shared`，`shared`不反向依赖database或应用。database负责Mapper、类型映射和迁移，不承担HTTP控制器或推送调用。
-- API的业务服务协调权限与事务；跨业务模块通过明确的服务接口调用，控制器不绕过服务直接写Mapper。避免模块循环依赖，新的共享业务逻辑出现后再按职责提取。
-- 前端仅调用公开或授权API，不能导入Java实现、服务器配置及旧Prisma访问包。合同以`packages/contracts/openapi.json`为准，不能以共享数据库行模型替代DTO。
+HTTP是运行时通信，箭头表示Java代码依赖。api与worker不能互相导入代码或依赖对方启动；database依赖shared，shared不反向依赖database或应用。API业务服务协调权限与事务；Mapper和迁移留在database。前端只调用授权API，合同以packages/contracts/openapi.json为准，不以数据库行模型替代DTO。
 
 ## 8. API到worker的任务流（后续业务实现）
 
@@ -233,7 +198,7 @@ worker短事务领取任务并设置租约 → 事务外执行审核/推送等�
 ```
 
 - PostgreSQL的`outbox`是持久任务来源；Redis不作为任务是否成功的唯一凭据。删除流程还使用`deletion_jobs`与`deletion_ledger`，遵循数据库/API设计规定的清理顺序。
-- API任务生产逻辑放对应`features/<业务>/service/`；worker处理器放`jobs/`，领取、租约、重试和幂等协调放`dispatch/`。任务Mapper/XML在database模块，后续按业务归组，接口和XML保持对应。
+- API任务生产逻辑放对应业务package的service层；worker处理器放`jobs/`，领取、租约、重试和幂等协调放`dispatch/`。任务Mapper/XML在database模块，后续按业务归组，接口和XML保持对应。
 - 业务写入和outbox入队使用同一数据库事务；外部调用在领取事务提交后执行，不长时间持锁。API响应表示已提交的业务状态，不能将“已入队”描述成“审核或推送已成功”。
 - 沿用`pending → processing → succeeded/dead`状态；通过`available_at`安排执行，`lease_until`支持崩溃后重新领取，`attempts`记录尝试次数。具体租约时长、重试间隔和上限在对应业务实施前固定并测试。
 - 允许任务重复执行，不承诺恰好一次；用`dedupe_key`防止重复入队，以eventId及业务唯一约束实现消费幂等。提供方支持幂等键时传递同一键；不支持时记录外部结果不确定的处理策略，避免无条件重复发送。
@@ -251,6 +216,7 @@ worker短事务领取任务并设置租约 → 事务外执行审核/推送等�
 | Java API/worker | 已有各模块`src/main/resources/application.yml`；进程环境变量 | 必需`SPRING_DATASOURCE_URL`、独立用户名/密码、`SPRING_DATA_REDIS_URL`；Java不自动读取`.env` |
 | Java可选配置 | `SERVER_PORT`、`READINESS_TIMEOUT_MS`、`LOG_LEVEL` | 当前默认3000、1500ms、info；字段边界以shared验证和后端README为准 |
 | 管理后台 | 规划`apps/admin/.env.example`；Vite实际环境文件 | `VITE_API_BASE_URL`是公开地址；现有客户端缺省为`http://127.0.0.1:3000` |
+| 图片存储 | 第3阶段规划`YOUREN_MEDIA_ROOT`本机私有目录 | 由API/worker配置访问；不映射为静态公开目录，不将本机图片纳入Git；S3适配留待后续 |
 | 手机端 | 已有`apps/mobile/.env.example`和`app.config.ts` | `EXPO_PUBLIC_API_BASE_URL`是公开地址；模拟器/真机地址分别记录，不能照搬本机localhost |
 | 云构建/CI | 平台环境变量和秘密管理 | 仅注入该任务需要的配置，不提交密钥文件或账号凭据 |
 
@@ -268,10 +234,9 @@ worker短事务领取任务并设置租约 → 事务外执行审核/推送等�
 
 ## 10. 落地顺序与验证
 
+1. 第1阶段工程基础已交付；iOS原生验收延期。
+2. 第2阶段身份与普通资料任务1至6已按确认范围完成；Android实机和iOS原生验收延期，证据见 docs/development/stage-2-acceptance.md。
+3. 第3阶段设计与实施计划已建立但尚未开工；设计见 specs/2026-10-12-stage-3-content-board-design.md，任务见 plans/2026-10-12-stage-3-content-board.md。
+4. 后续业务目录随各阶段实现，不提前生成空模块；每步核对中文注释、依赖边界、对应测试和差分，完成后本地提交并更新 README。
 
-1. 第1阶段任务6：手机基础、组件、类型、两端JS导出及Android模拟器已有证据；用户决定延期iOS原生验收。
-2. 第1阶段任务7：已有CI与统一检查；Maven `clean verify`和npm前端/合同检查分别执行，子命令失败立即停止，JUnit数量与结果独立检查。本地完整检查已通过，已推送GitHub，修正后的云端验收已通过；操作见`docs/development/ci.md`。
-3. 阶段2至7：随业务新增上述规划目录，明确模块接口后开发，避免为目录完整性生成空代码。
-4. 每步核对中文注释、依赖边界、对应测试及差分，保存一次本地提交；更新README说明实际新增目录。
-
-本结构计划不表示规划目录已经创建，也不替代阶段验收。文档变更核对目录存在性、路径和引用；代码变更执行对应单元/集成测试，界面变更实际渲染和操作。
+本结构计划描述实际目录和明确标注的规划项，不代表规划目录已创建，也不替代阶段验收。文档变更需核对目录存在、路径引用和差分；代码变更执行对应测试，界面变更实际渲染并操作。
