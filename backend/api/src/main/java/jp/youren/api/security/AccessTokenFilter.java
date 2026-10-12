@@ -34,7 +34,11 @@ public class AccessTokenFilter extends OncePerRequestFilter {
       HttpServletRequest request, HttpServletResponse response, FilterChain chain)
       throws ServletException, IOException {
     String path = request.getRequestURI();
-    if (!path.startsWith("/v1/") || ANONYMOUS.contains(path)) {
+    // 管理接口完全交给独立管理员过滤器，防止两类会话互相接受或错误拦截。
+    if (!path.startsWith("/v1/")
+        || path.startsWith("/v1/admin/")
+        || path.equals("/v1/me/reports")
+        || ANONYMOUS.contains(path)) {
       chain.doFilter(request, response);
       return;
     }
