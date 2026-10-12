@@ -29,6 +29,7 @@ for(const o of operations){
   const params=[...o.path.matchAll(/\{([^}]+)\}/g)].map(([,name])=>({name,in:'path',required:true,schema:name==='kind'?{type:'string',enum:['posts','comments']}:uuid(),description:'标识不代表访问授权。'}));
   params.push(...(o.query||[]));
   if(o.idem)params.push({name:'Idempotency-Key',in:'header',required:true,schema:uuid(),description:'同一主体、操作及请求内容的重试复用同键；不同内容同键返回409。具体保存窗口可配置。'});
+  if(o.uploadToken)params.push({name:'X-Upload-Token',in:'header',required:true,schema:{type:'string',minLength:32},description:'上传意向返回的一次性短时秘密；不得写入日志或URL。'});
   if(o.version)params.push({name:'If-Match',in:'header',required:true,schema:{type:'string',pattern:['/me/dating-profile','/me/profile'].includes(o.path)?'^"(0|[1-9][0-9]*)"$':'^"[1-9][0-9]*"$'},description:'带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用"0"。'});
   const result=o.path==='/auth/refresh'?'RefreshSession':o.path==='/me/profile'?'ProfileVersion':o.result;
   let success=o.list?ref(`${result}Page`):envelope(typeof result==='string'?ref(result):result);
@@ -39,7 +40,7 @@ for(const o of operations){
   const codes=new Set([400,422,429,503,...(o.auth!=='P'?[401,403]:[]),...(o.path.includes('{')?[404]:[]),...(o.method!=='get'?[409]:[]),...(o.version?[412,428]:[]),...(o.errors||[])]);
   for(const code of codes)responses[code]={description:errors[code].join(' / '),...(code===429?{headers:{'Retry-After':{description:'重试等待秒数。',schema:{type:'integer',minimum:0}}}}:{}),content:{'application/json':{schema:{allOf:[ref('Error'),{properties:{code:{type:'string',enum:errors[code]}}}]}}}};
   const operation={operationId:`${o.method}_${o.path.replace(/[{}]/g,'').replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_/, '')}`,summary:o.summary,description:[o.description,o.owner?'必须验证当前主体对资源的所有权/管理资格。':null,o.auth==='D'?'要求主动开启恋爱、有效self_declared年龄声明及对应访问资格；不得称为verified。':null,o.auth==='A'?'独立管理员身份和对应角色授权；审计角色只读。':null,o.decision?`待确认：${o.decision}`:null].filter(Boolean).join('\n')||'每次读取及写入重新验证身份、对象状态和权限。',tags:[o.path.split('/')[1]],security:o.optionalAuth?[{},...auth.G]:auth[o.auth],parameters:params,responses,'x-authorization-level':o.auth,...(o.decision?{'x-decision-status':'pending'}:{})};
-  if(o.input)operation.requestBody={required:true,description:'只接受明确字段；所有字符串按纯文本处理。',content:{'application/json':{schema:ref(o.input),...(examples[o.input]?{example:examples[o.input]}:{})}}};
+  if(o.input)operation.requestBody={required:true,description:'只接受明确字段；所有字符串按纯文本处理。',content:{[o.contentType||'application/json']:{schema:ref(o.input),...(examples[o.input]?{example:examples[o.input]}:{})}}};
   (doc.paths[`/v1${o.path}`]??={})[o.method]=operation;
 }
 const output=path.resolve(__dirname,'../openapi.json');

@@ -39,6 +39,8 @@ list('get','/me/content','读取本主体发布与回复','G','OwnContent',[q('k
 op('get','/me/content/{kind}/{contentId}','读取本人内容或过期占位','G','OwnContent',null,{owner:true});
 op('get','/discovery/interests/{interestId}','读取兴趣主题讨论与群','P',obj('讨论与群的游标独立。',{interest:ref('Interest'),posts:{$ref:'#/components/schemas/PublicPostPage'},groups:{$ref:'#/components/schemas/GroupPage'}}),null,{query:[...filters.filter(x=>x.name!=='interestId'),q('postsCursor',str('帖子游标。'),'帖子独立分页。'),q('groupsCursor',str('群游标。'),'群独立分页。')]});
 op('post','/media/upload-intents','申请受控上传签名','G','UploadIntent','UploadInput',{status:201,idem:true,description:'dating用途另要求登录和self_declared。'});
+// 上传内容只接受短时票据与原始字节，不把文件编码进JSON或公开对象键。
+op('put','/media/{mediaId}/content','上传静态图片字节','G','Media','MediaUploadBytes',{owner:true,contentType:'application/octet-stream',uploadToken:true,description:'仅上传意向返回的X-Upload-Token可写入一次；服务端再次限制实际字节数。'});
 op('post','/media/{mediaId}/complete','完成上传并受理审核','G','Media','CompleteUploadInput',{status:202,idem:true,owner:true});
 op('get','/media/{mediaId}','读取本人资源状态','G','Media',null,{owner:true});
 op('get','/media/{mediaId}/access','获取有权访问的展示图','P','MediaAccess',null,{optionalAuth:true,query:[q('variant',{type:'string',enum:['display','thumbnail'],default:'display'},'展示图或缩略图。')],description:'仅已审核且所属内容有权访问；公开图片可匿名，恋爱/私有必须对应资格，无权统一404。'});

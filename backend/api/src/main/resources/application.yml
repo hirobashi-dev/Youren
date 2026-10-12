@@ -13,6 +13,9 @@ spring:
 
 # 邮箱认证参数由服务端环境注入，开发条款版本不代表政策正文可以正式发布。
 youren:
+  # 本机原图与派生图保存在私有目录，禁止使用静态资源目录或仓库内默认路径。
+  media:
+    root: ${YOUREN_MEDIA_ROOT:}
   # 资料限额为未获用户确认的暂定工程默认；服务端配置是权威，按Unicode扩展字素计数。
   profile:
     nickname-graphemes: ${YOUREN_PROFILE_NICKNAME_GRAPHEMES:30}

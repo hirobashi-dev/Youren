@@ -19,6 +19,16 @@ public final class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         .body(new ApiError("AUTH_REQUIRED", "身份凭证不可用", java.util.UUID.randomUUID().toString()));
   }
 
+  // 媒体业务边界失败返回稳定客户端错误，不将实现细节或存储路径带回响应。
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<Object> invalidRequest(IllegalArgumentException error) {
+    return ResponseEntity.badRequest()
+        .header("Cache-Control", "no-store")
+        .body(
+            new ApiError(
+                "INVALID_REQUEST", "请求参数或资源状态不正确", java.util.UUID.randomUUID().toString()));
+  }
+
   // 认证失败保持稳定合同字段；限流等待由服务端计算。
   @ExceptionHandler(jp.youren.api.auth.AuthFailure.class)
   public ResponseEntity<Object> authentication(jp.youren.api.auth.AuthFailure error) {

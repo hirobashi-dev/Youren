@@ -13,3 +13,5 @@ apps/mobile/ios/
 .local/
 **/target/
 docs/development/artifacts/
+# 本机私有图片数据不得提交或映射为静态资源。
+/local-data/media/

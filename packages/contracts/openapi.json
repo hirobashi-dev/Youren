@@ -7013,6 +7013,298 @@
         }
       }
     },
+    "/v1/media/{mediaId}/content": {
+      "put": {
+        "operationId": "put_media_mediaId_content",
+        "summary": "上传静态图片字节",
+        "description": "仅上传意向返回的X-Upload-Token可写入一次；服务端再次限制实际字节数。\n必须验证当前主体对资源的所有权/管理资格。",
+        "tags": [
+          "media"
+        ],
+        "security": [
+          {
+            "GuestToken": []
+          },
+          {
+            "UserBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mediaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UUID对象标识；知道ID不代表有权访问。",
+              "format": "uuid"
+            },
+            "description": "标识不代表访问授权。"
+          },
+          {
+            "name": "X-Upload-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 32
+            },
+            "description": "上传意向返回的一次性短时秘密；不得写入日志或URL。"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功；异步202仅表示受理。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "统一成功响应，requestId用于脱敏追踪。",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Media"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "description": "请求追踪ID。"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_CURSOR / INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INVALID_CURSOR",
+                            "INVALID_REQUEST"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED / SESSION_REVOKED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "AUTH_REQUIRED",
+                            "SESSION_REVOKED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_RESTRICTED / DATING_REQUIRED / FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "ACCOUNT_RESTRICTED",
+                            "DATING_REQUIRED",
+                            "FORBIDDEN"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "CONTENT_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "CONTENT_UNAVAILABLE"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "EVENT_FULL / EVENT_CLOSED / GROUP_FULL / MEDIA_NOT_READY / REQUEST_IN_PROGRESS / RESULT_EXPIRED / QUOTA_EXCEEDED / IDEMPOTENCY_CONFLICT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "EVENT_FULL",
+                            "EVENT_CLOSED",
+                            "GROUP_FULL",
+                            "MEDIA_NOT_READY",
+                            "REQUEST_IN_PROGRESS",
+                            "RESULT_EXPIRED",
+                            "QUOTA_EXCEEDED",
+                            "IDEMPOTENCY_CONFLICT"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION_FAILED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "headers": {
+              "Retry-After": {
+                "description": "重试等待秒数。",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "TEMPORARILY_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "TEMPORARILY_UNAVAILABLE"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-authorization-level": "G",
+        "requestBody": {
+          "required": true,
+          "description": "只接受明确字段；所有字符串按纯文本处理。",
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "$ref": "#/components/schemas/MediaUploadBytes"
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/media/{mediaId}/complete": {
       "post": {
         "operationId": "post_media_mediaId_complete",
@@ -25805,6 +26097,11 @@
           "sizeBytes"
         ],
         "additionalProperties": false
+      },
+      "MediaUploadBytes": {
+        "type": "string",
+        "format": "binary",
+        "description": "原始静态图片字节；最大5,000,000 bytes。"
       },
       "CompleteUploadInput": {
         "type": "object",

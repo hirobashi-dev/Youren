@@ -13,14 +13,20 @@ if (-not (Test-Path -LiteralPath (Join-Path $JdkHome 'bin/javac.exe'))) {
 }
 $previousJava = $env:JAVA_HOME
 $previousOptions = $env:JAVA_TOOL_OPTIONS
+$previousMediaRoot = $env:YOUREN_MEDIA_ROOT
 try {
   $env:JAVA_HOME = $JdkHome
   $env:JAVA_TOOL_OPTIONS = "$previousOptions -Dfile.encoding=UTF-8"
+  # 集成测试若未指定媒体根目录，只在本次构建进程使用系统临时目录，运行服务仍要求显式配置。
+  if (-not $env:YOUREN_MEDIA_ROOT) {
+    $env:YOUREN_MEDIA_ROOT = Join-Path ([System.IO.Path]::GetTempPath()) 'youren-media-tests'
+  }
   if (-not $MavenArguments) { $MavenArguments = @('verify') }
   & (Join-Path $PSScriptRoot 'mvnw.cmd') -B -ntp -f (Join-Path $PSScriptRoot 'pom.xml') @MavenArguments
   $buildExitCode = $LASTEXITCODE
 } finally {
   $env:JAVA_HOME = $previousJava
   $env:JAVA_TOOL_OPTIONS = $previousOptions
+  $env:YOUREN_MEDIA_ROOT = $previousMediaRoot
 }
 exit $buildExitCode

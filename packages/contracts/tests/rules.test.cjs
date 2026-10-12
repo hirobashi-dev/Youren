@@ -40,7 +40,7 @@ test('全部路径有唯一操作ID，路径参数必填，204没有正文',()=>
       if(op.responses[204])assert.equal(op.responses[204].content,undefined);
     }
   }
-  assert.equal(count,94);
+  assert.equal(count,95);
 });
 // 手机端读取当前政策版本后主动同意；公共入口不得返回认证配置或秘密。
 test('公开政策版本只包含服务端要求的条款与隐私版本',()=>{
@@ -129,6 +129,12 @@ test('留言板发帖回复媒体与管理路由声明正确权限和并发条�
     ['/v1/posts','post'],['/v1/posts/{postId}','patch'],['/v1/posts/{postId}','delete'],
     ['/v1/posts/{postId}/comments','post'],['/v1/comments/{commentId}','patch'],['/v1/comments/{commentId}','delete']
   ]) assert.ok(paths[route]?.[method],`${method} ${route}`);
+  const mediaUpload=paths['/v1/media/{mediaId}/content'].put;
+  assert.ok(mediaUpload);
+  assert.deepEqual(mediaUpload.security,guestOrAccount);
+  const uploadBody=mediaUpload.requestBody.content['application/octet-stream'].schema;
+  assert.equal(doc.components.schemas[uploadBody.$ref.split('/').at(-1)].format,'binary');
+  assert.ok(mediaUpload.parameters.some(p=>p.name==='X-Upload-Token'&&p.required));
   for(const route of ['/v1/posts','/v1/posts/{postId}','/v1/posts/{postId}/comments']){
     assert.deepEqual(paths[route].get.security,[]);
   }

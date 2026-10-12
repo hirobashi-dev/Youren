@@ -88,6 +88,8 @@ const postInput={title:text('最多60个可见字符。',60,true),body:text('最
 add('PostInput',obj('普通公开发帖，scope由服务端确定。',postInput,['title','body','category']));
 const reply=obj('文字或图片至少有一种；正文最多1000个可见字符。',{body:text('回复正文。',1000),replyToId:nullable(uuid()),mediaIds:ids(3)},[]);reply.anyOf=[{required:['body'],properties:{body:{type:'string',pattern:'\\S'}}},{required:['mediaIds'],properties:{mediaIds:{type:'array',minItems:1}}}];add('ReplyInput',reply);
 add('UploadInput',obj('申请静态图片签名，服务端仍核对实际格式与大小。',{purpose:en('恋爱用途须有效年龄声明。','board/profile/dating/event'),fileName:str('可选文件名，不作为对象键。'),mime:en('仅静态图片，动图解码拒绝。','image/jpeg/image/png/image/webp'),sizeBytes:{...integer('5MB=5,000,000 bytes。',1),maximum:5000000}},['purpose','mime','sizeBytes']));schemas.UploadInput.properties.mime.enum=['image/jpeg','image/png','image/webp'];
+// OpenAPI使用binary格式表达PUT原始字节流；文件本体不应落入JSON日志。
+add('MediaUploadBytes',{type:'string',format:'binary',description:'原始静态图片字节；最大5,000,000 bytes。'});
 add('CompleteUploadInput',obj('完成上传检查，可不提供checksum。',{checksum:str('可选内容校验摘要。')},[]));
 const groupInput={name:text('群名最多30个可见字符。',30,true),description:text('群介绍最多1000。',1000),rules:text('群规限额另行评审。'),regionCode:nullable(str('地区代码。')),interestId:uuid()};
 add('GroupInput',obj('创建普通群，不能指定owner/type/capacity。',groupInput,['name','description','interestId']));
