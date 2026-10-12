@@ -90,10 +90,10 @@ class MigrationIT extends DatabaseTestSupport {
         () -> LegacyMigrationAdoption.adopt(dataSource, fingerprint, "a".repeat(64)));
   }
 
-  // 新库执行V1/V2/V3，55张业务表齐全，重复部署无DDL；冻结基线仍为V1。
+  // 新库执行V1至V4，55张业务表齐全，重复部署无DDL；冻结基线仍为V1。
   @Test
   void migratesEmptyDatabaseAndRepeatedDeploymentIsNoOp() {
-    assertEquals(3, flyway.migrate().migrationsExecuted);
+    assertEquals(4, flyway.migrate().migrationsExecuted);
     assertEquals(
         55,
         jdbc.queryForObject(
@@ -101,13 +101,57 @@ class MigrationIT extends DatabaseTestSupport {
             Integer.class));
     assertEquals(0, flyway.migrate().migrationsExecuted);
     assertEquals(
-        3,
+        4,
         jdbc.queryForObject(
             "SELECT count(*) FROM flyway_schema_history WHERE success", Integer.class));
     assertEquals(6, jdbc.queryForObject("SELECT count(*) FROM policy_configs", Integer.class));
   }
 
-  // V1升级保留原摘要，到期回填从创建时间计算；旧账号会话必须撤销，不能伪造访问秘密。
+  // 第三阶段举报结案需要独立版本，审核审计需保存操作者实际复核的内容版本。
+  @Test
+  void storesReportAndModerationVersionsForConflictSafeReview() {
+    flyway.migrate();
+    assertEquals(
+        1,
+        jdbc.queryForObject(
+            "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='reports' AND column_name='version' AND is_nullable='NO'",
+            Integer.class));
+    assertEquals(
+        1,
+        jdbc.queryForObject(
+            "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='moderation_actions' AND column_name='expected_version'",
+            Integer.class));
+    assertEquals(
+        1,
+        jdbc.queryForObject(
+            "SELECT count(*) FROM pg_constraint WHERE conname='moderation_actions_expected_version_check'",
+            Integer.class));
+  }
+
+  // V3已有库只应用V4一次，举报默认版本为1且审核历史字段不要求伪造旧版本。
+  @Test
+  void upgradesV3ReviewSchemaWithoutReplayingEarlierMigrations() {
+    var v3 =
+        Flyway.configure()
+            .dataSource(dataSource)
+            .locations("classpath:db/migration")
+            .target("3")
+            .cleanDisabled(true)
+            .load();
+    assertEquals(3, v3.migrate().migrationsExecuted);
+    assertEquals(1, flyway.migrate().migrationsExecuted);
+    assertEquals(
+        1,
+        jdbc.queryForObject(
+            "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='reports' AND column_name='version' AND column_default='1'",
+            Integer.class));
+    assertEquals(
+        4,
+        jdbc.queryForObject(
+            "SELECT count(*) FROM flyway_schema_history WHERE success", Integer.class));
+  }
+
+  // V1升级保留原摘要，到期回填从创建时间计算；V2至V4顺序升级，旧账号会话必须撤销。
   @Test
   void upgradesExistingCredentialsAndInvalidatesLegacySessions() {
     targetV1();
@@ -126,7 +170,7 @@ class MigrationIT extends DatabaseTestSupport {
             .locations("classpath:db/migration")
             .cleanDisabled(true)
             .load();
-    assertEquals(2, flyway.migrate().migrationsExecuted);
+    assertEquals(3, flyway.migrate().migrationsExecuted);
     assertEquals(
         "2026-10-01T00:00:00Z",
         jdbc.queryForObject(
@@ -159,7 +203,7 @@ class MigrationIT extends DatabaseTestSupport {
             .load();
   }
 
-  // V2到V3只新增草稿与审核标记；旧资料没有批准证据，默认待审且原文本/version不变。
+  // V2升级包含V3资料草稿和V4审核版本；旧资料无批准证据且原文本/version不变。
   @Test
   void upgradesProfilesWithoutPublishingUnreviewedLegacyValues() {
     var v2 =
@@ -173,7 +217,7 @@ class MigrationIT extends DatabaseTestSupport {
         "INSERT INTO accounts(id,email_normalized) VALUES('00000000-0000-0000-0000-000000000004','profile-upgrade@example.test')");
     jdbc.execute(
         "INSERT INTO profiles(account_id,nickname,bio,version) VALUES('00000000-0000-0000-0000-000000000004','旧资料','原简介',7)");
-    assertEquals(1, flyway.migrate().migrationsExecuted);
+    assertEquals(2, flyway.migrate().migrationsExecuted);
     assertEquals(
         "pending", jdbc.queryForObject("SELECT moderation_status FROM profiles", String.class));
     assertEquals("原简介", jdbc.queryForObject("SELECT bio FROM profiles", String.class));

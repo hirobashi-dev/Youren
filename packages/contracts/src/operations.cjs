@@ -29,11 +29,12 @@ list('get','/posts','浏览公开留言板','P','PublicPost',[...filters,q('q',s
 op('get','/posts/{postId}','读取公开帖子','P','PublicPost',null,{description:'仅visible且未到期；本人待审从/me/content读取。'});
 op('post','/posts','游客或账号发布图文帖子','G','ContentSubmit','PostInput',{status:201,idem:true});
 op('patch','/posts/{postId}','本人重提待审或拒绝帖子','G','ContentSubmit','PostInput',{version:true,owner:true,decision:'已公开帖子不直接编辑仍为建议规则。'});
-deleted('/posts/{postId}','删除本人帖子','G',{owner:true,description:'立即不可见，不连带删除未到期回复正文。'});
+// 删除响应丢失后允许安全重试，服务端通过幂等键避免重复清理或复用错误结果。
+deleted('/posts/{postId}','删除本人帖子','G',{owner:true,idem:true,description:'立即不可见，不连带删除未到期回复正文。'});
 list('get','/posts/{postId}/comments','浏览公开回复','P','Reply');
 op('post','/posts/{postId}/comments','游客或账号图文回复','G','ContentSubmit','ReplyInput',{status:201,idem:true});
 op('patch','/comments/{commentId}','重提本人回复','G','ContentSubmit','ReplyInput',{version:true,owner:true});
-deleted('/comments/{commentId}','删除本人回复','G',{owner:true});
+deleted('/comments/{commentId}','删除本人回复','G',{owner:true,idem:true});
 list('get','/me/content','读取本主体发布与回复','G','OwnContent',[q('kind',en('类别。','posts/comments'),'选择自己的内容类别。',true)]);
 op('get','/me/content/{kind}/{contentId}','读取本人内容或过期占位','G','OwnContent',null,{owner:true});
 op('get','/discovery/interests/{interestId}','读取兴趣主题讨论与群','P',obj('讨论与群的游标独立。',{interest:ref('Interest'),posts:{$ref:'#/components/schemas/PublicPostPage'},groups:{$ref:'#/components/schemas/GroupPage'}}),null,{query:[...filters.filter(x=>x.name!=='interestId'),q('postsCursor',str('帖子游标。'),'帖子独立分页。'),q('groupsCursor',str('群游标。'),'群独立分页。')]});
@@ -41,7 +42,7 @@ op('post','/media/upload-intents','申请受控上传签名','G','UploadIntent',
 op('post','/media/{mediaId}/complete','完成上传并受理审核','G','Media','CompleteUploadInput',{status:202,idem:true,owner:true});
 op('get','/media/{mediaId}','读取本人资源状态','G','Media',null,{owner:true});
 op('get','/media/{mediaId}/access','获取有权访问的展示图','P','MediaAccess',null,{optionalAuth:true,query:[q('variant',{type:'string',enum:['display','thumbnail'],default:'display'},'展示图或缩略图。')],description:'仅已审核且所属内容有权访问；公开图片可匿名，恋爱/私有必须对应资格，无权统一404。'});
-deleted('/media/{mediaId}','删除本人未关联资源','G',{owner:true,description:'已关联资源需修改/删除父对象，禁止破坏其他对象绑定。'});
+deleted('/media/{mediaId}','删除本人未关联资源','G',{owner:true,idem:true,description:'已关联资源需修改/删除父对象，禁止破坏其他对象绑定。'});
 list('get','/groups','浏览普通公开群概要','P','Group',filters);
 op('get','/groups/{groupId}','读取群概要','P','Group',null,{optionalAuth:true,description:'普通群公开，活动/恋爱类型须对应资格，无权404。'});
 op('post','/groups','注册用户创建普通群','U','GroupCreated','GroupInput',{status:201,idem:true,description:'普通群100人含群主；最多拥有5个未解散普通群，东京每日最多创建2个。'});
@@ -93,8 +94,10 @@ op('post','/admin/auth/login','独立管理员凭证登录','P','AdminChallenge'
 op('post','/admin/auth/mfa','完成管理员MFA','P','AdminSession','AdminMfaInput',{description:'挑战本身是认证证明，不接受手机用户令牌；成功才获得管理会话。'});
 list('get','/admin/reports','审核角色读取举报队列','A','AdminReport',[q('status',en('状态。','open/reviewing/resolved'),'队列筛选。')]);
 op('get','/admin/reports/{reportId}','审核角色读取必要举报上下文','A','AdminReport');
+// 举报结案只记录人工处置，不隐式批准、隐藏或删除被举报内容。
+op('post','/admin/reports/{reportId}/resolve','管理员记录举报处置结果','A','AuditAction','ReportResolutionInput',{status:201,idem:true,description:'结案需填写处置结论、理由和期望版本；举报结案本身不删除目标内容。'});
 list('get','/admin/content','审核角色读取待审内容','A','AdminContent',[q('status',en('状态。','pending/rejected'),'队列状态。',true),q('targetType',en('目标。','post/comment/profile/dating/event'),'对象类别。')]);
-op('post','/admin/moderation-actions','管理员处理单个对象','A','AuditAction','ModerationInput',{status:201,idem:true,description:'需要对应操作角色；reason和expectedVersion验证，auditor不得写入。'});
+op('post','/admin/moderation-actions','管理员处理单个对象','A','AuditAction','BoardModerationInput',{status:201,idem:true,description:'仅人工处理帖子或回复；reason和expectedVersion验证，auditor不得写入。'});
 list('get','/admin/groups','运营角色管理群概要','A','Group');
 list('get','/admin/events','运营角色管理活动概要','A','EventPublic');
 list('get','/admin/accounts','运营角色管理账号概要','A','AdminAccount');

@@ -40,7 +40,7 @@ test('全部路径有唯一操作ID，路径参数必填，204没有正文',()=>
       if(op.responses[204])assert.equal(op.responses[204].content,undefined);
     }
   }
-  assert.equal(count,93);
+  assert.equal(count,94);
 });
 // 手机端读取当前政策版本后主动同意；公共入口不得返回认证配置或秘密。
 test('公开政策版本只包含服务端要求的条款与隐私版本',()=>{
@@ -95,6 +95,76 @@ test('公开DTO和终态占位拒绝私有资料字段',()=>{
   assert.equal(doc.components.schemas.EventPublic.properties.meetingInstructions,undefined);
   assert.ok(validate('OwnContent',{kind:'posts',id,status:'expired',unavailable:true}));
   assert.ok(!validate('OwnContent',{kind:'posts',id,status:'expired',unavailable:true,body:'应删除的正文'}));
+});
+
+// 第三阶段审核和举报使用独立的管理员操作，且每次变更都带理由、版本与幂等键。
+test('留言板阶段合同覆盖报告结案及带版本的人工审核操作',()=>{
+  const board=doc.paths['/v1/posts'].post;
+  const reportResolution=doc.paths['/v1/admin/reports/{reportId}/resolve']?.post;
+  const moderation=doc.paths['/v1/admin/moderation-actions'].post;
+  assert.ok(board);
+  assert.ok(reportResolution);
+  assert.ok(moderation);
+  assert.deepEqual(reportResolution.security,[{AdminBearer:[]}]);
+  assert.ok(reportResolution.parameters.some(p=>p.name==='Idempotency-Key'&&p.required));
+  assert.ok(validate('ReportResolutionInput',{resolution:'no_action',reason:'复核后不采取措施',expectedVersion:1}));
+  assert.deepEqual(moderation.security,[{AdminBearer:[]}]);
+  assert.ok(moderation.parameters.some(p=>p.name==='Idempotency-Key'&&p.required));
+  assert.ok(moderation.responses[409]);
+  assert.ok(validate('BoardModerationInput',{targetType:'post',targetId:id,action:'restore',reason:'复核后恢复',expectedVersion:2}));
+  assert.ok(!validate('BoardModerationInput',{targetType:'account',targetId:id,action:'approve',reason:'超出本阶段范围',expectedVersion:2}));
+  assert.ok(!validate('ReportResolutionInput',{resolution:'no_action',reason:' ',expectedVersion:1}));
+  assert.ok(doc.components.schemas.Report.properties.version);
+  assert.ok(doc.components.schemas.AdminContent.properties.pendingSince);
+  assert.ok(doc.components.schemas.AdminContent.properties.reviewOverdue);
+});
+
+// 发帖、回复、本人内容和媒体接口分别声明公开读取或主体凭证，所有可重试写入均有幂等边界。
+test('留言板发帖回复媒体与管理路由声明正确权限和并发条件',()=>{
+  const paths=doc.paths;
+  const guestOrAccount=[{GuestToken:[]},{UserBearer:[]}];
+  const admin=[{AdminBearer:[]}];
+  for(const [route,method] of [
+    ['/v1/posts','get'],['/v1/posts/{postId}','get'],['/v1/posts/{postId}/comments','get'],
+    ['/v1/posts','post'],['/v1/posts/{postId}','patch'],['/v1/posts/{postId}','delete'],
+    ['/v1/posts/{postId}/comments','post'],['/v1/comments/{commentId}','patch'],['/v1/comments/{commentId}','delete']
+  ]) assert.ok(paths[route]?.[method],`${method} ${route}`);
+  for(const route of ['/v1/posts','/v1/posts/{postId}','/v1/posts/{postId}/comments']){
+    assert.deepEqual(paths[route].get.security,[]);
+  }
+  for(const [route,method] of [
+    ['/v1/posts','post'],['/v1/posts/{postId}','patch'],['/v1/posts/{postId}','delete'],
+    ['/v1/posts/{postId}/comments','post'],['/v1/comments/{commentId}','patch'],['/v1/comments/{commentId}','delete'],
+    ['/v1/me/content','get'],['/v1/media/upload-intents','post'],['/v1/media/{mediaId}/complete','post'],
+    ['/v1/media/{mediaId}','get'],['/v1/media/{mediaId}','delete'],['/v1/reports','post']
+  ]) assert.deepEqual(paths[route][method].security,guestOrAccount,`${method} ${route}`);
+  for(const [route,method] of [
+    ['/v1/posts','post'],['/v1/posts/{postId}','delete'],['/v1/posts/{postId}/comments','post'],
+    ['/v1/comments/{commentId}','delete'],['/v1/media/upload-intents','post'],['/v1/media/{mediaId}/complete','post'],['/v1/media/{mediaId}','delete'],['/v1/reports','post']
+  ]) assert.ok(paths[route][method].parameters.some(p=>p.name==='Idempotency-Key'&&p.required),`${method} ${route} requires idempotency`);
+  for(const [route,method] of [['/v1/posts/{postId}','patch'],['/v1/comments/{commentId}','patch']]){
+    assert.ok(paths[route][method].parameters.some(p=>p.name==='If-Match'&&p.required));
+    assert.ok(paths[route][method].responses[412]);
+  }
+  assert.deepEqual(paths['/v1/admin/auth/login'].post.security,[]);
+  assert.deepEqual(paths['/v1/admin/auth/mfa'].post.security,[]);
+  for(const route of ['/v1/admin/content','/v1/admin/reports','/v1/admin/reports/{reportId}','/v1/admin/reports/{reportId}/resolve']){
+    const method=route.endsWith('/resolve')?'post':'get';
+    assert.deepEqual(paths[route][method].security,admin,`${method} ${route}`);
+  }
+});
+
+// 技术图片处理成功不能替代人工内容审核，公开 DTO 也不能携带内部主体或磁盘路径。
+test('图片处理状态与内容审核状态分离且公开内容无内部路径',()=>{
+  const media=doc.components.schemas.Media;
+  const post=doc.components.schemas.PublicPost;
+  assert.match(media.description,/技术处理/);
+  assert.match(media.description,/不代表所属内容经人工审核通过/);
+  for(const field of ['ownerPrincipalId','objectKey','originalUrl','filePath']){
+    assert.equal(media.properties[field],undefined);
+    assert.equal(post.properties[field],undefined);
+  }
+  assert.match(doc.components.schemas.Image.properties.url.description,/短时受控/);
 });
 
 // 首次资料尚无正版本，必须允许0；之后仍拒绝缺失、负数和未加引号的版本。

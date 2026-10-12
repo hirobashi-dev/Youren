@@ -4729,6 +4729,17 @@
               "format": "uuid"
             },
             "description": "标识不代表访问授权。"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UUID对象标识；知道ID不代表有权访问。",
+              "format": "uuid"
+            },
+            "description": "同一主体、操作及请求内容的重试复用同键；不同内容同键返回409。具体保存窗口可配置。"
           }
         ],
         "responses": {
@@ -5802,6 +5813,17 @@
               "format": "uuid"
             },
             "description": "标识不代表访问授权。"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UUID对象标识；知道ID不代表有权访问。",
+              "format": "uuid"
+            },
+            "description": "同一主体、操作及请求内容的重试复用同键；不同内容同键返回409。具体保存窗口可配置。"
           }
         ],
         "responses": {
@@ -7549,6 +7571,17 @@
               "format": "uuid"
             },
             "description": "标识不代表访问授权。"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UUID对象标识；知道ID不代表有权访问。",
+              "format": "uuid"
+            },
+            "description": "同一主体、操作及请求内容的重试复用同键；不同内容同键返回409。具体保存窗口可配置。"
           }
         ],
         "responses": {
@@ -20887,6 +20920,296 @@
         "x-authorization-level": "A"
       }
     },
+    "/v1/admin/reports/{reportId}/resolve": {
+      "post": {
+        "operationId": "post_admin_reports_reportId_resolve",
+        "summary": "管理员记录举报处置结果",
+        "description": "结案需填写处置结论、理由和期望版本；举报结案本身不删除目标内容。\n独立管理员身份和对应角色授权；审计角色只读。",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UUID对象标识；知道ID不代表有权访问。",
+              "format": "uuid"
+            },
+            "description": "标识不代表访问授权。"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UUID对象标识；知道ID不代表有权访问。",
+              "format": "uuid"
+            },
+            "description": "同一主体、操作及请求内容的重试复用同键；不同内容同键返回409。具体保存窗口可配置。"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "成功；异步202仅表示受理。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "统一成功响应，requestId用于脱敏追踪。",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AuditAction"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "description": "请求追踪ID。"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_CURSOR / INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INVALID_CURSOR",
+                            "INVALID_REQUEST"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED / SESSION_REVOKED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "AUTH_REQUIRED",
+                            "SESSION_REVOKED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_RESTRICTED / DATING_REQUIRED / FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "ACCOUNT_RESTRICTED",
+                            "DATING_REQUIRED",
+                            "FORBIDDEN"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "CONTENT_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "CONTENT_UNAVAILABLE"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "EVENT_FULL / EVENT_CLOSED / GROUP_FULL / MEDIA_NOT_READY / REQUEST_IN_PROGRESS / RESULT_EXPIRED / QUOTA_EXCEEDED / IDEMPOTENCY_CONFLICT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "EVENT_FULL",
+                            "EVENT_CLOSED",
+                            "GROUP_FULL",
+                            "MEDIA_NOT_READY",
+                            "REQUEST_IN_PROGRESS",
+                            "RESULT_EXPIRED",
+                            "QUOTA_EXCEEDED",
+                            "IDEMPOTENCY_CONFLICT"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION_FAILED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "headers": {
+              "Retry-After": {
+                "description": "重试等待秒数。",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "TEMPORARILY_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "TEMPORARILY_UNAVAILABLE"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-authorization-level": "A",
+        "requestBody": {
+          "required": true,
+          "description": "只接受明确字段；所有字符串按纯文本处理。",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportResolutionInput"
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/content": {
       "get": {
         "operationId": "get_admin_content",
@@ -21131,7 +21454,7 @@
       "post": {
         "operationId": "post_admin_moderation_actions",
         "summary": "管理员处理单个对象",
-        "description": "需要对应操作角色；reason和expectedVersion验证，auditor不得写入。\n独立管理员身份和对应角色授权；审计角色只读。",
+        "description": "仅人工处理帖子或回复；reason和expectedVersion验证，auditor不得写入。\n独立管理员身份和对应角色授权；审计角色只读。",
         "tags": [
           "admin"
         ],
@@ -21375,7 +21698,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ModerationInput"
+                "$ref": "#/components/schemas/BoardModerationInput"
               }
             }
           }
@@ -23679,7 +24002,7 @@
       },
       "Media": {
         "type": "object",
-        "description": "本主体资源状态，不返回objectKey。",
+        "description": "本主体资源技术处理状态，不返回objectKey；approved仅表示图片校验与转换可用，不代表所属内容经人工审核通过。",
         "properties": {
           "id": {
             "type": "string",
@@ -23688,7 +24011,7 @@
           },
           "status": {
             "type": "string",
-            "description": "资源状态。",
+            "description": "approved仅表示媒体技术处理成功；发布须由人工单独决定。",
             "enum": [
               "initiated",
               "uploaded",
@@ -24690,7 +25013,7 @@
       },
       "Report": {
         "type": "object",
-        "description": "本人举报反馈，不暴露审核员或其他举报者。",
+        "description": "本人举报反馈，不暴露审核员或其他举报者；version用于管理端结案并发检查。",
         "properties": {
           "id": {
             "type": "string",
@@ -24710,12 +25033,18 @@
             "type": "string",
             "description": "带时区的ISO8601时间，响应统一使用UTC/Z。",
             "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "举报当前版本。"
           }
         },
         "required": [
           "id",
           "status",
-          "createdAt"
+          "createdAt",
+          "version"
         ],
         "additionalProperties": false
       },
@@ -24801,7 +25130,7 @@
       },
       "AdminContent": {
         "type": "object",
-        "description": "待审内容版本，仅角色有权读取。",
+        "description": "待审内容版本，仅角色有权读取；超时只提醒，不会自动驳回或删除。",
         "properties": {
           "targetType": {
             "type": "string",
@@ -24832,6 +25161,15 @@
             "minimum": 1,
             "description": "版本。"
           },
+          "pendingSince": {
+            "type": "string",
+            "description": "本次进入待审状态的服务端时间。",
+            "format": "date-time"
+          },
+          "reviewOverdue": {
+            "type": "boolean",
+            "description": "待审超过72小时的服务端提醒标记；不自动处置。"
+          },
           "title": {
             "type": "string",
             "description": "适用对象的标题。"
@@ -24853,7 +25191,9 @@
           "targetType",
           "targetId",
           "status",
-          "version"
+          "version",
+          "pendingSince",
+          "reviewOverdue"
         ],
         "additionalProperties": false
       },
@@ -26136,6 +26476,38 @@
         ],
         "additionalProperties": false
       },
+      "ReportResolutionInput": {
+        "type": "object",
+        "description": "管理员结案时记录人工结论、理由和提交时看到的举报版本。",
+        "properties": {
+          "resolution": {
+            "type": "string",
+            "description": "举报处置结论；不隐式修改目标内容。",
+            "enum": [
+              "action_taken",
+              "no_action"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "人工复核理由，最多500个可见字符。",
+            "x-grapheme-max": 500,
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "举报当前版本，用于拒绝旧操作。"
+          }
+        },
+        "required": [
+          "resolution",
+          "reason",
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
       "AdminLoginInput": {
         "type": "object",
         "description": "独立管理登录，不接受用户令牌。",
@@ -26229,20 +26601,16 @@
         ],
         "additionalProperties": false
       },
-      "ModerationInput": {
+      "BoardModerationInput": {
         "type": "object",
-        "description": "平台处理单个目标，理由和旧版本均需验证。",
+        "description": "仅人工处理公开留言板帖子和回复，使用期望版本防止覆盖并发决定。",
         "properties": {
           "targetType": {
             "type": "string",
-            "description": "举报目标类型。",
+            "description": "仅允许本阶段公开留言对象。",
             "enum": [
               "post",
-              "comment",
-              "message",
-              "account",
-              "group",
-              "event"
+              "comment"
             ]
           },
           "targetId": {
@@ -26252,19 +26620,19 @@
           },
           "action": {
             "type": "string",
-            "description": "操作集合需运营确认，首稿建议。",
+            "description": "分别执行审核通过、驳回、隐藏、恢复或删除。",
             "enum": [
               "approve",
               "reject",
               "hide",
-              "delete",
-              "restrict",
-              "unrestrict"
+              "restore",
+              "delete"
             ]
           },
           "reason": {
             "type": "string",
-            "description": "必填处理依据。",
+            "description": "必填处理依据，最多500个可见字符。",
+            "x-grapheme-max": 500,
             "minLength": 1,
             "pattern": "\\S"
           },

@@ -1,6 +1,6 @@
 # OpenAPI 接口合同
 
-[openapi.json](openapi.json) 为 OpenAPI 3.1.0 合同，包含93个 REST 操作，统一 `/v1` 前缀。中文 `description` 说明字段和规则；JSON不支持注释，因此注释维护于生成源及本说明。可以导入支持OpenAPI 3.1的Swagger Editor、Postman等工具评审。
+[openapi.json](openapi.json) 为 OpenAPI 3.1.0 合同，包含94个 REST 操作，统一 `/v1` 前缀。中文 `description` 说明字段和规则；JSON不支持注释，因此注释维护于生成源及本说明。可以导入支持OpenAPI 3.1的Swagger Editor、Postman等工具评审。
 
 第二阶段新增公开 `GET /v1/auth/policy`，只返回服务端要求的条款与隐私版本号；客户端主动同意后提交，服务端再核验版本。开发版本不表示正式政策正文已发布，不返回密钥或邮件配置。
 
@@ -43,5 +43,4 @@ onboardingRequired按本人是否有基本资料判断，不要求草稿已发�
 不可覆盖的固定maxLength/x-grapheme-max。文字为纯文本、按扩展字素验证；客户端
 必须使用服务器返回的校验结果，不把建议元数据视为已批准产品上限。
 
-本阶段没有受控图片展示绑定，非空avatarMediaId安全返回MEDIA_NOT_READY，null可清除；
-OwnerProfile与PublicProfile的avatar暂为null。没有新增接口路径。
+第二阶段结束时没有受控图片展示绑定，非空avatarMediaId安全返回MEDIA_NOT_READY，null可清除。第三阶段开始补齐帖子图片与人工审核合同；`Media.approved` 仅表示图片技术校验和转换完成，不能作为帖子/回复的公开决定。当前合同不代表这些业务接口已经实现。

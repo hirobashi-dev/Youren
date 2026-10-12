@@ -10,7 +10,9 @@
 
 已确认：日本首发、中文、iOS/Android、邮箱注册、游客留言板图文、注册创建群与直接加入、注册发布活动、普通私聊独立于恋爱匹配、恋爱采用主动开启加 18 岁自我声明、内容限制与一年保留。首版聊天为文字，与留言板图片权限分开。
 
-采用PostgreSQL＋MyBatis、Java/Spring Boot模块化单体、Maven、REST、S3和独立outbox worker。SQL迁移默认Flyway，Spring事务协调行锁与Mapper；实时传输建议Spring WebSocket＋JSON，具体协议待确认。关系、状态机、名额、锁序及REST合同保留，版本在实施时固定。
+采用PostgreSQL＋MyBatis、Java/Spring Boot模块化单体、Maven、REST和独立outbox worker。第三阶段按已确认方案使用本机私有图片目录，通过媒体存储接口隔离；S3仅是未来适配方向，不在本阶段配置或接入。SQL迁移默认Flyway，Spring事务协调行锁与Mapper；实时传输建议Spring WebSocket＋JSON，具体协议待确认。关系、状态机、名额、锁序及REST合同保留，版本在实施时固定。
+
+第三阶段版本审计补充：V1-V3 已包含留言板、媒体变体、管理员会话、举报、审核动作、outbox 和幂等记录。V4 只为举报并发结案增加 `reports.version`，并为新审核审计保存 `moderation_actions.expected_version`；V1-V3 保持不变，历史审核的期望版本保持未知。
 
 普通私聊接收与首次联系限额、活动修改取消及报名退出、群容量与创建配额、群主自愿转让及解散已确认，见第14节。邮箱验证码登录细节、免费活动、审核规则及其他频率仍为建议。正式恋爱上线边界沿用技术方案，本稿不新增证件上传流程。
 

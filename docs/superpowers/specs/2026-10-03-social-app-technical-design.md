@@ -24,7 +24,7 @@
 | 实时通信 | Spring WebSocket＋JSON事件（建议） | 协议改选待确认；保留消息ACK、去重和REST补取语义 |
 | 主数据库 | PostgreSQL、MyBatis、Flyway | PostgreSQL保留；MyBatis已确认，Flyway作为SQL迁移工程默认 |
 | 缓存 | Redis | 限流、临时验证码及实时事件分发 |
-| 文件 | S3 私有存储、受控图片分发 | 隔离待审核与已发布图片 |
+| 文件 | 第三阶段本机私有文件系统；S3为后续目标 | 隔离待审核与已发布图片 |
 | 异步任务 | PostgreSQL outbox、独立 worker | 审核、通知、删除任务的可靠处理 |
 | 推送 | expo-notifications、Expo Push 接口 | 对接系统推送，允许后续替换供应商 |
 
@@ -169,7 +169,7 @@ outbox 与业务数据同事务提交。worker 用租约或 SKIP LOCKED 领取�
 
 内容状态 pending、visible、hidden、rejected、deleted。供应商审核异常时暂留 pending，不自动发布；人工审核可覆盖结果并保留审计。恋爱招募、公开个人联系方式、诈骗、骚扰、侵权等制定明确社区规则。
 
-游客与注册用户上传图片均须持有有效主体凭证，再申请短时签名 URL，上传至隔离区，校验真实文件类型、大小、尺寸，去除 EXIF，再审核和生成展示版本。对象键随机生成，不能由客户端选择覆盖其他资源。S3 支持预签名上传，权限与对象键仍需服务端限制。[官方文档](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html)
+游客与注册用户上传图片均须持有有效主体凭证，上传至隔离区，校验真实文件类型、大小、尺寸，去除 EXIF，再生成展示版本并等待人工内容审核。对象键随机生成，不能由客户端选择覆盖其他资源。第三阶段使用 `YOUREN_MEDIA_ROOT` 指向的本机私有目录，禁止映射为公开静态目录；媒体存储接口为后续 S3 适配留出边界。S3 预签名 URL 是未来部署方案，不代表当前阶段已接入。[官方文档](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html)
 
 公开批准图片可缓存；恋爱与私有图片走权限校验和短期访问链接，不与公开 CDN 缓存混用。链接有短暂有效窗口，需明确权限撤销不等于已经下载的数据可被收回。
 

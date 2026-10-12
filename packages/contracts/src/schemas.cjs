@@ -38,7 +38,7 @@ const post={id:uuid(),title:str('公开标题。'),body:str('纯文本正文。'
 add('PublicPost',obj('仅可见未到期的公开帖子，无稳定游客ID。',post));
 add('Reply',obj('回复独立计时，引用过期内容只给无正文占位。',{id:uuid(),postId:uuid(),body:str('纯文本回复。'),authorDisplay:ref('AuthorDisplay'),images:arr(ref('Image'),3),replyToId:nullable(uuid()),...published,capabilities:ref('Capabilities')}));
 add('OwnContent',{description:'本人待审/公开内容或无正文的过期占位。',oneOf:[obj('本人有效内容。',{kind:en('内容类别。','posts/comments'),...submit,title:str('仅帖子有标题。'),body:str('本人正文。'),images:arr(ref('Image'),9),parentUnavailable:bool('父帖是否已不可用。')},['kind','id','status','body','images','version']),obj('已删除或过期占位，无标题/正文/作者/图片。',{kind:en('内容类别。','posts/comments'),id:uuid(),status:en('终态。','deleted/expired'),unavailable:{type:'boolean',const:true}})]});
-add('Media',obj('本主体资源状态，不返回objectKey。',{id:uuid(),status:en('资源状态。','initiated/uploaded/processing/approved/rejected/deleting/deleted'),purpose:en('用途隔离。','board/profile/dating/event'),sizeBytes:integer('实际字节数。',1)}));
+add('Media',obj('本主体资源技术处理状态，不返回objectKey；approved仅表示图片校验与转换可用，不代表所属内容经人工审核通过。',{id:uuid(),status:en('approved仅表示媒体技术处理成功；发布须由人工单独决定。','initiated/uploaded/processing/approved/rejected/deleting/deleted'),purpose:en('用途隔离。','board/profile/dating/event'),sizeBytes:integer('实际字节数。',1)}));
 add('UploadIntent',obj('上传签名与公开URL不同，先上传再完成与审核。',{mediaId:uuid(),uploadUrl:str('临时受控上传URL。',{format:'uri'}),uploadHeaders:{type:'object',description:'上传时需原样附带的头部。',additionalProperties:{type:'string'}},expiresAt:time()}));
 add('MediaAccess',obj('按所属内容重新鉴权的图片访问。',{url:str('受控短时URL。',{format:'uri'}),expiresAt:time()}));
 add('Group',obj('公开群概要，不包含聊天正文或成员名单。',{id:uuid(),name:str('群名。'),description:str('群介绍。'),rules:str('群规。'),type:en('群类型。','ordinary/event/dating'),status:en('解散为readonly，closed不授予历史读取。','active/readonly/closed'),capacity:nullable(integer('普通群默认100，含群主。',1)),activeCount:integer('有效成员数。'),region:nullable(ref('Region')),interest:nullable(ref('Interest')),version:integer('版本。',1),dissolvedAt:nullable(time()),capabilities:ref('Capabilities')}));
@@ -63,10 +63,10 @@ add('Registration',obj('报名资格，开始前取消与开始后退出分开�
 add('RegistrationResult',obj('报名与活动群资格同事务成功。',{registration:ref('Registration'),conversationId:uuid()}));
 add('MyEvent',obj('仅本人的参与记录。',{event:ref('EventPublic'),role:en('本人角色。','participant/creator'),registration:nullable(ref('Registration'))}));
 add('Notification',obj('通知不复制私有正文，跳转目标重新鉴权。',{id:uuid(),type:str('通知类型。'),targetType:str('跳转对象类型。'),targetId:uuid(),readAt:nullable(time()),createdAt:time()}));
-add('Report',obj('本人举报反馈，不暴露审核员或其他举报者。',{id:uuid(),status:en('举报处理状态。','open/reviewing/resolved'),createdAt:time()}));
+add('Report',obj('本人举报反馈，不暴露审核员或其他举报者；version用于管理端结案并发检查。',{id:uuid(),status:en('举报处理状态。','open/reviewing/resolved'),createdAt:time(),version:integer('举报当前版本。',1)}));
 add('AdminReport',obj('管理角色必要的举报元信息；上下文按对象独立授权。',{report:ref('Report'),targetType:en('目标。','post/comment/message/account/group/event'),targetId:uuid(),reasonCode:str('举报理由代码。'),detail:str('必要说明。')}));
 add('AdminAccount',obj('管理账号概要，不返回凭证/令牌/MFA秘密。',{id:uuid(),status:en('用户状态。','active/restricted/deleting/deleted'),profile:nullable(ref('PublicProfile'))}));
-add('AdminContent',obj('待审内容版本，仅角色有权读取。',{targetType:en('审核对象类型。','post/comment/profile/dating/event'),targetId:uuid(),status:en('审核状态。','pending/rejected'),version:integer('版本。',1),title:str('适用对象的标题。'),body:str('允许范围的正文。'),images:arr(ref('Image'),9)},['targetType','targetId','status','version']));
+add('AdminContent',obj('待审内容版本，仅角色有权读取；超时只提醒，不会自动驳回或删除。',{targetType:en('审核对象类型。','post/comment/profile/dating/event'),targetId:uuid(),status:en('审核状态。','pending/rejected'),version:integer('版本。',1),pendingSince:{...time(),description:'本次进入待审状态的服务端时间。'},reviewOverdue:bool('待审超过72小时的服务端提醒标记；不自动处置。'),title:str('适用对象的标题。'),body:str('允许范围的正文。'),images:arr(ref('Image'),9)},['targetType','targetId','status','version','pendingSince','reviewOverdue']));
 add('Task',obj('任务管理概要，不暴露敏感payload。',{id:uuid(),type:str('任务类型。'),status:en('任务状态。','pending/processing/succeeded/dead/completed/failed'),attempts:integer('重试次数。'),lastErrorCode:nullable(str('脱敏错误代码。'))}));
 add('AuditAction',obj('必要审计，不复制正文。',{id:uuid(),adminId:uuid(),targetType:str('对象类型。'),targetId:uuid(),action:str('操作类型。'),reason:str('操作理由。'),createdAt:time()}));
 add('Error',obj('统一失败格式，不泄漏内部异常或拉黑关系。',{code:str('稳定业务错误码。'),message:str('中文可读说明。'),requestId:str('脱敏请求追踪ID。'),details:arr(obj('字段错误。',{field:str('字段路径。'),reason:str('错误理由。'),limit:integer('适用限额。')},['field','reason']))},['code','message','requestId']));
@@ -112,9 +112,12 @@ add('EndEventInput',obj('开始后提前结束，保留记录与群只读。',{c
 add('RegistrationInput',obj('确认当前规则版本，报名与群资格同事务。',{acceptedEventVersion:integer('当前活动版本。',1),acceptedRules:{type:'boolean',const:true,description:'已阅读并接受规则。'}}));
 const targetType=en('举报目标类型。','post/comment/message/account/group/event');
 add('ReportInput',obj('需有权读取目标，匿名游客不能举报私有会话。',{targetType,targetId:uuid(),reasonCode:str('社区规则中的理由代码，运营规则另评审。',{minLength:1}),detail:text('可选补充。')},['targetType','targetId','reasonCode']));
+// 结案版本来自当前队列项，避免旧页面的举报决定覆盖新处理结果。
+add('ReportResolutionInput',obj('管理员结案时记录人工结论、理由和提交时看到的举报版本。',{resolution:en('举报处置结论；不隐式修改目标内容。','action_taken/no_action'),reason:text('人工复核理由，最多500个可见字符。',500,true),expectedVersion:integer('举报当前版本，用于拒绝旧操作。',1)}));
 add('AdminLoginInput',obj('独立管理登录，不接受用户令牌。',{loginName:str('管理员登录名。',{minLength:1}),password:str('秘密凭证，禁止日志。',{minLength:1})}));
 add('AdminMfaInput',obj('管理MFA挑战，不是手机用户验证码。',{challengeId:uuid(),code:str('MFA验证码。',{pattern:'^[0-9]{6}$'})}));
 add('AdminChallenge',obj('管理MFA挑战。',{challengeId:uuid(),expiresAt:time()}));
 add('AdminSession',obj('独立管理令牌，与用户audience分离。',{accessToken:str('管理访问秘密。'),expiresAt:time(),role:en('角色。','reviewer/operator/auditor')}));
-add('ModerationInput',obj('平台处理单个目标，理由和旧版本均需验证。',{targetType,targetId:uuid(),action:en('操作集合需运营确认，首稿建议。','approve/reject/hide/delete/restrict/unrestrict'),reason:text('必填处理依据。',null,true),expectedVersion:integer('资源当前版本。',1)}));
+// 媒体技术状态只表示文件可安全展示，不能代替此处的人工作发布决定。
+add('BoardModerationInput',obj('仅人工处理公开留言板帖子和回复，使用期望版本防止覆盖并发决定。',{targetType:en('仅允许本阶段公开留言对象。','post/comment'),targetId:uuid(),action:en('分别执行审核通过、驳回、隐藏、恢复或删除。','approve/reject/hide/restore/delete'),reason:text('必填处理依据，最多500个可见字符。',500,true),expectedVersion:integer('资源当前版本。',1)}));
 module.exports={schemas,ref,str,uuid,time,integer,bool,en,nullable,arr,obj};
