@@ -14,7 +14,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "expo": "57.0.26",
+    "expo": "~57.0.27",
     "expo-dev-client": "57.0.19",
     "expo-secure-store": "57.0.4",
     "expo-status-bar": "57.0.1",
