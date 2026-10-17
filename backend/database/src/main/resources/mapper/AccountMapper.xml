@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="jp.youren.database.mapper.AccountMapper">
+  <!-- 持久层记录不是公开DTO；构造参数、UUID和字段映射显式定义。 -->
+  <resultMap id="account" type="jp.youren.database.mapper.AccountMapper$AccountRow">
+    <constructor>
+      <idArg column="id" javaType="java.util.UUID" typeHandler="jp.youren.database.type.UuidTypeHandler"/>
+      <arg column="email_normalized" javaType="java.lang.String"/>
+      <arg column="auth_version" javaType="_int"/>
+    </constructor>
+  </resultMap>
+  <!-- 所有输入使用参数绑定，包含引号的邮箱也只能成为数据。 -->
+  <insert id="insert" timeout="2">INSERT INTO accounts(id,email_normalized) VALUES (#{id},#{email})</insert>
+  <select id="find" resultMap="account" timeout="2">SELECT id,email_normalized,auth_version FROM accounts WHERE id=#{id}</select>
+  <update id="updateVersion" timeout="2">UPDATE accounts SET auth_version=#{version},updated_at=CURRENT_TIMESTAMP WHERE id=#{id}</update>
+  <delete id="delete" timeout="2">DELETE FROM accounts WHERE id=#{id}</delete>
+</mapper>

@@ -1,0 +1,1 @@
+<configuration><!-- 禁止测试框架打印配置/SQL/原始异常。 --><root level="OFF"/></configuration>

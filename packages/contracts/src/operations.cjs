@@ -7,15 +7,17 @@ const filters=[q('regionCode',str('地区代码。'),'只筛选公开大致地�
 function op(method,path,summary,auth,result,input,options={}){operations.push({method,path,summary,auth,result,input,...options});}
 const list=(method,path,summary,auth,result,query=[])=>op(method,path,summary,auth,result,null,{list:true,query:[...page,...query]});
 const deleted=(path,summary,auth,options={})=>op('delete',path,summary,auth,null,null,{status:204,...options});
-op('post','/guest-sessions','创建本机游客凭证','P','GuestSession',null,{status:201,description:'浏览无需建立游客；发言前获取秘密凭证，仅本机管理自己的内容。'});
-op('post','/auth/email-code','发送邮箱验证码','P','Challenge','EmailCodeInput',{status:202,decision:'邮箱验证码登录与六位代码格式仍为评审建议；注册邮箱已确认。'});
-op('post','/auth/register','注册账号并可选接续游客内容','P','AuthSession','RegisterInput',{status:201,description:'guestToken仅证明接续；已注册邮箱不覆盖资料，验证后转登录结果。',alternate:200});
-op('post','/auth/login','邮箱验证码登录','P','AuthSession','LoginInput',{decision:'邮箱验证码登录细节待确认。'});
-op('post','/auth/refresh','轮换刷新令牌','P','AuthSession','RefreshInput',{description:'body中的刷新令牌是认证依据，非匿名开放；单次消费，重放撤销family。'});
+op('post','/guest-sessions','创建本机游客凭证','P','GuestSession',null,{status:201,description:'浏览无需建立游客；发言前获取秘密凭证，仅本机管理自己的内容，凭证30天到期（可配置）。'});
+// 仅公开政策版本，供客户端主动同意；密钥及邮件配置不进入响应。
+op('get','/auth/policy','读取当前条款与隐私版本','P','AuthPolicy',null,{description:'客户端须主动接受这些服务端版本；开发版本号不代表正式政策正文已发布。'});
+op('post','/auth/email-code','发送邮箱验证码','P','Challenge','EmailCodeInput',{status:202,description:'注册与登录六位验证码，10分钟有效、最多错误5次；同邮箱60秒冷却，邮箱每小时5次/每天20次，IP每小时30次/每天100次，均可配置；统一响应不暴露邮箱是否注册。'});
+op('post','/auth/register','注册账号并可选接续游客内容','P','AuthSession','RegisterInput',{status:201,description:'guestToken仅证明接续；已注册邮箱不覆盖资料，验证后转登录结果。',alternate:200,errors:[401,403]});
+op('post','/auth/login','邮箱验证码登录','P','AuthSession','LoginInput',{description:'验证码用途必须为login；未注册邮箱验证后仍返回统一认证失败，不自动注册。',errors:[401,403]});
+op('post','/auth/refresh','轮换刷新令牌','P','AuthSession','RefreshInput',{description:'body中的刷新令牌是认证依据，非匿名开放；单次消费，重放撤销family；访问15分钟、刷新30天，均可配置。',errors:[401,403]});
 op('post','/auth/logout','退出当前会话','U',null,null,{status:204});
 op('post','/me/guest-claims','登录后接续游客内容','U','GuestClaim','GuestClaimInput',{idem:true});
 op('get','/me','读取本人账号与设置','U','Me');
-op('patch','/me/profile','更新普通资料','U','PublicProfile','ProfileInput',{version:true,description:'更新自己的资料，审核版本通过前不公开新内容。'});
+op('patch','/me/profile','更新普通资料','U','PublicProfile','ProfileInput',{version:true,description:'首次创建使用If-Match双引号0，且必须提供昵称；之后使用正版本，仅修改本人普通资料；审核版本通过前不公开新内容。'});
 op('patch','/me/settings','修改本人隐私与通知','U','Settings','SettingsInput');
 op('get','/profiles/{accountId}','读取普通公开主页','P','PublicProfile',null,{optionalAuth:true,description:'不返回邮箱、游客主体、恋爱偏好或活动记录；canMessage由实际身份决定。'});
 deleted('/me','申请注销账号','U',{input:'DeleteAccountInput',result:'JobAccepted',status:202,description:'验证码必须对应当前账号；立即撤销访问，清理由worker异步执行。'});
@@ -27,19 +29,22 @@ list('get','/posts','浏览公开留言板','P','PublicPost',[...filters,q('q',s
 op('get','/posts/{postId}','读取公开帖子','P','PublicPost',null,{description:'仅visible且未到期；本人待审从/me/content读取。'});
 op('post','/posts','游客或账号发布图文帖子','G','ContentSubmit','PostInput',{status:201,idem:true});
 op('patch','/posts/{postId}','本人重提待审或拒绝帖子','G','ContentSubmit','PostInput',{version:true,owner:true,decision:'已公开帖子不直接编辑仍为建议规则。'});
-deleted('/posts/{postId}','删除本人帖子','G',{owner:true,description:'立即不可见，不连带删除未到期回复正文。'});
+// 删除响应丢失后允许安全重试，服务端通过幂等键避免重复清理或复用错误结果。
+deleted('/posts/{postId}','删除本人帖子','G',{owner:true,idem:true,description:'立即不可见，不连带删除未到期回复正文。'});
 list('get','/posts/{postId}/comments','浏览公开回复','P','Reply');
 op('post','/posts/{postId}/comments','游客或账号图文回复','G','ContentSubmit','ReplyInput',{status:201,idem:true});
 op('patch','/comments/{commentId}','重提本人回复','G','ContentSubmit','ReplyInput',{version:true,owner:true});
-deleted('/comments/{commentId}','删除本人回复','G',{owner:true});
+deleted('/comments/{commentId}','删除本人回复','G',{owner:true,idem:true});
 list('get','/me/content','读取本主体发布与回复','G','OwnContent',[q('kind',en('类别。','posts/comments'),'选择自己的内容类别。',true)]);
 op('get','/me/content/{kind}/{contentId}','读取本人内容或过期占位','G','OwnContent',null,{owner:true});
 op('get','/discovery/interests/{interestId}','读取兴趣主题讨论与群','P',obj('讨论与群的游标独立。',{interest:ref('Interest'),posts:{$ref:'#/components/schemas/PublicPostPage'},groups:{$ref:'#/components/schemas/GroupPage'}}),null,{query:[...filters.filter(x=>x.name!=='interestId'),q('postsCursor',str('帖子游标。'),'帖子独立分页。'),q('groupsCursor',str('群游标。'),'群独立分页。')]});
 op('post','/media/upload-intents','申请受控上传签名','G','UploadIntent','UploadInput',{status:201,idem:true,description:'dating用途另要求登录和self_declared。'});
+// 上传内容只接受短时票据与原始字节，不把文件编码进JSON或公开对象键。
+op('put','/media/{mediaId}/content','上传静态图片字节','G','Media','MediaUploadBytes',{owner:true,contentType:'application/octet-stream',uploadToken:true,description:'仅上传意向返回的X-Upload-Token可写入一次；服务端再次限制实际字节数。'});
 op('post','/media/{mediaId}/complete','完成上传并受理审核','G','Media','CompleteUploadInput',{status:202,idem:true,owner:true});
 op('get','/media/{mediaId}','读取本人资源状态','G','Media',null,{owner:true});
 op('get','/media/{mediaId}/access','获取有权访问的展示图','P','MediaAccess',null,{optionalAuth:true,query:[q('variant',{type:'string',enum:['display','thumbnail'],default:'display'},'展示图或缩略图。')],description:'仅已审核且所属内容有权访问；公开图片可匿名，恋爱/私有必须对应资格，无权统一404。'});
-deleted('/media/{mediaId}','删除本人未关联资源','G',{owner:true,description:'已关联资源需修改/删除父对象，禁止破坏其他对象绑定。'});
+deleted('/media/{mediaId}','删除本人未关联资源','G',{owner:true,idem:true,description:'已关联资源需修改/删除父对象，禁止破坏其他对象绑定。'});
 list('get','/groups','浏览普通公开群概要','P','Group',filters);
 op('get','/groups/{groupId}','读取群概要','P','Group',null,{optionalAuth:true,description:'普通群公开，活动/恋爱类型须对应资格，无权404。'});
 op('post','/groups','注册用户创建普通群','U','GroupCreated','GroupInput',{status:201,idem:true,description:'普通群100人含群主；最多拥有5个未解散普通群，东京每日最多创建2个。'});
@@ -91,8 +96,10 @@ op('post','/admin/auth/login','独立管理员凭证登录','P','AdminChallenge'
 op('post','/admin/auth/mfa','完成管理员MFA','P','AdminSession','AdminMfaInput',{description:'挑战本身是认证证明，不接受手机用户令牌；成功才获得管理会话。'});
 list('get','/admin/reports','审核角色读取举报队列','A','AdminReport',[q('status',en('状态。','open/reviewing/resolved'),'队列筛选。')]);
 op('get','/admin/reports/{reportId}','审核角色读取必要举报上下文','A','AdminReport');
-list('get','/admin/content','审核角色读取待审内容','A','AdminContent',[q('status',en('状态。','pending/rejected'),'队列状态。',true),q('targetType',en('目标。','post/comment/profile/dating/event'),'对象类别。')]);
-op('post','/admin/moderation-actions','管理员处理单个对象','A','AuditAction','ModerationInput',{status:201,idem:true,description:'需要对应操作角色；reason和expectedVersion验证，auditor不得写入。'});
+// 举报结案只记录人工处置，不隐式批准、隐藏或删除被举报内容。
+op('post','/admin/reports/{reportId}/resolve','管理员记录举报处置结果','A','AuditAction','ReportResolutionInput',{status:201,idem:true,description:'结案需填写处置结论、理由和期望版本；举报结案本身不删除目标内容。'});
+list('get','/admin/content','审核角色读取待审及举报处置队列','A','AdminContent',[q('status',en('状态。','pending/rejected/visible/hidden'),'待审、待修改、已公开或已隐藏队列。',true),q('targetType',en('目标。','post/comment/profile/dating/event'),'对象类别。')]);
+op('post','/admin/moderation-actions','管理员处理单个对象','A','AuditAction','BoardModerationInput',{status:201,idem:true,description:'仅人工处理帖子或回复；reason和expectedVersion验证，auditor不得写入。'});
 list('get','/admin/groups','运营角色管理群概要','A','Group');
 list('get','/admin/events','运营角色管理活动概要','A','EventPublic');
 list('get','/admin/accounts','运营角色管理账号概要','A','AdminAccount');

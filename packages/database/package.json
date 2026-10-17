@@ -1,6 +1,8 @@
 {
   "name": "@youren/database",
   "private": true,
+  "main": "src/client.cjs",
+  "types": "src/index.d.ts",
   "version": "0.1.0",
   "engines": {
     "node": ">=20.12"
@@ -9,7 +11,8 @@
     "build:schema": "node tools/generate.cjs",
     "check:generated": "node tools/generate.cjs --check",
     "validate": "node tools/validate.cjs",
-    "test": "node --test tests/schema.test.cjs tests/invariants.test.cjs",
+    "test": "node --test tests/schema.test.cjs tests/invariants.test.cjs tests/client.test.cjs",
+    "generate:client": "prisma generate --schema prisma/schema.prisma",
     "test:postgres": "node tools/test-postgres.cjs"
   },
   "devDependencies": {

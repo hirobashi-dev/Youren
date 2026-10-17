@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="jp.youren.database.mapper.MediaMapper">
+  <!-- 映射只返回受控媒体字段；对象键不得直接序列化为公开响应。 -->
+  <resultMap id="asset" type="jp.youren.database.mapper.MediaMapper$Asset">
+    <constructor>
+      <arg column="id" javaType="java.util.UUID" typeHandler="jp.youren.database.type.UuidTypeHandler"/>
+      <arg column="owner_principal_id" javaType="java.util.UUID" typeHandler="jp.youren.database.type.UuidTypeHandler"/>
+      <arg column="purpose" javaType="java.lang.String"/><arg column="object_key" javaType="java.lang.String"/>
+      <arg column="status" javaType="java.lang.String"/><arg column="mime" javaType="java.lang.String"/>
+      <arg column="size_bytes" javaType="_long"/><arg column="width" javaType="java.lang.Integer"/>
+      <arg column="height" javaType="java.lang.Integer"/><arg column="upload_expires_at" javaType="java.time.OffsetDateTime"/>
+      <arg column="cleanup_after" javaType="java.time.OffsetDateTime"/>
+      <arg column="checksum" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+  <!-- 暂存记录与上传对象分离；只有当前主体可读取或推进自己的生命周期。 -->
+  <insert id="insertAsset" timeout="2">INSERT INTO media_assets(id,owner_principal_id,purpose,object_key,status,mime,size_bytes,checksum,upload_expires_at,cleanup_after,created_at,updated_at) VALUES(#{id},#{owner},#{purpose},#{objectKey},'initiated',#{mime},#{size},#{tokenDigest},#{expires},#{cleanup},#{now},#{now})</insert>
+  <select id="findForOwner" resultMap="asset" timeout="2">SELECT id,owner_principal_id,purpose,object_key,status,mime,size_bytes,width,height,upload_expires_at,cleanup_after,checksum FROM media_assets WHERE id=#{id} AND owner_principal_id=#{owner} AND deleted_at IS NULL</select>
+  <select id="principalForAccount" resultType="java.util.UUID" timeout="2">SELECT id FROM principals WHERE account_id=#{accountId} AND kind='account'</select>
+  <resultMap id="variant" type="jp.youren.database.mapper.MediaMapper$Variant"><constructor><arg column="kind" javaType="java.lang.String"/><arg column="object_key" javaType="java.lang.String"/><arg column="size_bytes" javaType="_long"/><arg column="width" javaType="_int"/><arg column="height" javaType="_int"/></constructor></resultMap>
+  <select id="variants" resultMap="variant" timeout="2">SELECT kind,object_key,size_bytes,width,height FROM media_variants WHERE media_id=#{mediaId}</select>
+  <update id="markUploaded" timeout="2">UPDATE media_assets SET status='uploaded',mime=#{mime},size_bytes=#{size},object_key=#{objectKey},checksum=#{checksum},updated_at=#{now} WHERE id=#{id} AND owner_principal_id=#{owner} AND status='initiated' AND checksum=#{tokenDigest} AND upload_expires_at&gt;#{now}</update>
+  <update id="markProcessing" timeout="2">UPDATE media_assets SET status='processing',updated_at=#{now} WHERE id=#{id} AND owner_principal_id=#{owner} AND status='uploaded'</update>
+  <!-- 技术处理完成状态仍是approved标签的既有存储语义；人工审核另由内容状态控制。 -->
+  <update id="completeProcessing" timeout="2">UPDATE media_assets SET status='approved',mime=#{mime},size_bytes=#{size},width=#{width},height=#{height},checksum=#{checksum},cleanup_after=NULL,updated_at=#{now} WHERE id=#{id} AND owner_principal_id=#{owner} AND status='processing'</update>
+  <insert id="insertVariant" timeout="2">INSERT INTO media_variants(id,media_id,kind,object_key,size_bytes,width,height,created_at,updated_at) VALUES(gen_random_uuid(),#{mediaId},#{variant.kind},#{variant.objectKey},#{variant.sizeBytes},#{variant.width},#{variant.height},#{now},#{now})</insert>
+  <delete id="deleteVariants" timeout="2">DELETE FROM media_variants WHERE media_id=#{mediaId}</delete>
+  <!-- 已绑定关系受外键保护；此处只将本人未绑定资源标记删除。 -->
+  <update id="deleteAsset" timeout="2">UPDATE media_assets SET status='deleted',deleted_at=#{now},updated_at=#{now} WHERE id=#{id} AND owner_principal_id=#{owner} AND status IN ('initiated','uploaded','processing','approved','rejected') AND NOT EXISTS(SELECT 1 FROM post_media WHERE media_id=#{id}) AND NOT EXISTS(SELECT 1 FROM comment_media WHERE media_id=#{id})</update>
+</mapper>

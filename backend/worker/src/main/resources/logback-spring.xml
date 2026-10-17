@@ -1,0 +1,4 @@
+<configuration>
+  <!-- 不输出原始依赖异常/配置，进程入口只输出固定生命周期事件。 -->
+  <root level="OFF"/>
+</configuration>

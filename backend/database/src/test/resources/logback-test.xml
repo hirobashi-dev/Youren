@@ -1,0 +1,4 @@
+<configuration>
+  <!-- 测试不打印原始SQL参数、配置或异常，只由JUnit报告失败场景。 -->
+  <root level="OFF"/>
+</configuration>

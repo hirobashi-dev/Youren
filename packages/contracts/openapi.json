@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
-    "title": "友缘 API 接口合同",
+    "title": "Youren API 接口合同",
     "version": "0.1.0",
     "description": "面向日本中国用户的移动应用合同草案。接口尚未实现。文字长度按Unicode可见字符计算；x-grapheme-max需要服务端校验。所有对象访问必须重新验证权限。保留期为原始公开/发送时间起一个UTC日历年，闰日钳位，编辑不续期。标记待确认的内容不是已批准需求。"
   },
@@ -17,7 +17,7 @@
       "post": {
         "operationId": "post_guest_sessions",
         "summary": "创建本机游客凭证",
-        "description": "浏览无需建立游客；发言前获取秘密凭证，仅本机管理自己的内容。",
+        "description": "浏览无需建立游客；发言前获取秘密凭证，仅本机管理自己的内容，凭证30天到期（可配置）。",
         "tags": [
           "guest-sessions"
         ],
@@ -162,6 +162,200 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "TEMPORARILY_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "TEMPORARILY_UNAVAILABLE"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-authorization-level": "P"
+      }
+    },
+    "/v1/auth/policy": {
+      "get": {
+        "operationId": "get_auth_policy",
+        "summary": "读取当前条款与隐私版本",
+        "description": "客户端须主动接受这些服务端版本；开发版本号不代表正式政策正文已发布。",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功；异步202仅表示受理。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "统一成功响应，requestId用于脱敏追踪。",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AuthPolicy"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "description": "请求追踪ID。"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_CURSOR / INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INVALID_CURSOR",
+                            "INVALID_REQUEST"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION_FAILED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "headers": {
+              "Retry-After": {
+                "description": "重试等待秒数。",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -194,7 +388,7 @@
       "post": {
         "operationId": "post_auth_email_code",
         "summary": "发送邮箱验证码",
-        "description": "待确认：邮箱验证码登录与六位代码格式仍为评审建议；注册邮箱已确认。",
+        "description": "注册与登录六位验证码，10分钟有效、最多错误5次；同邮箱60秒冷却，邮箱每小时5次/每天20次，IP每小时30次/每天100次，均可配置；统一响应不暴露邮箱是否注册。",
         "tags": [
           "auth"
         ],
@@ -339,6 +533,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -365,7 +583,6 @@
           }
         },
         "x-authorization-level": "P",
-        "x-decision-status": "pending",
         "requestBody": {
           "required": true,
           "description": "只接受明确字段；所有字符串按纯文本处理。",
@@ -465,6 +682,57 @@
               }
             }
           },
+          "401": {
+            "description": "AUTH_REQUIRED / SESSION_REVOKED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "AUTH_REQUIRED",
+                            "SESSION_REVOKED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_RESTRICTED / DATING_REQUIRED / FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "ACCOUNT_RESTRICTED",
+                            "DATING_REQUIRED",
+                            "FORBIDDEN"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "409": {
             "description": "EVENT_FULL / EVENT_CLOSED / GROUP_FULL / MEDIA_NOT_READY / REQUEST_IN_PROGRESS / RESULT_EXPIRED / QUOTA_EXCEEDED / IDEMPOTENCY_CONFLICT",
             "content": {
@@ -553,6 +821,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -596,7 +888,7 @@
       "post": {
         "operationId": "post_auth_login",
         "summary": "邮箱验证码登录",
-        "description": "待确认：邮箱验证码登录细节待确认。",
+        "description": "验证码用途必须为login；未注册邮箱验证后仍返回统一认证失败，不自动注册。",
         "tags": [
           "auth"
         ],
@@ -653,6 +945,57 @@
               }
             }
           },
+          "401": {
+            "description": "AUTH_REQUIRED / SESSION_REVOKED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "AUTH_REQUIRED",
+                            "SESSION_REVOKED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_RESTRICTED / DATING_REQUIRED / FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "ACCOUNT_RESTRICTED",
+                            "DATING_REQUIRED",
+                            "FORBIDDEN"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "409": {
             "description": "EVENT_FULL / EVENT_CLOSED / GROUP_FULL / MEDIA_NOT_READY / REQUEST_IN_PROGRESS / RESULT_EXPIRED / QUOTA_EXCEEDED / IDEMPOTENCY_CONFLICT",
             "content": {
@@ -741,6 +1084,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -767,7 +1134,6 @@
           }
         },
         "x-authorization-level": "P",
-        "x-decision-status": "pending",
         "requestBody": {
           "required": true,
           "description": "只接受明确字段；所有字符串按纯文本处理。",
@@ -785,7 +1151,7 @@
       "post": {
         "operationId": "post_auth_refresh",
         "summary": "轮换刷新令牌",
-        "description": "body中的刷新令牌是认证依据，非匿名开放；单次消费，重放撤销family。",
+        "description": "body中的刷新令牌是认证依据，非匿名开放；单次消费，重放撤销family；访问15分钟、刷新30天，均可配置。",
         "tags": [
           "auth"
         ],
@@ -842,6 +1208,57 @@
               }
             }
           },
+          "401": {
+            "description": "AUTH_REQUIRED / SESSION_REVOKED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "AUTH_REQUIRED",
+                            "SESSION_REVOKED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_RESTRICTED / DATING_REQUIRED / FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "ACCOUNT_RESTRICTED",
+                            "DATING_REQUIRED",
+                            "FORBIDDEN"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "409": {
             "description": "EVENT_FULL / EVENT_CLOSED / GROUP_FULL / MEDIA_NOT_READY / REQUEST_IN_PROGRESS / RESULT_EXPIRED / QUOTA_EXCEEDED / IDEMPOTENCY_CONFLICT",
             "content": {
@@ -921,6 +1338,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -1142,6 +1583,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -1395,6 +1860,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -1598,6 +2087,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -1837,6 +2350,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -1880,7 +2417,7 @@
       "patch": {
         "operationId": "patch_me_profile",
         "summary": "更新普通资料",
-        "description": "更新自己的资料，审核版本通过前不公开新内容。",
+        "description": "首次创建使用If-Match双引号0，且必须提供昵称；之后使用正版本，仅修改本人普通资料；审核版本通过前不公开新内容。",
         "tags": [
           "me"
         ],
@@ -1896,9 +2433,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^\"[1-9][0-9]*\"$"
+              "pattern": "^\"(0|[1-9][0-9]*)\"$"
             },
-            "description": "带双引号的资源版本；缺失428，不匹配412。恋爱首次创建使用\"0\"。"
+            "description": "带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用\"0\"。"
           }
         ],
         "responses": {
@@ -2130,6 +2667,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -2382,6 +2943,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -2574,6 +3159,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -2851,6 +3460,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -3106,6 +3739,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -3248,6 +3905,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -3370,6 +4051,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -3583,6 +4288,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -3837,6 +4566,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -4035,6 +4788,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -4097,7 +4874,7 @@
               "type": "string",
               "pattern": "^\"[1-9][0-9]*\"$"
             },
-            "description": "带双引号的资源版本；缺失428，不匹配412。恋爱首次创建使用\"0\"。"
+            "description": "带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用\"0\"。"
           }
         ],
         "responses": {
@@ -4362,6 +5139,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -4432,6 +5233,17 @@
               "format": "uuid"
             },
             "description": "标识不代表访问授权。"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UUID对象标识；知道ID不代表有权访问。",
+              "format": "uuid"
+            },
+            "description": "同一主体、操作及请求内容的重试复用同键；不同内容同键返回409。具体保存窗口可配置。"
           }
         ],
         "responses": {
@@ -4626,6 +5438,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -4806,6 +5642,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -5095,6 +5955,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -5173,7 +6057,7 @@
               "type": "string",
               "pattern": "^\"[1-9][0-9]*\"$"
             },
-            "description": "带双引号的资源版本；缺失428，不匹配412。恋爱首次创建使用\"0\"。"
+            "description": "带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用\"0\"。"
           }
         ],
         "responses": {
@@ -5438,6 +6322,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -5505,6 +6413,17 @@
               "format": "uuid"
             },
             "description": "标识不代表访问授权。"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UUID对象标识；知道ID不代表有权访问。",
+              "format": "uuid"
+            },
+            "description": "同一主体、操作及请求内容的重试复用同键；不同内容同键返回409。具体保存窗口可配置。"
           }
         ],
         "responses": {
@@ -5690,6 +6609,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -5916,6 +6859,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -6178,6 +7145,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -6399,6 +7390,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -6655,6 +7670,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -6688,6 +7727,322 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UploadInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/media/{mediaId}/content": {
+      "put": {
+        "operationId": "put_media_mediaId_content",
+        "summary": "上传静态图片字节",
+        "description": "仅上传意向返回的X-Upload-Token可写入一次；服务端再次限制实际字节数。\n必须验证当前主体对资源的所有权/管理资格。",
+        "tags": [
+          "media"
+        ],
+        "security": [
+          {
+            "GuestToken": []
+          },
+          {
+            "UserBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mediaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UUID对象标识；知道ID不代表有权访问。",
+              "format": "uuid"
+            },
+            "description": "标识不代表访问授权。"
+          },
+          {
+            "name": "X-Upload-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 32
+            },
+            "description": "上传意向返回的一次性短时秘密；不得写入日志或URL。"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功；异步202仅表示受理。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "统一成功响应，requestId用于脱敏追踪。",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Media"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "description": "请求追踪ID。"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_CURSOR / INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INVALID_CURSOR",
+                            "INVALID_REQUEST"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED / SESSION_REVOKED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "AUTH_REQUIRED",
+                            "SESSION_REVOKED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_RESTRICTED / DATING_REQUIRED / FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "ACCOUNT_RESTRICTED",
+                            "DATING_REQUIRED",
+                            "FORBIDDEN"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "CONTENT_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "CONTENT_UNAVAILABLE"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "EVENT_FULL / EVENT_CLOSED / GROUP_FULL / MEDIA_NOT_READY / REQUEST_IN_PROGRESS / RESULT_EXPIRED / QUOTA_EXCEEDED / IDEMPOTENCY_CONFLICT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "EVENT_FULL",
+                            "EVENT_CLOSED",
+                            "GROUP_FULL",
+                            "MEDIA_NOT_READY",
+                            "REQUEST_IN_PROGRESS",
+                            "RESULT_EXPIRED",
+                            "QUOTA_EXCEEDED",
+                            "IDEMPOTENCY_CONFLICT"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION_FAILED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "headers": {
+              "Retry-After": {
+                "description": "重试等待秒数。",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "TEMPORARILY_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "TEMPORARILY_UNAVAILABLE"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-authorization-level": "G",
+        "requestBody": {
+          "required": true,
+          "description": "只接受明确字段；所有字符串按纯文本处理。",
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "$ref": "#/components/schemas/MediaUploadBytes"
               }
             }
           }
@@ -6948,6 +8303,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -7199,6 +8578,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -7252,6 +8655,17 @@
               "format": "uuid"
             },
             "description": "标识不代表访问授权。"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UUID对象标识；知道ID不代表有权访问。",
+              "format": "uuid"
+            },
+            "description": "同一主体、操作及请求内容的重试复用同键；不同内容同键返回409。具体保存窗口可配置。"
           }
         ],
         "responses": {
@@ -7437,6 +8851,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -7650,6 +9088,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -7816,6 +9278,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -8067,6 +9553,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -8268,6 +9778,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -8327,7 +9861,7 @@
               "type": "string",
               "pattern": "^\"[1-9][0-9]*\"$"
             },
-            "description": "带双引号的资源版本；缺失428，不匹配412。恋爱首次创建使用\"0\"。"
+            "description": "带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用\"0\"。"
           }
         ],
         "responses": {
@@ -8583,6 +10117,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -8882,6 +10440,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -9119,6 +10701,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -9394,6 +11000,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -9640,6 +11270,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -9897,6 +11551,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -10187,6 +11865,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -10497,6 +12199,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -10787,6 +12513,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -10998,6 +12748,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -11276,6 +13050,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -11506,6 +13304,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -11816,6 +13638,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -12098,6 +13944,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -12390,6 +14260,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -12669,6 +14563,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -12924,6 +14842,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -13147,6 +15089,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -13348,6 +15314,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -13396,7 +15386,7 @@
               "type": "string",
               "pattern": "^\"(0|[1-9][0-9]*)\"$"
             },
-            "description": "带双引号的资源版本；缺失428，不匹配412。恋爱首次创建使用\"0\"。"
+            "description": "带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用\"0\"。"
           }
         ],
         "responses": {
@@ -13628,6 +15618,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -13881,6 +15895,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -14122,6 +16160,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -14350,6 +16412,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -14603,6 +16689,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -14814,6 +16924,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -15069,6 +17203,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -15257,6 +17415,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -15508,6 +17690,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -15701,6 +17907,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -15760,7 +17990,7 @@
               "type": "string",
               "pattern": "^\"[1-9][0-9]*\"$"
             },
-            "description": "带双引号的资源版本；缺失428，不匹配412。恋爱首次创建使用\"0\"。"
+            "description": "带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用\"0\"。"
           }
         ],
         "responses": {
@@ -16016,6 +18246,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -16108,7 +18362,7 @@
               "type": "string",
               "pattern": "^\"[1-9][0-9]*\"$"
             },
-            "description": "带双引号的资源版本；缺失428，不匹配412。恋爱首次创建使用\"0\"。"
+            "description": "带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用\"0\"。"
           }
         ],
         "responses": {
@@ -16364,6 +18618,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -16456,7 +18734,7 @@
               "type": "string",
               "pattern": "^\"[1-9][0-9]*\"$"
             },
-            "description": "带双引号的资源版本；缺失428，不匹配412。恋爱首次创建使用\"0\"。"
+            "description": "带双引号的资源版本；缺失428，不匹配412。普通资料与恋爱资料首次创建使用\"0\"。"
           }
         ],
         "responses": {
@@ -16712,6 +18990,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -16977,6 +19279,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -17314,6 +19640,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -17571,6 +19921,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -17808,6 +20182,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -18058,6 +20456,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -18258,6 +20680,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -18547,6 +20993,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -18794,6 +21264,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -19008,6 +21502,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -19261,6 +21779,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -19470,6 +22012,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -19725,6 +22291,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -19893,6 +22483,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -20081,6 +22695,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -20316,6 +22954,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -20562,6 +23224,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -20590,10 +23276,324 @@
         "x-authorization-level": "A"
       }
     },
+    "/v1/admin/reports/{reportId}/resolve": {
+      "post": {
+        "operationId": "post_admin_reports_reportId_resolve",
+        "summary": "管理员记录举报处置结果",
+        "description": "结案需填写处置结论、理由和期望版本；举报结案本身不删除目标内容。\n独立管理员身份和对应角色授权；审计角色只读。",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UUID对象标识；知道ID不代表有权访问。",
+              "format": "uuid"
+            },
+            "description": "标识不代表访问授权。"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UUID对象标识；知道ID不代表有权访问。",
+              "format": "uuid"
+            },
+            "description": "同一主体、操作及请求内容的重试复用同键；不同内容同键返回409。具体保存窗口可配置。"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "成功；异步202仅表示受理。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "统一成功响应，requestId用于脱敏追踪。",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AuditAction"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "description": "请求追踪ID。"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_CURSOR / INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INVALID_CURSOR",
+                            "INVALID_REQUEST"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED / SESSION_REVOKED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "AUTH_REQUIRED",
+                            "SESSION_REVOKED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_RESTRICTED / DATING_REQUIRED / FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "ACCOUNT_RESTRICTED",
+                            "DATING_REQUIRED",
+                            "FORBIDDEN"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "CONTENT_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "CONTENT_UNAVAILABLE"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "EVENT_FULL / EVENT_CLOSED / GROUP_FULL / MEDIA_NOT_READY / REQUEST_IN_PROGRESS / RESULT_EXPIRED / QUOTA_EXCEEDED / IDEMPOTENCY_CONFLICT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "EVENT_FULL",
+                            "EVENT_CLOSED",
+                            "GROUP_FULL",
+                            "MEDIA_NOT_READY",
+                            "REQUEST_IN_PROGRESS",
+                            "RESULT_EXPIRED",
+                            "QUOTA_EXCEEDED",
+                            "IDEMPOTENCY_CONFLICT"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION_FAILED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "headers": {
+              "Retry-After": {
+                "description": "重试等待秒数。",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "TEMPORARILY_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "TEMPORARILY_UNAVAILABLE"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-authorization-level": "A",
+        "requestBody": {
+          "required": true,
+          "description": "只接受明确字段；所有字符串按纯文本处理。",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportResolutionInput"
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/content": {
       "get": {
         "operationId": "get_admin_content",
-        "summary": "审核角色读取待审内容",
+        "summary": "审核角色读取待审及举报处置队列",
         "description": "独立管理员身份和对应角色授权；审计角色只读。",
         "tags": [
           "admin"
@@ -20630,13 +23630,15 @@
             "name": "status",
             "in": "query",
             "required": true,
-            "description": "队列状态。",
+            "description": "待审、待修改、已公开或已隐藏队列。",
             "schema": {
               "type": "string",
               "description": "状态。",
               "enum": [
                 "pending",
-                "rejected"
+                "rejected",
+                "visible",
+                "hidden"
               ]
             }
           },
@@ -20802,6 +23804,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -20834,7 +23860,7 @@
       "post": {
         "operationId": "post_admin_moderation_actions",
         "summary": "管理员处理单个对象",
-        "description": "需要对应操作角色；reason和expectedVersion验证，auditor不得写入。\n独立管理员身份和对应角色授权；审计角色只读。",
+        "description": "仅人工处理帖子或回复；reason和expectedVersion验证，auditor不得写入。\n独立管理员身份和对应角色授权；审计角色只读。",
         "tags": [
           "admin"
         ],
@@ -21046,6 +24072,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -21078,7 +24128,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ModerationInput"
+                "$ref": "#/components/schemas/BoardModerationInput"
               }
             }
           }
@@ -21257,6 +24307,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -21475,6 +24549,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -21684,6 +24782,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -21884,6 +25006,30 @@
                           "type": "string",
                           "enum": [
                             "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
                           ]
                         }
                       }
@@ -22172,6 +25318,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -22403,6 +25573,30 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INTERNAL_ERROR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "TEMPORARILY_UNAVAILABLE",
             "content": {
@@ -22437,8 +25631,8 @@
       "UserBearer": {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "JWT",
-        "description": "注册账号访问令牌；不得接受管理端audience。"
+        "bearerFormat": "opaque",
+        "description": "高熵不透明注册账号访问令牌，服务器只保存摘要；不得接受管理端audience。"
       },
       "GuestToken": {
         "type": "apiKey",
@@ -22718,6 +25912,77 @@
         ],
         "additionalProperties": false
       },
+      "OwnerProfile": {
+        "type": "object",
+        "description": "本人最新普通资料，可为未发布草稿；id始终为账号ID。",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "UUID对象标识；知道ID不代表有权访问。",
+            "format": "uuid"
+          },
+          "nickname": {
+            "type": "string",
+            "description": "公开昵称。"
+          },
+          "bio": {
+            "type": "string",
+            "description": "公开简介。"
+          },
+          "avatar": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Image"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "可为空；空值不表示当前已授权或已发布。"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Region"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "可为空；空值不表示当前已授权或已发布。"
+          },
+          "interests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Interest"
+            },
+            "uniqueItems": true
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/Capabilities"
+          },
+          "moderationStatus": {
+            "type": "string",
+            "description": "本人最新版本审核状态；pending不表示公开。",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "nickname",
+          "bio",
+          "avatar",
+          "region",
+          "interests",
+          "capabilities",
+          "moderationStatus"
+        ],
+        "additionalProperties": false
+      },
       "Settings": {
         "type": "object",
         "description": "陌生私聊默认开放；关闭不影响已有成功联系，拉黑仍禁止双方通信。",
@@ -22817,7 +26082,7 @@
           "profile": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/PublicProfile"
+                "$ref": "#/components/schemas/OwnerProfile"
               },
               {
                 "type": "null"
@@ -22833,7 +26098,7 @@
           },
           "onboardingRequired": {
             "type": "boolean",
-            "description": "是否需要完善基本资料。"
+            "description": "是否需要完善基本资料；按本人草稿是否存在决定，与审核发布独立。"
           },
           "profileVersion": {
             "type": [
@@ -22868,11 +26133,17 @@
             "type": "string",
             "description": "UUID对象标识；知道ID不代表有权访问。",
             "format": "uuid"
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "带时区的ISO8601时间，响应统一使用UTC/Z。",
+            "format": "date-time"
           }
         },
         "required": [
           "guestToken",
-          "principalId"
+          "principalId",
+          "expiresAt"
         ],
         "additionalProperties": false
       },
@@ -22911,6 +26182,27 @@
           "account",
           "onboardingRequired",
           "claimStatus"
+        ],
+        "additionalProperties": false
+      },
+      "AuthPolicy": {
+        "type": "object",
+        "description": "服务端要求的条款与隐私版本。",
+        "properties": {
+          "termsVersion": {
+            "type": "string",
+            "description": "当前条款版本。",
+            "minLength": 1
+          },
+          "privacyVersion": {
+            "type": "string",
+            "description": "当前隐私版本。",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "termsVersion",
+          "privacyVersion"
         ],
         "additionalProperties": false
       },
@@ -23284,7 +26576,7 @@
       },
       "Media": {
         "type": "object",
-        "description": "本主体资源状态，不返回objectKey。",
+        "description": "本主体资源技术处理状态，不返回objectKey；approved仅表示图片校验与转换可用，不代表所属内容经人工审核通过。",
         "properties": {
           "id": {
             "type": "string",
@@ -23293,7 +26585,7 @@
           },
           "status": {
             "type": "string",
-            "description": "资源状态。",
+            "description": "approved仅表示媒体技术处理成功；发布须由人工单独决定。",
             "enum": [
               "initiated",
               "uploaded",
@@ -24295,7 +27587,7 @@
       },
       "Report": {
         "type": "object",
-        "description": "本人举报反馈，不暴露审核员或其他举报者。",
+        "description": "本人举报反馈，不暴露审核员或其他举报者；version用于管理端结案并发检查。",
         "properties": {
           "id": {
             "type": "string",
@@ -24315,12 +27607,18 @@
             "type": "string",
             "description": "带时区的ISO8601时间，响应统一使用UTC/Z。",
             "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "举报当前版本。"
           }
         },
         "required": [
           "id",
           "status",
-          "createdAt"
+          "createdAt",
+          "version"
         ],
         "additionalProperties": false
       },
@@ -24406,7 +27704,7 @@
       },
       "AdminContent": {
         "type": "object",
-        "description": "待审内容版本，仅角色有权读取。",
+        "description": "审核与举报处置队列版本；超时只提醒，不会自动驳回或删除。",
         "properties": {
           "targetType": {
             "type": "string",
@@ -24429,13 +27727,24 @@
             "description": "审核状态。",
             "enum": [
               "pending",
-              "rejected"
+              "rejected",
+              "visible",
+              "hidden"
             ]
           },
           "version": {
             "type": "integer",
             "minimum": 1,
             "description": "版本。"
+          },
+          "pendingSince": {
+            "type": "string",
+            "description": "状态进入队列的服务端时间。",
+            "format": "date-time"
+          },
+          "reviewOverdue": {
+            "type": "boolean",
+            "description": "待审超过72小时的服务端提醒标记；不自动处置。"
           },
           "title": {
             "type": "string",
@@ -24458,7 +27767,9 @@
           "targetType",
           "targetId",
           "status",
-          "version"
+          "version",
+          "pendingSince",
+          "reviewOverdue"
         ],
         "additionalProperties": false
       },
@@ -24662,7 +27973,7 @@
       },
       "EmailCodeInput": {
         "type": "object",
-        "description": "申请验证码，参数仍为可调整工程配置。",
+        "description": "申请验证码，参数仍为可调整工程配置；第二阶段只支持login/register，delete_account留待注销功能阶段并安全拒绝。",
         "properties": {
           "email": {
             "type": "string",
@@ -24698,7 +28009,7 @@
             "type": "string",
             "description": "邮箱验证码。",
             "pattern": "^[0-9]{6}$",
-            "x-decision-status": "工程初值：六位格式待登录细节确认"
+            "x-decision-status": "confirmed"
           },
           "guestToken": {
             "type": "string",
@@ -24725,7 +28036,7 @@
       },
       "LoginInput": {
         "type": "object",
-        "description": "邮箱验证码登录仍为评审建议。",
+        "description": "邮箱验证码登录；用途和单次消费由服务端验证。",
         "properties": {
           "challengeId": {
             "type": "string",
@@ -24736,7 +28047,7 @@
             "type": "string",
             "description": "邮箱验证码。",
             "pattern": "^[0-9]{6}$",
-            "x-decision-status": "工程初值：六位格式待登录细节确认"
+            "x-decision-status": "confirmed"
           },
           "guestToken": {
             "type": "string",
@@ -24762,7 +28073,7 @@
             "type": "string",
             "description": "邮箱验证码。",
             "pattern": "^[0-9]{6}$",
-            "x-decision-status": "工程初值：六位格式待登录细节确认"
+            "x-decision-status": "confirmed"
           }
         },
         "required": [
@@ -25070,6 +28381,11 @@
           "sizeBytes"
         ],
         "additionalProperties": false
+      },
+      "MediaUploadBytes": {
+        "type": "string",
+        "format": "binary",
+        "description": "原始静态图片字节；最大5,000,000 bytes。"
       },
       "CompleteUploadInput": {
         "type": "object",
@@ -25741,6 +29057,38 @@
         ],
         "additionalProperties": false
       },
+      "ReportResolutionInput": {
+        "type": "object",
+        "description": "管理员结案时记录人工结论、理由和提交时看到的举报版本。",
+        "properties": {
+          "resolution": {
+            "type": "string",
+            "description": "举报处置结论；不隐式修改目标内容。",
+            "enum": [
+              "action_taken",
+              "no_action"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "人工复核理由，最多500个可见字符。",
+            "x-grapheme-max": 500,
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "举报当前版本，用于拒绝旧操作。"
+          }
+        },
+        "required": [
+          "resolution",
+          "reason",
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
       "AdminLoginInput": {
         "type": "object",
         "description": "独立管理登录，不接受用户令牌。",
@@ -25834,20 +29182,16 @@
         ],
         "additionalProperties": false
       },
-      "ModerationInput": {
+      "BoardModerationInput": {
         "type": "object",
-        "description": "平台处理单个目标，理由和旧版本均需验证。",
+        "description": "仅人工处理公开留言板帖子和回复，使用期望版本防止覆盖并发决定。",
         "properties": {
           "targetType": {
             "type": "string",
-            "description": "举报目标类型。",
+            "description": "仅允许本阶段公开留言对象。",
             "enum": [
               "post",
-              "comment",
-              "message",
-              "account",
-              "group",
-              "event"
+              "comment"
             ]
           },
           "targetId": {
@@ -25857,19 +29201,19 @@
           },
           "action": {
             "type": "string",
-            "description": "操作集合需运营确认，首稿建议。",
+            "description": "分别执行审核通过、驳回、隐藏、恢复或删除。",
             "enum": [
               "approve",
               "reject",
               "hide",
-              "delete",
-              "restrict",
-              "unrestrict"
+              "restore",
+              "delete"
             ]
           },
           "reason": {
             "type": "string",
-            "description": "必填处理依据。",
+            "description": "必填处理依据，最多500个可见字符。",
+            "x-grapheme-max": 500,
             "minLength": 1,
             "pattern": "\\S"
           },
@@ -26898,10 +30242,10 @@
       },
       "ProfileVersion": {
         "type": "object",
-        "description": "本人普通资料更新结果。",
+        "description": "本人最新普通资料草稿更新结果；不授予公开发布资格。",
         "properties": {
           "profile": {
-            "$ref": "#/components/schemas/PublicProfile"
+            "$ref": "#/components/schemas/OwnerProfile"
           },
           "version": {
             "type": "integer",
@@ -26915,5 +30259,26 @@
         "additionalProperties": false
       }
     }
+  },
+  "x-auth-policy": {
+    "configurable": true,
+    "codeDigits": 6,
+    "codeTtlSeconds": 600,
+    "maxWrongAttempts": 5,
+    "cooldownSeconds": 60,
+    "emailHourlyLimit": 5,
+    "emailDailyLimit": 20,
+    "ipHourlyLimit": 30,
+    "ipDailyLimit": 100,
+    "accessTtlSeconds": 900,
+    "refreshTtlSeconds": 2592000,
+    "guestTtlSeconds": 2592000
+  },
+  "x-profile-policy": {
+    "decisionStatus": "provisional-engineering-defaults",
+    "validationAuthority": "server-config",
+    "nicknameGraphemes": 30,
+    "bioGraphemes": 500,
+    "configurable": true
   }
 }

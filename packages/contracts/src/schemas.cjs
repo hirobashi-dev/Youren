@@ -21,11 +21,15 @@ add('Capabilities',obj('仅指导界面，服务端每次操作仍重新鉴权�
 add('Image',obj('受控展示图片，不暴露存储对象键。',{id:uuid(),url:str('短时受控展示URL，不能长于内容剩余寿命。',{format:'uri'}),width:integer('展示宽度。',1),height:integer('展示高度。',1),expiresAt:time()}));
 add('AuthorDisplay',{description:'游客只显示同帖标签；注册作者只返回普通公开资料。',oneOf:[obj('游客标签。',{kind:{const:'guest',type:'string'},label:str('同帖稳定显示标签。')}),obj('注册作者。',{kind:{const:'account',type:'string'},accountId:uuid(),nickname:str('公开昵称。'),avatar:nullable(ref('Image'))})]});
 add('PublicProfile',obj('普通公开资料，无邮箱、游客主体、恋爱偏好或活动记录。',{id:uuid(),nickname:str('公开昵称。'),bio:str('公开简介。'),avatar:nullable(ref('Image')),region:nullable(ref('Region')),interests:arr(ref('Interest')),capabilities:ref('Capabilities')}));
+// 本人草稿沿用纯文本/字典显示字段；审核状态不能混入普通公开主页。
+add('OwnerProfile',obj('本人最新普通资料，可为未发布草稿；id始终为账号ID。',{...schemas.PublicProfile.properties,moderationStatus:en('本人最新版本审核状态；pending不表示公开。','pending/approved/rejected')}));
 add('Settings',obj('陌生私聊默认开放；关闭不影响已有成功联系，拉黑仍禁止双方通信。',{allowStrangerDm:{...bool('允许新陌生人私聊。'),default:true},pushEnabled:bool('允许推送，默认值仍为工程建议。'),lockscreenPreview:bool('显示锁屏预览，建议默认false。')}));
 add('AgeDeclaration',obj('自我声明而非证件核验。',{status:en('声明状态，无verified。','not_declared/self_declared/withdrawn'),declaredAt:nullable(time()),withdrawnAt:nullable(time())}));
-add('Me',obj('仅本人可读的账号与资料。',{id:uuid(),email:str('本人邮箱，禁止进入公开DTO。',{format:'email'}),status:en('账号状态。','active/restricted/deleting/deleted'),profile:nullable(ref('PublicProfile')),settings:ref('Settings'),ageDeclaration:ref('AgeDeclaration'),onboardingRequired:bool('是否需要完善基本资料。')}));
-add('GuestSession',obj('首次发言建立的本机秘密凭证，禁止写入URL或日志。',{guestToken:str('高熵游客秘密凭证。'),principalId:uuid()}));
+add('Me',obj('仅本人可读的账号与资料。',{id:uuid(),email:str('本人邮箱，禁止进入公开DTO。',{format:'email'}),status:en('账号状态。','active/restricted/deleting/deleted'),profile:nullable(ref('OwnerProfile')),settings:ref('Settings'),ageDeclaration:ref('AgeDeclaration'),onboardingRequired:bool('是否需要完善基本资料；按本人草稿是否存在决定，与审核发布独立。')}));
+add('GuestSession',obj('首次发言建立的本机秘密凭证，禁止写入URL或日志。',{guestToken:str('高熵游客秘密凭证。'),principalId:uuid(),expiresAt:time()}));
 add('AuthSession',obj('仅登录/注册成功返回的令牌；禁止缓存到公开请求或记录日志。',{accessToken:str('短期账号令牌。'),refreshToken:str('可轮换刷新令牌。'),account:ref('Me'),onboardingRequired:bool('是否需要基本资料。'),claimStatus:en('游客接续不成功不应丢失登录结果。','not_requested/claimed/failed')}));
+// 当前政策版本只供主动同意，不暴露认证密钥或邮件渠道配置。
+add('AuthPolicy',obj('服务端要求的条款与隐私版本。',{termsVersion:str('当前条款版本。',{minLength:1}),privacyVersion:str('当前隐私版本。',{minLength:1})}));
 add('Challenge',obj('统一响应，不泄漏邮箱是否注册。',{challengeId:uuid(),expiresIn:integer('有效秒数。',1),retryAfter:integer('最短等待秒数。')}));
 const published={publishedAt:time(),expiresAt:time()};
 const submit={id:uuid(),status:en('公开与待审必须区分。','pending/visible/rejected/hidden/deleted/expired'),publishedAt:nullable(time()),expiresAt:nullable(time()),version:integer('资源版本。',1)};
@@ -34,7 +38,7 @@ const post={id:uuid(),title:str('公开标题。'),body:str('纯文本正文。'
 add('PublicPost',obj('仅可见未到期的公开帖子，无稳定游客ID。',post));
 add('Reply',obj('回复独立计时，引用过期内容只给无正文占位。',{id:uuid(),postId:uuid(),body:str('纯文本回复。'),authorDisplay:ref('AuthorDisplay'),images:arr(ref('Image'),3),replyToId:nullable(uuid()),...published,capabilities:ref('Capabilities')}));
 add('OwnContent',{description:'本人待审/公开内容或无正文的过期占位。',oneOf:[obj('本人有效内容。',{kind:en('内容类别。','posts/comments'),...submit,title:str('仅帖子有标题。'),body:str('本人正文。'),images:arr(ref('Image'),9),parentUnavailable:bool('父帖是否已不可用。')},['kind','id','status','body','images','version']),obj('已删除或过期占位，无标题/正文/作者/图片。',{kind:en('内容类别。','posts/comments'),id:uuid(),status:en('终态。','deleted/expired'),unavailable:{type:'boolean',const:true}})]});
-add('Media',obj('本主体资源状态，不返回objectKey。',{id:uuid(),status:en('资源状态。','initiated/uploaded/processing/approved/rejected/deleting/deleted'),purpose:en('用途隔离。','board/profile/dating/event'),sizeBytes:integer('实际字节数。',1)}));
+add('Media',obj('本主体资源技术处理状态，不返回objectKey；approved仅表示图片校验与转换可用，不代表所属内容经人工审核通过。',{id:uuid(),status:en('approved仅表示媒体技术处理成功；发布须由人工单独决定。','initiated/uploaded/processing/approved/rejected/deleting/deleted'),purpose:en('用途隔离。','board/profile/dating/event'),sizeBytes:integer('实际字节数。',1)}));
 add('UploadIntent',obj('上传签名与公开URL不同，先上传再完成与审核。',{mediaId:uuid(),uploadUrl:str('临时受控上传URL。',{format:'uri'}),uploadHeaders:{type:'object',description:'上传时需原样附带的头部。',additionalProperties:{type:'string'}},expiresAt:time()}));
 add('MediaAccess',obj('按所属内容重新鉴权的图片访问。',{url:str('受控短时URL。',{format:'uri'}),expiresAt:time()}));
 add('Group',obj('公开群概要，不包含聊天正文或成员名单。',{id:uuid(),name:str('群名。'),description:str('群介绍。'),rules:str('群规。'),type:en('群类型。','ordinary/event/dating'),status:en('解散为readonly，closed不授予历史读取。','active/readonly/closed'),capacity:nullable(integer('普通群默认100，含群主。',1)),activeCount:integer('有效成员数。'),region:nullable(ref('Region')),interest:nullable(ref('Interest')),version:integer('版本。',1),dissolvedAt:nullable(time()),capabilities:ref('Capabilities')}));
@@ -59,20 +63,21 @@ add('Registration',obj('报名资格，开始前取消与开始后退出分开�
 add('RegistrationResult',obj('报名与活动群资格同事务成功。',{registration:ref('Registration'),conversationId:uuid()}));
 add('MyEvent',obj('仅本人的参与记录。',{event:ref('EventPublic'),role:en('本人角色。','participant/creator'),registration:nullable(ref('Registration'))}));
 add('Notification',obj('通知不复制私有正文，跳转目标重新鉴权。',{id:uuid(),type:str('通知类型。'),targetType:str('跳转对象类型。'),targetId:uuid(),readAt:nullable(time()),createdAt:time()}));
-add('Report',obj('本人举报反馈，不暴露审核员或其他举报者。',{id:uuid(),status:en('举报处理状态。','open/reviewing/resolved'),createdAt:time()}));
+add('Report',obj('本人举报反馈，不暴露审核员或其他举报者；version用于管理端结案并发检查。',{id:uuid(),status:en('举报处理状态。','open/reviewing/resolved'),createdAt:time(),version:integer('举报当前版本。',1)}));
 add('AdminReport',obj('管理角色必要的举报元信息；上下文按对象独立授权。',{report:ref('Report'),targetType:en('目标。','post/comment/message/account/group/event'),targetId:uuid(),reasonCode:str('举报理由代码。'),detail:str('必要说明。')}));
 add('AdminAccount',obj('管理账号概要，不返回凭证/令牌/MFA秘密。',{id:uuid(),status:en('用户状态。','active/restricted/deleting/deleted'),profile:nullable(ref('PublicProfile'))}));
-add('AdminContent',obj('待审内容版本，仅角色有权读取。',{targetType:en('审核对象类型。','post/comment/profile/dating/event'),targetId:uuid(),status:en('审核状态。','pending/rejected'),version:integer('版本。',1),title:str('适用对象的标题。'),body:str('允许范围的正文。'),images:arr(ref('Image'),9)},['targetType','targetId','status','version']));
+add('AdminContent',obj('审核与举报处置队列版本；超时只提醒，不会自动驳回或删除。',{targetType:en('审核对象类型。','post/comment/profile/dating/event'),targetId:uuid(),status:en('审核状态。','pending/rejected/visible/hidden'),version:integer('版本。',1),pendingSince:{...time(),description:'状态进入队列的服务端时间。'},reviewOverdue:bool('待审超过72小时的服务端提醒标记；不自动处置。'),title:str('适用对象的标题。'),body:str('允许范围的正文。'),images:arr(ref('Image'),9)},['targetType','targetId','status','version','pendingSince','reviewOverdue']));
 add('Task',obj('任务管理概要，不暴露敏感payload。',{id:uuid(),type:str('任务类型。'),status:en('任务状态。','pending/processing/succeeded/dead/completed/failed'),attempts:integer('重试次数。'),lastErrorCode:nullable(str('脱敏错误代码。'))}));
 add('AuditAction',obj('必要审计，不复制正文。',{id:uuid(),adminId:uuid(),targetType:str('对象类型。'),targetId:uuid(),action:str('操作类型。'),reason:str('操作理由。'),createdAt:time()}));
 add('Error',obj('统一失败格式，不泄漏内部异常或拉黑关系。',{code:str('稳定业务错误码。'),message:str('中文可读说明。'),requestId:str('脱敏请求追踪ID。'),details:arr(obj('字段错误。',{field:str('字段路径。'),reason:str('错误理由。'),limit:integer('适用限额。')},['field','reason']))},['code','message','requestId']));
 add('JobAccepted',obj('异步受理，不代表清理已完成。',{deletionJobId:uuid()}));
 add('GuestClaim',obj('游客接续结果，不公开关联历史身份。',{claimedContentCounts:obj('接续数量。',{posts:integer('帖子数。'),comments:integer('回复数。')})}));
 // 请求只允许明确列出的字段，禁止客户端写author/owner/verified/status。
-add('EmailCodeInput',obj('申请验证码，参数仍为可调整工程配置。',{email:str('邮箱。',{format:'email'}),purpose:en('用途。','login/register/delete_account')}));
-const challengeInput={challengeId:uuid(),code:str('邮箱验证码。',{pattern:'^[0-9]{6}$','x-decision-status':'工程初值：六位格式待登录细节确认'}),guestToken:str('可选原游客秘密，证明接续所有权。')};
+// 合同保留后续注销用途，第二阶段只发送注册与登录验证码，注销请求安全拒绝。
+add('EmailCodeInput',obj('申请验证码，参数仍为可调整工程配置；第二阶段只支持login/register，delete_account留待注销功能阶段并安全拒绝。',{email:str('邮箱。',{format:'email'}),purpose:en('用途。','login/register/delete_account')}));
+const challengeInput={challengeId:uuid(),code:str('邮箱验证码。',{pattern:'^[0-9]{6}$','x-decision-status':'confirmed'}),guestToken:str('可选原游客秘密，证明接续所有权。')};
 add('RegisterInput',obj('注册接受指定条款版本，可选游客接续。',{...challengeInput,termsVersion:str('条款版本。',{minLength:1}),privacyVersion:str('隐私政策版本。',{minLength:1})},['challengeId','code','termsVersion','privacyVersion']));
-add('LoginInput',obj('邮箱验证码登录仍为评审建议。',challengeInput,['challengeId','code']));
+add('LoginInput',obj('邮箱验证码登录；用途和单次消费由服务端验证。',challengeInput,['challengeId','code']));
 add('DeleteAccountInput',obj('本账号邮箱对应删除挑战。',{challengeId:uuid(),code:challengeInput.code}));
 add('RefreshInput',obj('单次轮换刷新令牌。',{refreshToken:str('原刷新秘密令牌。',{minLength:1})}));
 add('GuestClaimInput',obj('额外游客证明不能按邮箱自动认领。',{guestToken:str('原游客秘密凭证。',{minLength:1})}));
@@ -83,6 +88,8 @@ const postInput={title:text('最多60个可见字符。',60,true),body:text('最
 add('PostInput',obj('普通公开发帖，scope由服务端确定。',postInput,['title','body','category']));
 const reply=obj('文字或图片至少有一种；正文最多1000个可见字符。',{body:text('回复正文。',1000),replyToId:nullable(uuid()),mediaIds:ids(3)},[]);reply.anyOf=[{required:['body'],properties:{body:{type:'string',pattern:'\\S'}}},{required:['mediaIds'],properties:{mediaIds:{type:'array',minItems:1}}}];add('ReplyInput',reply);
 add('UploadInput',obj('申请静态图片签名，服务端仍核对实际格式与大小。',{purpose:en('恋爱用途须有效年龄声明。','board/profile/dating/event'),fileName:str('可选文件名，不作为对象键。'),mime:en('仅静态图片，动图解码拒绝。','image/jpeg/image/png/image/webp'),sizeBytes:{...integer('5MB=5,000,000 bytes。',1),maximum:5000000}},['purpose','mime','sizeBytes']));schemas.UploadInput.properties.mime.enum=['image/jpeg','image/png','image/webp'];
+// OpenAPI使用binary格式表达PUT原始字节流；文件本体不应落入JSON日志。
+add('MediaUploadBytes',{type:'string',format:'binary',description:'原始静态图片字节；最大5,000,000 bytes。'});
 add('CompleteUploadInput',obj('完成上传检查，可不提供checksum。',{checksum:str('可选内容校验摘要。')},[]));
 const groupInput={name:text('群名最多30个可见字符。',30,true),description:text('群介绍最多1000。',1000),rules:text('群规限额另行评审。'),regionCode:nullable(str('地区代码。')),interestId:uuid()};
 add('GroupInput',obj('创建普通群，不能指定owner/type/capacity。',groupInput,['name','description','interestId']));
@@ -107,9 +114,12 @@ add('EndEventInput',obj('开始后提前结束，保留记录与群只读。',{c
 add('RegistrationInput',obj('确认当前规则版本，报名与群资格同事务。',{acceptedEventVersion:integer('当前活动版本。',1),acceptedRules:{type:'boolean',const:true,description:'已阅读并接受规则。'}}));
 const targetType=en('举报目标类型。','post/comment/message/account/group/event');
 add('ReportInput',obj('需有权读取目标，匿名游客不能举报私有会话。',{targetType,targetId:uuid(),reasonCode:str('社区规则中的理由代码，运营规则另评审。',{minLength:1}),detail:text('可选补充。')},['targetType','targetId','reasonCode']));
+// 结案版本来自当前队列项，避免旧页面的举报决定覆盖新处理结果。
+add('ReportResolutionInput',obj('管理员结案时记录人工结论、理由和提交时看到的举报版本。',{resolution:en('举报处置结论；不隐式修改目标内容。','action_taken/no_action'),reason:text('人工复核理由，最多500个可见字符。',500,true),expectedVersion:integer('举报当前版本，用于拒绝旧操作。',1)}));
 add('AdminLoginInput',obj('独立管理登录，不接受用户令牌。',{loginName:str('管理员登录名。',{minLength:1}),password:str('秘密凭证，禁止日志。',{minLength:1})}));
 add('AdminMfaInput',obj('管理MFA挑战，不是手机用户验证码。',{challengeId:uuid(),code:str('MFA验证码。',{pattern:'^[0-9]{6}$'})}));
 add('AdminChallenge',obj('管理MFA挑战。',{challengeId:uuid(),expiresAt:time()}));
 add('AdminSession',obj('独立管理令牌，与用户audience分离。',{accessToken:str('管理访问秘密。'),expiresAt:time(),role:en('角色。','reviewer/operator/auditor')}));
-add('ModerationInput',obj('平台处理单个目标，理由和旧版本均需验证。',{targetType,targetId:uuid(),action:en('操作集合需运营确认，首稿建议。','approve/reject/hide/delete/restrict/unrestrict'),reason:text('必填处理依据。',null,true),expectedVersion:integer('资源当前版本。',1)}));
+// 媒体技术状态只表示文件可安全展示，不能代替此处的人工作发布决定。
+add('BoardModerationInput',obj('仅人工处理公开留言板帖子和回复，使用期望版本防止覆盖并发决定。',{targetType:en('仅允许本阶段公开留言对象。','post/comment'),targetId:uuid(),action:en('分别执行审核通过、驳回、隐藏、恢复或删除。','approve/reject/hide/restore/delete'),reason:text('必填处理依据，最多500个可见字符。',500,true),expectedVersion:integer('资源当前版本。',1)}));
 module.exports={schemas,ref,str,uuid,time,integer,bool,en,nullable,arr,obj};

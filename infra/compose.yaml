@@ -1,0 +1,59 @@
+# 独立服务和卷隔离开发/测试；只允许本机访问端口。
+services:
+  postgres-dev:
+    image: postgres:16.6
+    environment:
+      {
+        POSTGRES_USER: youren_dev,
+        POSTGRES_DB: youren_dev,
+        POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:?本机数据库密码未配置}',
+      }
+    ports: ['127.0.0.1:5441:5432']
+    volumes: [postgres-dev:/var/lib/postgresql/data]
+    healthcheck:
+      {
+        test: ['CMD-SHELL', 'pg_isready -U youren_dev -d youren_dev'],
+        interval: 2s,
+        timeout: 2s,
+        retries: 30,
+      }
+  postgres-test:
+    image: postgres:16.6
+    environment:
+      {
+        POSTGRES_USER: youren_test,
+        POSTGRES_DB: youren_test,
+        POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:?本机数据库密码未配置}',
+      }
+    ports: ['127.0.0.1:5442:5432']
+    volumes: [postgres-test:/var/lib/postgresql/data]
+    healthcheck:
+      {
+        test: ['CMD-SHELL', 'pg_isready -U youren_test -d youren_test'],
+        interval: 2s,
+        timeout: 2s,
+        retries: 30,
+      }
+  redis-dev:
+    image: redis:7.4.2-alpine
+    ports: ['127.0.0.1:6381:6379']
+    healthcheck:
+      {
+        test: ['CMD', 'redis-cli', 'ping'],
+        interval: 2s,
+        timeout: 2s,
+        retries: 30,
+      }
+  redis-test:
+    image: redis:7.4.2-alpine
+    ports: ['127.0.0.1:6382:6379']
+    healthcheck:
+      {
+        test: ['CMD', 'redis-cli', 'ping'],
+        interval: 2s,
+        timeout: 2s,
+        retries: 30,
+      }
+volumes:
+  postgres-dev:
+  postgres-test:

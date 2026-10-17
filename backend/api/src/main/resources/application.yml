@@ -1,0 +1,40 @@
+# 本机默认仅绑定回环地址；部署时须显式配置SERVER_ADDRESS开放所需网卡。
+server:
+  port: ${SERVER_PORT:3000}
+  address: ${SERVER_ADDRESS:127.0.0.1}
+spring:
+  flyway:
+    enabled: false
+  sql:
+    init:
+      mode: never
+  main:
+    banner-mode: off
+
+# 邮箱认证参数由服务端环境注入，开发条款版本不代表政策正文可以正式发布。
+youren:
+  # 本机原图与派生图保存在私有目录，禁止使用静态资源目录或仓库内默认路径。
+  media:
+    root: ${YOUREN_MEDIA_ROOT:}
+  # 资料限额为未获用户确认的暂定工程默认；服务端配置是权威，按Unicode扩展字素计数。
+  profile:
+    nickname-graphemes: ${YOUREN_PROFILE_NICKNAME_GRAPHEMES:30}
+    bio-graphemes: ${YOUREN_PROFILE_BIO_GRAPHEMES:500}
+  guest:
+    # 幂等回执窗口不是游客令牌有效期，不为普通资料发明清理期限。
+    claim-receipt-seconds: ${YOUREN_GUEST_CLAIM_RECEIPT_SECONDS:86400}
+  auth:
+    challenge-secret: ${YOUREN_AUTH_CHALLENGE_SECRET:}
+    code-ttl: ${YOUREN_AUTH_CODE_TTL:600}
+    max-attempts: ${YOUREN_AUTH_MAX_ATTEMPTS:5}
+    cooldown: ${YOUREN_AUTH_COOLDOWN:60}
+    email-hourly: ${YOUREN_AUTH_EMAIL_HOURLY:5}
+    email-daily: ${YOUREN_AUTH_EMAIL_DAILY:20}
+    ip-hourly: ${YOUREN_AUTH_IP_HOURLY:30}
+    ip-daily: ${YOUREN_AUTH_IP_DAILY:100}
+    access-ttl: ${YOUREN_AUTH_ACCESS_TTL:900}
+    refresh-ttl: ${YOUREN_AUTH_REFRESH_TTL:2592000}
+    terms-version: ${YOUREN_TERMS_VERSION:2026-10-04}
+    privacy-version: ${YOUREN_PRIVACY_VERSION:2026-10-04}
+    # 仅auth-test测试收件箱读取此独立密钥，生产邮件端口没有默认供应商。
+    test-inbox-key: ${YOUREN_AUTH_TEST_INBOX_KEY:}

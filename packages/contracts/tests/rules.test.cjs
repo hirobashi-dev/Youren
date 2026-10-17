@@ -13,6 +13,18 @@ ajv.addKeyword({keyword:'x-grapheme-max',type:'string',schemaType:'number',valid
 ajv.addSchema(doc,'contract');
 const validate=(name,value)=>ajv.compile({$ref:`contract#/components/schemas/${name}`})(value);
 const id='11111111-1111-7111-8111-111111111111';
+
+// 待审草稿状态只属于本人DTO；公开资料保持原有允许字段且禁止审核/私人信息。
+test('本人草稿有独立审核状态而公开DTO拒绝草稿状态',()=>{
+  const profile={id,nickname:'待审昵称',bio:'简介',avatar:null,region:null,interests:[],capabilities:{canEdit:true}};
+  assert.ok(validate('OwnerProfile',{...profile,moderationStatus:'pending'}));
+  assert.equal(validate('OwnerProfile',{...profile,moderationStatus:'visible'}),false);
+  assert.equal(validate('PublicProfile',{...profile,moderationStatus:'pending'}),false);
+  assert.equal(doc.components.schemas.Me.properties.profile.anyOf[0].$ref,'#/components/schemas/OwnerProfile');
+  assert.equal(doc.components.schemas.ProfileVersion.properties.profile.$ref,'#/components/schemas/OwnerProfile');
+  assert.equal(doc['x-profile-policy'].decisionStatus,'provisional-engineering-defaults');
+  assert.equal(doc['x-profile-policy'].validationAuthority,'server-config');
+});
 test('OpenAPI 3.1结构、引用和全部JSON Schema可验证',async()=>{
   await SwaggerParser.validate(structuredClone(doc));
   for(const name of Object.keys(doc.components.schemas))ajv.compile({$ref:`contract#/components/schemas/${name}`});
@@ -28,7 +40,16 @@ test('全部路径有唯一操作ID，路径参数必填，204没有正文',()=>
       if(op.responses[204])assert.equal(op.responses[204].content,undefined);
     }
   }
-  assert.equal(count,92);
+  assert.equal(count,95);
+});
+// 手机端读取当前政策版本后主动同意；公共入口不得返回认证配置或秘密。
+test('公开政策版本只包含服务端要求的条款与隐私版本',()=>{
+  const policy=doc.paths['/v1/auth/policy']?.get;
+  assert.ok(policy);
+  assert.deepEqual(policy.security,[]);
+  assert.ok(validate('AuthPolicy',{termsVersion:'2026-10-04',privacyVersion:'2026-10-04'}));
+  assert.equal(validate('AuthPolicy',{termsVersion:'',privacyVersion:'2026-10-04'}),false);
+  assert.equal(validate('AuthPolicy',{termsVersion:'2026-10-04',privacyVersion:'2026-10-04',secret:'forbidden'}),false);
 });
 test('详细设计REST目录全部覆盖，请求示例符合对应DTO',()=>{
   const design=fs.readFileSync(path.resolve(__dirname,'../../../docs/superpowers/specs/2026-10-03-social-app-database-api-design.md'),'utf8').split('## 7.')[1].split('## 8.')[0];
@@ -74,4 +95,160 @@ test('公开DTO和终态占位拒绝私有资料字段',()=>{
   assert.equal(doc.components.schemas.EventPublic.properties.meetingInstructions,undefined);
   assert.ok(validate('OwnContent',{kind:'posts',id,status:'expired',unavailable:true}));
   assert.ok(!validate('OwnContent',{kind:'posts',id,status:'expired',unavailable:true,body:'应删除的正文'}));
+});
+
+// 第三阶段审核和举报使用独立的管理员操作，且每次变更都带理由、版本与幂等键。
+test('留言板阶段合同覆盖报告结案及带版本的人工审核操作',()=>{
+  const board=doc.paths['/v1/posts'].post;
+  const reportResolution=doc.paths['/v1/admin/reports/{reportId}/resolve']?.post;
+  const moderation=doc.paths['/v1/admin/moderation-actions'].post;
+  assert.ok(board);
+  assert.ok(reportResolution);
+  assert.ok(moderation);
+  assert.deepEqual(reportResolution.security,[{AdminBearer:[]}]);
+  assert.ok(reportResolution.parameters.some(p=>p.name==='Idempotency-Key'&&p.required));
+  assert.ok(validate('ReportResolutionInput',{resolution:'no_action',reason:'复核后不采取措施',expectedVersion:1}));
+  assert.deepEqual(moderation.security,[{AdminBearer:[]}]);
+  assert.ok(moderation.parameters.some(p=>p.name==='Idempotency-Key'&&p.required));
+  assert.ok(moderation.responses[409]);
+  assert.ok(validate('BoardModerationInput',{targetType:'post',targetId:id,action:'restore',reason:'复核后恢复',expectedVersion:2}));
+  assert.ok(!validate('BoardModerationInput',{targetType:'account',targetId:id,action:'approve',reason:'超出本阶段范围',expectedVersion:2}));
+  assert.ok(!validate('ReportResolutionInput',{resolution:'no_action',reason:' ',expectedVersion:1}));
+  assert.ok(doc.components.schemas.Report.properties.version);
+  assert.ok(doc.components.schemas.AdminContent.properties.pendingSince);
+  assert.ok(doc.components.schemas.AdminContent.properties.reviewOverdue);
+});
+
+// 发帖、回复、本人内容和媒体接口分别声明公开读取或主体凭证，所有可重试写入均有幂等边界。
+test('留言板发帖回复媒体与管理路由声明正确权限和并发条件',()=>{
+  const paths=doc.paths;
+  const guestOrAccount=[{GuestToken:[]},{UserBearer:[]}];
+  const admin=[{AdminBearer:[]}];
+  for(const [route,method] of [
+    ['/v1/posts','get'],['/v1/posts/{postId}','get'],['/v1/posts/{postId}/comments','get'],
+    ['/v1/posts','post'],['/v1/posts/{postId}','patch'],['/v1/posts/{postId}','delete'],
+    ['/v1/posts/{postId}/comments','post'],['/v1/comments/{commentId}','patch'],['/v1/comments/{commentId}','delete']
+  ]) assert.ok(paths[route]?.[method],`${method} ${route}`);
+  const mediaUpload=paths['/v1/media/{mediaId}/content'].put;
+  assert.ok(mediaUpload);
+  assert.deepEqual(mediaUpload.security,guestOrAccount);
+  const uploadBody=mediaUpload.requestBody.content['application/octet-stream'].schema;
+  assert.equal(doc.components.schemas[uploadBody.$ref.split('/').at(-1)].format,'binary');
+  assert.ok(mediaUpload.parameters.some(p=>p.name==='X-Upload-Token'&&p.required));
+  for(const route of ['/v1/posts','/v1/posts/{postId}','/v1/posts/{postId}/comments']){
+    assert.deepEqual(paths[route].get.security,[]);
+  }
+  for(const [route,method] of [
+    ['/v1/posts','post'],['/v1/posts/{postId}','patch'],['/v1/posts/{postId}','delete'],
+    ['/v1/posts/{postId}/comments','post'],['/v1/comments/{commentId}','patch'],['/v1/comments/{commentId}','delete'],
+    ['/v1/me/content','get'],['/v1/media/upload-intents','post'],['/v1/media/{mediaId}/complete','post'],
+    ['/v1/media/{mediaId}','get'],['/v1/media/{mediaId}','delete'],['/v1/reports','post']
+  ]) assert.deepEqual(paths[route][method].security,guestOrAccount,`${method} ${route}`);
+  for(const [route,method] of [
+    ['/v1/posts','post'],['/v1/posts/{postId}','delete'],['/v1/posts/{postId}/comments','post'],
+    ['/v1/comments/{commentId}','delete'],['/v1/media/upload-intents','post'],['/v1/media/{mediaId}/complete','post'],['/v1/media/{mediaId}','delete'],['/v1/reports','post']
+  ]) assert.ok(paths[route][method].parameters.some(p=>p.name==='Idempotency-Key'&&p.required),`${method} ${route} requires idempotency`);
+  for(const [route,method] of [['/v1/posts/{postId}','patch'],['/v1/comments/{commentId}','patch']]){
+    assert.ok(paths[route][method].parameters.some(p=>p.name==='If-Match'&&p.required));
+    assert.ok(paths[route][method].responses[412]);
+  }
+  assert.deepEqual(paths['/v1/admin/auth/login'].post.security,[]);
+  assert.deepEqual(paths['/v1/admin/auth/mfa'].post.security,[]);
+  for(const route of ['/v1/admin/content','/v1/admin/reports','/v1/admin/reports/{reportId}','/v1/admin/reports/{reportId}/resolve']){
+    const method=route.endsWith('/resolve')?'post':'get';
+    assert.deepEqual(paths[route][method].security,admin,`${method} ${route}`);
+  }
+});
+
+// 技术图片处理成功不能替代人工内容审核，公开 DTO 也不能携带内部主体或磁盘路径。
+test('图片处理状态与内容审核状态分离且公开内容无内部路径',()=>{
+  const media=doc.components.schemas.Media;
+  const post=doc.components.schemas.PublicPost;
+  assert.match(media.description,/技术处理/);
+  assert.match(media.description,/不代表所属内容经人工审核通过/);
+  for(const field of ['ownerPrincipalId','objectKey','originalUrl','filePath']){
+    assert.equal(media.properties[field],undefined);
+    assert.equal(post.properties[field],undefined);
+  }
+  assert.match(doc.components.schemas.Image.properties.url.description,/短时受控/);
+});
+
+// 首次资料尚无正版本，必须允许0；之后仍拒绝缺失、负数和未加引号的版本。
+test('普通资料首次创建使用0版本，更新使用正版本且保持冲突错误',()=>{
+  const op=doc.paths['/v1/me/profile'].patch;
+  const schema=op.parameters.find(p=>p.name==='If-Match').schema;
+  const valid=ajv.compile(schema);
+  assert.ok(valid('"0"'));assert.ok(valid('"1"'));
+  assert.ok(!valid('0'));assert.ok(!valid('"-1"'));
+  assert.ok(op.responses[412]);assert.ok(op.responses[428]);
+});
+
+// 刷新和验证码本身是认证证明；公开路由也必须定义统一认证失败与撤销响应。
+test('认证秘密无效时有401合同且成功响应不泄露存储摘要',()=>{
+  for(const route of ['register','login','refresh']){
+    assert.ok(doc.paths[`/v1/auth/${route}`].post.responses[401],route);
+    // 验证邮箱并不解除账号限制，受限账号保持统一403语义。
+    assert.ok(doc.paths[`/v1/auth/${route}`].post.responses[403],route);
+  }
+  const guest=doc.components.schemas.GuestSession;
+  assert.ok(guest.required.includes('expiresAt'));
+  assert.equal(guest.properties.secretHash,undefined);
+  assert.equal(doc.components.securitySchemes.UserBearer.bearerFormat,'opaque');
+});
+
+// 六位格式与用途隔离实际校验输入，避免仅检查说明文字。
+test('邮箱认证仅接受六位代码及注册必需条款，登录不能伪造账号ID',()=>{
+  assert.ok(validate('LoginInput',{challengeId:id,code:'012345'}));
+  assert.ok(!validate('LoginInput',{challengeId:id,code:'12345'}));
+  assert.ok(!validate('LoginInput',{challengeId:id,code:'abcdef'}));
+  assert.ok(!validate('LoginInput',{challengeId:id,code:'012345',accountId:id}));
+  assert.ok(!validate('RegisterInput',{challengeId:id,code:'012345'}));
+  assert.ok(validate('RegisterInput',{challengeId:id,code:'012345',termsVersion:'2026-10-04',privacyVersion:'2026-10-04'}));
+  assert.ok(!validate('EmailCodeInput',{email:'a@example.test',purpose:'dating'}));
+});
+
+// 合同默认值用于配置对照；可配置的状态机限流行为另由真实API测试验证。
+test('认证默认策略在合同中可读取且明确允许部署配置覆盖',()=>{
+  assert.deepEqual(doc['x-auth-policy'],{
+    configurable:true,codeDigits:6,codeTtlSeconds:600,maxWrongAttempts:5,cooldownSeconds:60,
+    emailHourlyLimit:5,emailDailyLimit:20,ipHourlyLimit:30,ipDailyLimit:100,
+    accessTtlSeconds:900,refreshTtlSeconds:2592000,guestTtlSeconds:2592000,
+  });
+});
+
+// 响应只能公开挑战标识和等待时间，不能用附加字段枚举邮箱或泄漏验证码。
+test('匿名验证码响应拒绝验证码邮箱和账号存在信息并验证时间边界',()=>{
+  const challenge={challengeId:id,expiresIn:600,retryAfter:60};
+  assert.ok(validate('Challenge',challenge));
+  assert.ok(!validate('Challenge',{...challenge,expiresIn:0}));
+  assert.ok(!validate('Challenge',{...challenge,retryAfter:-1}));
+  for(const key of ['email','code','accountExists'])assert.ok(!validate('Challenge',{...challenge,[key]:'secret'}));
+  assert.ok(!validate('Challenge',{challengeId:id,expiresIn:600}));
+});
+
+// 游客接续失败仍是成功登录结果；既有邮箱和新注册必须返回相同会话DTO。
+test('注册200与201共享会话合同，接续失败结果仍保有登录凭证',()=>{
+  const responses=doc.paths['/v1/auth/register'].post.responses;
+  assert.deepEqual(responses[200].content,responses[201].content);
+  const session={accessToken:'access-secret',refreshToken:'refresh-secret',claimStatus:'failed',onboardingRequired:true,
+    account:{id,email:'a@example.test',status:'active',profile:null,profileVersion:null,
+      settings:{allowStrangerDm:true,pushEnabled:true,lockscreenPreview:false},
+      ageDeclaration:{status:'not_declared',declaredAt:null,withdrawnAt:null},onboardingRequired:true}};
+  assert.ok(validate('AuthSession',session));
+  assert.ok(!validate('AuthSession',{...session,claimStatus:'claimed_by_email'}));
+  assert.ok(!validate('AuthSession',{...session,refreshHash:'secret'}));
+  const {accessToken,...missingToken}=session;void accessToken;
+  assert.ok(!validate('AuthSession',missingToken));
+});
+
+// 空更新和客户端指定所有者均不得进入服务；设置布尔值不能由字符串冒充。
+test('资料和设置部分更新拒绝空请求与越权字段',()=>{
+  assert.ok(validate('ProfileInput',{nickname:'测试用户',bio:'你好'}));
+  assert.ok(!validate('ProfileInput',{}));
+  assert.ok(!validate('ProfileInput',{nickname:'   '}));
+  assert.ok(!validate('ProfileInput',{nickname:'测试',accountId:id}));
+  assert.ok(validate('SettingsInput',{allowStrangerDm:false}));
+  assert.ok(!validate('SettingsInput',{}));
+  assert.ok(!validate('SettingsInput',{pushEnabled:'false'}));
+  assert.ok(!validate('SettingsInput',{allowStrangerDm:true,accountId:id}));
 });

@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "types": ["node"],
+    "target": "ES2022",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "ignoreDeprecations": "6.0"
+  }
+}
