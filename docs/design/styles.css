@@ -3,3 +3,16 @@
 
 /* 明亮绿色用于无小字的主题强调；可读深绿用于按钮与链接。 */
 .orbit i,.toggle.on,.progress-line span{background:var(--accent)}
+
+/* 本人内容的筛选按类型和状态分组，摘要显示两组条件的组合结果。 */
+.device .content-filter-section{margin:0 0 20px}
+.device .content-filter-title{font-size:14px;margin:0 0 10px;color:var(--ink)}
+.device .content-kind{display:flex;gap:8px}
+.device .content-kind span,.device .content-status{display:flex;min-height:44px;align-items:center;justify-content:center;border:1px solid var(--primary);border-radius:11px;background:var(--surface);color:var(--primary);font-size:13px;font-weight:600}
+.device .content-kind span{flex:1}
+.device .content-status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.device .content-status.selected,.device .content-kind .selected{background:var(--primary);color:#fff}
+.device .content-filter-summary{display:flex;flex-direction:column;gap:3px;margin:0 0 14px;padding:11px 13px;border-radius:11px;background:var(--soft);color:var(--ink)}
+.device .content-filter-summary small{font-size:11px;color:var(--muted)}
+.device .content-filter-summary strong{font-size:13px}
+.wireframe .device .content-status.selected,.wireframe .device .content-kind .selected{background:#424a50;color:#fff}
