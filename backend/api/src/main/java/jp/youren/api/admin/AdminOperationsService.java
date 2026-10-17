@@ -54,7 +54,8 @@ public class AdminOperationsService {
   public List<Content> content(
       AdminPrincipal principal, String status, String type, int limit, String baseUrl) {
     requireRead(principal);
-    if (!Set.of("pending", "rejected").contains(status)
+    // 管理队列同时承载人工审核和举报后的隐藏/恢复，状态白名单阻止任意查询。
+    if (!Set.of("pending", "rejected", "visible", "hidden").contains(status)
         || (type != null && !REVIEW_TYPES.contains(type))
         || limit < 1
         || limit > 100) throw AuthFailure.invalid();
@@ -69,7 +70,8 @@ public class AdminOperationsService {
                     item.status(),
                     item.version(),
                     item.pendingSince(),
-                    !item.pendingSince().plusHours(72).isAfter(now),
+                    "pending".equals(item.status())
+                        && !item.pendingSince().plusHours(72).isAfter(now),
                     item.title(),
                     item.body(),
                     mapper.reviewImages(item.targetType(), item.targetId(), now).stream()

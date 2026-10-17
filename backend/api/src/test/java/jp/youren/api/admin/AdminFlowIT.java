@@ -185,6 +185,32 @@ class AdminFlowIT {
     assertEquals(
         "visible",
         jdbc.queryForObject("SELECT status FROM posts WHERE id=?", String.class, postId));
+    // 公开队列须支持具备权限的管理员隐藏内容，并在隐藏队列提供带版本恢复入口。
+    var visibleQueue = get("/v1/admin/content?status=visible&targetType=post", reviewer);
+    assertEquals(200, visibleQueue.statusCode(), visibleQueue.body());
+    assertEquals(
+        postId.toString(),
+        json.readTree(visibleQueue.body()).path("data").get(0).path("targetId").asText());
+    var hide =
+        post(
+            "/v1/admin/moderation-actions",
+            reviewer,
+            UUID.randomUUID().toString(),
+            "{\"targetType\":\"post\",\"targetId\":\""
+                + postId
+                + "\",\"action\":\"hide\",\"reason\":\"收到隐私举报\",\"expectedVersion\":2}");
+    assertEquals(201, hide.statusCode(), hide.body());
+    var hiddenQueue = get("/v1/admin/content?status=hidden&targetType=post", reviewer);
+    assertEquals(200, hiddenQueue.statusCode(), hiddenQueue.body());
+    var restore =
+        post(
+            "/v1/admin/moderation-actions",
+            reviewer,
+            UUID.randomUUID().toString(),
+            "{\"targetType\":\"post\",\"targetId\":\""
+                + postId
+                + "\",\"action\":\"restore\",\"reason\":\"复核后恢复\",\"expectedVersion\":3}");
+    assertEquals(201, restore.statusCode(), restore.body());
 
     var reportBody =
         "{\"targetType\":\"post\",\"targetId\":\""

@@ -10,9 +10,9 @@ test('连接失败可重试恢复，宽窄屏可读', async ({ page }) => {
     }),
   );
   await page.goto('/');
-  await expect(page.getByRole('status')).toHaveText('连接失败');
+  await expect(page.getByRole('status')).toHaveText('服务连接失败');
   await page.getByRole('button', { name: '重试' }).click();
-  await expect(page.getByRole('status')).toHaveText('连接成功');
+  await expect(page.getByRole('status')).toHaveText('服务已连接');
   await page.screenshot({
     path: '../../docs/development/artifacts/admin-foundation.png',
     fullPage: true,

@@ -19,14 +19,14 @@ test('503显示失败，重试后连接成功', async () => {
     ),
   );
   render(<App />);
-  expect(await screen.findByText('连接失败')).toBeInTheDocument();
+  expect(await screen.findByText('服务连接失败')).toBeInTheDocument();
   await userEvent.click(screen.getByRole('button', { name: '重试' }));
-  expect(await screen.findByText('连接成功')).toBeInTheDocument();
+  expect(await screen.findByText('服务已连接')).toBeInTheDocument();
 });
 test('网络错误不显示成功', async () => {
   server.use(
     http.get('http://127.0.0.1:3000/health/ready', () => HttpResponse.error()),
   );
   render(<App />);
-  expect(await screen.findByText('连接失败')).toBeInTheDocument();
+  expect(await screen.findByText('服务连接失败')).toBeInTheDocument();
 });

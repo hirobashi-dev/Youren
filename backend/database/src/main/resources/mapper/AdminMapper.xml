@@ -36,13 +36,14 @@
   <select id="lockReport" resultMap="report" timeout="2" flushCache="true" useCache="false">SELECT id,reporter_principal_id,target_type,COALESCE(post_id,comment_id) AS target_id,reason_code,detail,status,version,created_at FROM reports WHERE id=#{id} FOR UPDATE</select>
   <update id="resolveReport" timeout="2">UPDATE reports SET status='resolved',resolved_at=#{now},version=version+1,updated_at=#{now} WHERE id=#{id} AND version=#{version} AND status IN ('open','reviewing')</update>
   <!-- 超时仅由读取时计算提示，队列保留所有待审对象，不运行自动驳回。 -->
-  <select id="reviewQueue" resultMap="reviewContent" timeout="2"><![CDATA[SELECT target_type,target_id,status,version,pending_since,title,body FROM (SELECT 'post'::text AS target_type,id AS target_id,status,version,updated_at AS pending_since,title,body FROM posts WHERE status=#{status} AND status IN ('pending','rejected') AND deleted_at IS NULL UNION ALL SELECT 'comment'::text AS target_type,id AS target_id,status,version,updated_at AS pending_since,NULL::text AS title,body FROM comments WHERE status=#{status} AND status IN ('pending','rejected') AND deleted_at IS NULL) q ORDER BY pending_since,target_id LIMIT #{limit}]]></select>
-  <!-- 管理预览只关联待审/驳回对象的展示图；原图和公开内容不走该管理路由。 -->
+    <!-- 管理队列仅提供四种已定义状态；公开或隐藏内容到期后不再进入可处置队列。 -->
+    <select id="reviewQueue" resultMap="reviewContent" timeout="2"><![CDATA[SELECT target_type,target_id,status,version,pending_since,title,body FROM (SELECT 'post'::text AS target_type,id AS target_id,status,version,updated_at AS pending_since,title,body FROM posts WHERE status=#{status} AND status IN ('pending','rejected','visible','hidden') AND deleted_at IS NULL AND (status IN ('pending','rejected') OR expires_at IS NULL OR expires_at>CURRENT_TIMESTAMP) UNION ALL SELECT 'comment'::text AS target_type,c.id AS target_id,c.status,c.version,c.updated_at AS pending_since,NULL::text AS title,c.body FROM comments c JOIN posts p ON p.id=c.post_id WHERE c.status=#{status} AND c.status IN ('pending','rejected','visible','hidden') AND c.deleted_at IS NULL AND p.scope='public' AND p.status='visible' AND p.expires_at>CURRENT_TIMESTAMP AND (c.status IN ('pending','rejected') OR c.expires_at IS NULL OR c.expires_at>CURRENT_TIMESTAMP)) q ORDER BY pending_since,target_id LIMIT #{limit}]]></select>
+    <!-- 管理预览只关联审核队列或未到期公开/隐藏对象的展示图；原图不经管理路由开放。 -->
   <select id="reviewImages" resultMap="reviewImage" timeout="2">
     SELECT m.id,v.width,v.height FROM media_assets m JOIN media_variants v ON v.media_id=m.id AND v.kind='display'
     <choose>
-      <when test="targetType == 'post'">JOIN post_media b ON b.media_id=m.id JOIN posts p ON p.id=b.post_id WHERE p.id=#{targetId} AND p.status IN ('pending','rejected') AND (p.expires_at IS NULL OR p.expires_at&gt;#{now})</when>
-      <otherwise>JOIN comment_media b ON b.media_id=m.id JOIN comments c ON c.id=b.comment_id JOIN posts p ON p.id=c.post_id WHERE c.id=#{targetId} AND c.status IN ('pending','rejected') AND p.scope='public' AND p.status='visible' AND p.expires_at&gt;#{now}</otherwise>
+        <when test="targetType == 'post'">JOIN post_media b ON b.media_id=m.id JOIN posts p ON p.id=b.post_id WHERE p.id=#{targetId} AND p.status IN ('pending','rejected','visible','hidden') AND (p.status IN ('pending','rejected') OR p.expires_at IS NULL OR p.expires_at&gt;#{now})</when>
+        <otherwise>JOIN comment_media b ON b.media_id=m.id JOIN comments c ON c.id=b.comment_id JOIN posts p ON p.id=c.post_id WHERE c.id=#{targetId} AND c.status IN ('pending','rejected','visible','hidden') AND (c.status IN ('pending','rejected') OR c.expires_at IS NULL OR c.expires_at&gt;#{now}) AND p.scope='public' AND p.status='visible' AND p.expires_at&gt;#{now}</otherwise>
     </choose>
     AND m.status='approved' AND m.deleted_at IS NULL ORDER BY b.position
   </select>
@@ -50,8 +51,8 @@
   <select id="adminReviewImageKey" resultType="string" timeout="2">
     SELECT v.object_key FROM media_assets m JOIN media_variants v ON v.media_id=m.id AND v.kind='display'
     WHERE m.id=#{mediaId} AND m.status='approved' AND m.deleted_at IS NULL AND (
-      EXISTS(SELECT 1 FROM post_media b JOIN posts p ON p.id=b.post_id WHERE b.media_id=m.id AND p.status IN ('pending','rejected') AND (p.expires_at IS NULL OR p.expires_at&gt;CURRENT_TIMESTAMP))
-      OR EXISTS(SELECT 1 FROM comment_media b JOIN comments c ON c.id=b.comment_id JOIN posts p ON p.id=c.post_id WHERE b.media_id=m.id AND c.status IN ('pending','rejected') AND p.scope='public' AND p.status='visible' AND p.expires_at&gt;CURRENT_TIMESTAMP)
+        EXISTS(SELECT 1 FROM post_media b JOIN posts p ON p.id=b.post_id WHERE b.media_id=m.id AND p.status IN ('pending','rejected','visible','hidden') AND (p.status IN ('pending','rejected') OR p.expires_at IS NULL OR p.expires_at&gt;CURRENT_TIMESTAMP))
+        OR EXISTS(SELECT 1 FROM comment_media b JOIN comments c ON c.id=b.comment_id JOIN posts p ON p.id=c.post_id WHERE b.media_id=m.id AND c.status IN ('pending','rejected','visible','hidden') AND (c.status IN ('pending','rejected') OR c.expires_at IS NULL OR c.expires_at&gt;CURRENT_TIMESTAMP) AND p.scope='public' AND p.status='visible' AND p.expires_at&gt;CURRENT_TIMESTAMP)
     )
   </select>
   <select id="lockReviewPost" resultMap="jp.youren.database.mapper.BoardMapper.post" timeout="2" flushCache="true" useCache="false">SELECT p.id,p.author_principal_id,p.display_mode,CASE WHEN p.display_mode='account' THEN pr.account_id END AS author_account_id,CASE WHEN p.display_mode='account' THEN COALESCE((SELECT nickname FROM profiles WHERE account_id=pr.account_id AND visibility='public' AND moderation_status='approved' LIMIT 1),'Youren用户') END AS author_nickname,p.title,p.body,p.category,p.region_code,p.status,p.published_at,p.expires_at,p.version FROM posts p LEFT JOIN principals pr ON pr.id=p.author_principal_id WHERE p.id=#{id} FOR UPDATE OF p</select>
