@@ -17,6 +17,7 @@ export function Page({
   children,
   onBack,
   showBack = true,
+  backVariant = 'chevron',
   headerAction,
   footer,
   floatingAction,
@@ -24,6 +25,7 @@ export function Page({
   title: string;
   onBack: () => void;
   showBack?: boolean;
+  backVariant?: 'button' | 'chevron';
   headerAction?: ReactNode;
   footer?: ReactNode;
   floatingAction?: ReactNode;
@@ -39,8 +41,26 @@ export function Page({
           contentContainerStyle={styles.content}
         >
           <View style={styles.appBar}>
+            {/* 共用顶栏默认使用设计稿中的无边框箭头，旧按钮样式仍可显式选择。 */}
             {showBack ? (
-              <Action label="返回首页" compact secondary onPress={onBack} />
+              backVariant === 'chevron' ? (
+                <Pressable
+                  testID="page-back-chevron"
+                  accessibilityRole="button"
+                  accessibilityLabel="返回首页"
+                  onPress={onBack}
+                  style={{
+                    width: 28,
+                    height: 44,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ color: theme.ink, fontSize: 26 }}>‹</Text>
+                </Pressable>
+              ) : (
+                <Action label="返回首页" compact secondary onPress={onBack} />
+              )
             ) : null}
             <Text accessibilityRole="header" style={styles.title}>
               {title}

@@ -74,6 +74,7 @@ test('搜索筛选提交关键词并返回留言板首页', async () => {
   );
 
   fireEvent.press(await screen.findByRole('button', { name: '搜索 · 地区' }));
+  expect(screen.getByTestId('page-back-chevron')).toBeTruthy();
   fireEvent.changeText(screen.getByLabelText('搜索讨论'), '河边散步');
   fireEvent.press(screen.getByRole('button', { name: '应用筛选' }));
 
@@ -117,6 +118,7 @@ test('发布讨论页展示游客说明、审核提示和图片数量限制', as
   fireEvent.press(await screen.findByRole('button', { name: '发帖' }));
 
   expect(await screen.findByRole('header', { name: '发布讨论' })).toBeTruthy();
+  expect(screen.getByTestId('page-back-chevron')).toBeTruthy();
   expect(screen.getByText(/游客发布 · 无需注册/)).toBeTruthy();
   expect(screen.getByText(/首次提交后进入人工审核/)).toBeTruthy();
   expect(screen.getByText(/最多 9 张/)).toBeTruthy();
