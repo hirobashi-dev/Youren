@@ -109,6 +109,7 @@ export function Field({
   onChange,
   multiline = false,
   editable = true,
+  maxLength,
   email = false,
   numeric = false,
 }: {
@@ -117,17 +118,20 @@ export function Field({
   onChange: (value: string) => void;
   multiline?: boolean;
   editable?: boolean;
+  maxLength?: number;
   email?: boolean;
   numeric?: boolean;
 }) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
+      {/* 输入最大长度遵循后端内容约束，避免提交后才因超限失败。 */}
       <TextInput
         accessibilityLabel={label}
         value={value}
         onChangeText={onChange}
         editable={editable}
+        maxLength={maxLength}
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType={

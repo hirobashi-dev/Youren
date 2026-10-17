@@ -38,6 +38,15 @@ type DraftImage = {
   width: number;
   height: number;
 };
+type ComposeDraft = {
+  title: string;
+  body: string;
+  category: 'general' | 'interest' | 'city';
+  regionCode: string;
+  selectedRegion: Region | null;
+  interestIds: string[];
+  images: DraftImage[];
+};
 const STATUS_LABELS: Record<string, string> = {
   '': '全部状态',
   pending: '待审核',
@@ -187,10 +196,12 @@ export function BoardScreen({
   const [composeInterestIds, setComposeInterestIds] = useState<string[]>([]);
   const [showRegionOptions, setShowRegionOptions] = useState(false);
   const [showInterestOptions, setShowInterestOptions] = useState(false);
+  const [showCategoryOptions, setShowCategoryOptions] = useState(false);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [replyBody, setReplyBody] = useState('');
   const [images, setImages] = useState<DraftImage[]>([]);
+  const [savedDraft, setSavedDraft] = useState<ComposeDraft | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [reportReason, setReportReason] = useState('spam');
   const [reportDetail, setReportDetail] = useState('');
@@ -309,11 +320,22 @@ export function BoardScreen({
       return;
     }
     setNeedsGuest(false);
-    setTitle('');
-    setBody('');
-    setImages([]);
-    setComposeCategory('general');
-    setComposeInterestIds([]);
+    // 同一应用会话内恢复手动保存的草稿；草稿暂不跨应用重启持久化。
+    if (savedDraft) {
+      setTitle(savedDraft.title);
+      setBody(savedDraft.body);
+      setImages(savedDraft.images);
+      setComposeCategory(savedDraft.category);
+      setRegionCode(savedDraft.regionCode);
+      setSelectedRegion(savedDraft.selectedRegion);
+      setComposeInterestIds(savedDraft.interestIds);
+    } else {
+      setTitle('');
+      setBody('');
+      setImages([]);
+      setComposeCategory('general');
+      setComposeInterestIds([]);
+    }
     setMutationKey(newMutationKey());
     setNotice('');
     setMode('compose');
@@ -449,6 +471,7 @@ export function BoardScreen({
         ),
       );
       setImages([]);
+      setSavedDraft(null);
       setMode('mine');
       setStatusFilter('pending');
       setMutationKey(newMutationKey());
@@ -547,36 +570,62 @@ export function BoardScreen({
   }
   const addImageControls = (limit: number) => (
     <>
-      {images.length ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {images.map((asset, index) => (
-            <View key={`${asset.uri}-${index}`}>
-              <Image
-                source={{ uri: asset.uri }}
-                style={{ width: 72, height: 72, borderRadius: 10 }}
-              />
-              <Action
-                label={`移除图片 ${index + 1}`}
-                secondary
-                onPress={() =>
-                  setImages((current) =>
-                    current.filter((_, position) => position !== index),
-                  )
-                }
-              />
-            </View>
-          ))}
-        </View>
-      ) : null}
-      <Notice>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {images.map((asset, index) => (
+          <View key={`${asset.uri}-${index}`} style={{ position: 'relative' }}>
+            <Image
+              source={{ uri: asset.uri }}
+              style={{ width: 104, height: 92, borderRadius: 12 }}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`移除图片 ${index + 1}`}
+              onPress={() =>
+                setImages((current) =>
+                  current.filter((_, position) => position !== index),
+                )
+              }
+              style={{
+                position: 'absolute',
+                right: 4,
+                top: 4,
+                width: 26,
+                height: 26,
+                borderRadius: 13,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(23, 61, 65, 0.78)',
+              }}
+            >
+              <Text style={{ color: theme.surface, fontWeight: '700' }}>×</Text>
+            </Pressable>
+          </View>
+        ))}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="添加图片"
+          disabled={busy || images.length >= limit}
+          onPress={() => void pickImages(limit)}
+          style={{
+            width: 104,
+            height: 92,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderStyle: 'dashed',
+            borderColor: '#B8CDD0',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: busy || images.length >= limit ? 0.5 : 1,
+          }}
+        >
+          <Text style={{ color: theme.primary, fontSize: 13 }}>
+            ＋ 添加图片
+          </Text>
+        </Pressable>
+      </View>
+      <Text style={{ color: theme.muted, fontSize: 12, lineHeight: 19 }}>
         最多 {limit} 张；支持 JPEG、PNG、WebP，单张不超过 5 MB、2000 万像素。
-      </Notice>
-      <Action
-        label="添加图片"
-        secondary
-        disabled={busy || images.length >= limit}
-        onPress={() => void pickImages(limit)}
-      />
+      </Text>
     </>
   );
 
@@ -666,41 +715,117 @@ export function BoardScreen({
 
   if (mode === 'compose')
     return (
-      <Page title="发布讨论" onBack={() => setMode('feed')}>
-        <Notice>游客发布 · 无需注册</Notice>
-        <Notice>
+      <Page
+        title="发布讨论"
+        onBack={() => setMode('feed')}
+        headerAction={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="保存草稿"
+            onPress={() => {
+              setSavedDraft({
+                title,
+                body,
+                category: composeCategory,
+                regionCode,
+                selectedRegion,
+                interestIds: composeInterestIds,
+                images,
+              });
+              setNotice('草稿已暂存到当前应用会话，关闭应用后不会保留。');
+            }}
+            style={{ paddingHorizontal: 8, paddingVertical: 10 }}
+          >
+            <Text style={{ color: theme.primary, fontSize: 13 }}>保存草稿</Text>
+          </Pressable>
+        }
+        footer={
+          <View
+            style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 8 }}
+          >
+            <Action
+              label={busy ? '正在提交' : '发布讨论'}
+              disabled={busy}
+              onPress={() => void submitPost()}
+            />
+          </View>
+        }
+      >
+        <View
+          style={{
+            padding: 14,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: '#C8E0DA',
+            backgroundColor: '#E5F3EF',
+          }}
+        >
+          <Text style={{ color: theme.muted, fontSize: 13, lineHeight: 20 }}>
+            游客发布 · 无需注册。请保留本机数据，方便管理内容。
+          </Text>
+        </View>
+        <Text style={{ color: theme.muted, fontSize: 13, lineHeight: 21 }}>
           首次提交后进入人工审核；审核通过才公开，公开内容保留一年。
-        </Notice>
+        </Text>
         <Field
-          label="标题"
+          label="标题 *"
           value={title}
           editable={!busy}
+          maxLength={60}
           onChange={setTitle}
         />
         <Field
-          label="内容"
+          label="正文 *"
           value={body}
           multiline
           editable={!busy}
+          maxLength={2000}
           onChange={setBody}
         />
-        <Text style={styles.label}>分类</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {(['general', 'interest', 'city'] as const).map((value) => (
-            <FilterPill
-              key={value}
-              label={
-                value === 'general'
-                  ? '综合'
-                  : value === 'interest'
-                    ? '兴趣'
-                    : '城市'
-              }
-              selected={composeCategory === value}
-              onPress={() => setComposeCategory(value)}
-            />
-          ))}
+        <Text style={{ color: theme.muted, fontSize: 12 }}>
+          {body.length > 0 ? `${body.length} / 2000 字` : '1–2000 字'}
+        </Text>
+        <View style={{ gap: 8 }}>
+          <View
+            style={{ flexDirection: 'row', justifyContent: 'space-between' }}
+          >
+            <Text style={styles.label}>图片</Text>
+            <Text style={{ color: theme.primary, fontSize: 12 }}>
+              {images.length} / 9
+            </Text>
+          </View>
+          {addImageControls(9)}
+          <Text style={{ color: theme.muted, fontSize: 12 }}>
+            图片审核通过后才会公开展示。
+          </Text>
         </View>
+        <Text style={styles.label}>分类 *</Text>
+        <Action
+          label={`${composeCategory === 'general' ? '综合' : composeCategory === 'interest' ? '兴趣' : '城市'}　⌄`}
+          secondary
+          onPress={() => setShowCategoryOptions((open) => !open)}
+        />
+        {showCategoryOptions ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {(['general', 'interest', 'city'] as const).map((value) => (
+              <FilterPill
+                key={value}
+                label={
+                  value === 'general'
+                    ? '综合'
+                    : value === 'interest'
+                      ? '兴趣'
+                      : '城市'
+                }
+                selected={composeCategory === value}
+                onPress={() => {
+                  setComposeCategory(value);
+                  setShowCategoryOptions(false);
+                }}
+              />
+            ))}
+          </View>
+        ) : null}
         <Text style={styles.label}>地区（可选）</Text>
         <Action
           label={
@@ -765,14 +890,6 @@ export function BoardScreen({
         ) : showInterestOptions ? (
           <Notice>暂时没有可选兴趣标签。</Notice>
         ) : null}
-        {/* 图片数和发布上限同时可见，方便用户在提交前确认剩余名额。 */}
-        <Text style={styles.label}>图片（{images.length}/9）</Text>
-        {addImageControls(9)}
-        <Action
-          label={busy ? '正在提交' : '提交审核'}
-          disabled={busy}
-          onPress={() => void submitPost()}
-        />
         {notice ? <Notice>{notice}</Notice> : null}
       </Page>
     );

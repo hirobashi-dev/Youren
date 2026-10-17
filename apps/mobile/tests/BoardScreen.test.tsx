@@ -116,10 +116,25 @@ test('发布讨论页展示游客说明、审核提示和图片数量限制', as
 
   fireEvent.press(await screen.findByRole('button', { name: '发帖' }));
 
-  expect(await screen.findByText('发布讨论')).toBeTruthy();
-  expect(screen.getByText('游客发布 · 无需注册')).toBeTruthy();
+  expect(await screen.findByRole('header', { name: '发布讨论' })).toBeTruthy();
+  expect(screen.getByText(/游客发布 · 无需注册/)).toBeTruthy();
   expect(screen.getByText(/首次提交后进入人工审核/)).toBeTruthy();
   expect(screen.getByText(/最多 9 张/)).toBeTruthy();
+  expect(screen.getByText('标题 *')).toBeTruthy();
+  expect(screen.getByText('正文 *')).toBeTruthy();
+  expect(screen.getByText('1–2000 字')).toBeTruthy();
+  expect(screen.getByText('图片')).toBeTruthy();
+  expect(screen.getByRole('button', { name: '保存草稿' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: '发布讨论' })).toBeTruthy();
+  fireEvent.changeText(screen.getByLabelText('标题 *'), '我的草稿标题');
+  fireEvent.changeText(screen.getByLabelText('正文 *'), '草稿正文');
+  fireEvent.press(screen.getByRole('button', { name: '保存草稿' }));
+  fireEvent.press(screen.getByRole('button', { name: '返回首页' }));
+  fireEvent.press(screen.getByRole('button', { name: '发帖' }));
+  expect((await screen.findByLabelText('标题 *')).props.value).toBe(
+    '我的草稿标题',
+  );
+  expect(screen.getByLabelText('正文 *').props.value).toBe('草稿正文');
 });
 
 // B05从回复卡片进入独立编辑页，并显示引用目标与稳定游客身份说明。
