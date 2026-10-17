@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Image, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import {
   BoardApi,
@@ -19,7 +19,17 @@ import { SessionStore } from '../auth/sessionStore';
 import { Action, Field, Notice, Page, styles } from '../components/Form';
 import { theme } from '../theme';
 
-type Mode = 'feed' | 'detail' | 'compose' | 'mine' | 'edit' | 'report';
+// 页面模式对应设计稿中的独立流程；回复与举报回执不嵌在详情表单里。
+type Mode =
+  | 'feed'
+  | 'search'
+  | 'detail'
+  | 'compose'
+  | 'reply'
+  | 'mine'
+  | 'edit'
+  | 'report'
+  | 'report-done';
 type DraftImage = {
   uri: string;
   fileName: string;
@@ -27,12 +37,6 @@ type DraftImage = {
   fileSize: number;
   width: number;
   height: number;
-};
-const CATEGORY_LABELS: Record<string, string> = {
-  '': '全部分类',
-  general: '综合',
-  interest: '兴趣',
-  city: '城市',
 };
 const STATUS_LABELS: Record<string, string> = {
   '': '全部状态',
@@ -45,6 +49,110 @@ const STATUS_LABELS: Record<string, string> = {
 };
 const displayAuthor = (value: Record<string, unknown>) =>
   String(value.label ?? value.nickname ?? 'Youren用户');
+const readableName = (value: unknown) => {
+  if (!value || typeof value !== 'object') return '';
+  const row = value as Record<string, unknown>;
+  return String(row.nameZh ?? row.label ?? row.name ?? '');
+};
+const relativeTime = (value: string) => {
+  const minutes = Math.max(
+    0,
+    Math.floor((Date.now() - Date.parse(value)) / 60_000),
+  );
+  if (minutes < 60) return `${Math.max(1, minutes)} 分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} 小时前`;
+  const days = Math.floor(hours / 24);
+  return days < 30
+    ? `${days} 天前`
+    : new Date(value).toLocaleDateString('zh-CN');
+};
+
+// 首页筛选项采用短胶囊，突出当前频道且保持真实列表内容的视觉优先级。
+function FilterPill({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={{
+        minHeight: 38,
+        paddingHorizontal: 15,
+        borderRadius: 20,
+        justifyContent: 'center',
+        backgroundColor: selected ? '#E1F0EC' : theme.surface,
+        borderColor: selected ? '#C7DFD9' : '#D8E2E1',
+        borderWidth: 1,
+      }}
+    >
+      <Text
+        style={{ color: selected ? theme.primary : theme.ink, fontSize: 14 }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+// 仅展示阶段三已开放的留言板入口；未实现模块显示为导航标签，不伪造对应页面。
+function BoardBottomNavigation({
+  onSelect,
+}: {
+  onSelect: (item: '发现' | '留言板' | '消息' | '我的') => void;
+}) {
+  const items = [
+    ['发现', '◇'],
+    ['留言板', '▤'],
+    ['消息', '◉'],
+    ['我的', '♙'],
+  ] as const;
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        paddingVertical: 8,
+      }}
+    >
+      {items.map(([label, icon]) => (
+        <Pressable
+          key={label}
+          accessibilityRole="tab"
+          accessibilityLabel={label}
+          accessibilityState={{ selected: label === '留言板' }}
+          onPress={() => onSelect(label)}
+          style={{ alignItems: 'center', minWidth: 56, gap: 2 }}
+        >
+          <Text
+            style={{
+              color: label === '留言板' ? theme.primary : theme.muted,
+              fontSize: 18,
+            }}
+          >
+            {icon}
+          </Text>
+          <Text
+            style={{
+              color: label === '留言板' ? theme.primary : theme.muted,
+              fontSize: 11,
+            }}
+          >
+            {label}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
 
 // 手机端沿用已确认的清爽绿色主题；所有写操作沿用当前账号或显式保存的游客身份。
 export function BoardScreen({
@@ -60,6 +168,8 @@ export function BoardScreen({
   const [posts, setPosts] = useState<PublicPost[]>([]);
   const [post, setPost] = useState<PublicPost | null>(null);
   const [comments, setComments] = useState<PublicComment[]>([]);
+  // 非空时只引用一条既有回复，空值表示直接回复帖子。
+  const [replyTarget, setReplyTarget] = useState<PublicComment | null>(null);
   const [regions, setRegions] = useState<Region[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
   const [interestOptions, setInterestOptions] = useState<Interest[]>([]);
@@ -67,6 +177,8 @@ export function BoardScreen({
   const [ownItems, setOwnItems] = useState<OwnContent[]>([]);
   const [ownKind, setOwnKind] = useState<'posts' | 'comments'>('posts');
   const [category, setCategory] = useState('');
+  const [query, setQuery] = useState('');
+  const [appliedQuery, setAppliedQuery] = useState('');
   const [composeCategory, setComposeCategory] = useState<
     'general' | 'interest' | 'city'
   >('general');
@@ -138,6 +250,7 @@ export function BoardScreen({
           category: category || undefined,
           regionCode: regionCode || undefined,
           interestId: interestId || undefined,
+          q: appliedQuery || undefined,
         },
         controller.signal,
       )
@@ -154,7 +267,7 @@ export function BoardScreen({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [api, category, regionCode, interestId, attempt]);
+  }, [api, category, regionCode, interestId, appliedQuery, attempt]);
 
   async function openPost(item: PublicPost) {
     setPost(item);
@@ -348,6 +461,7 @@ export function BoardScreen({
       setBusy(false);
     }
   }
+  // 回复创建沿用游客凭证与幂等键；引用目标为空时创建帖子级回复。
   async function submitReply() {
     if (!post || lock.current || busy) return;
     if (!replyBody.trim() && images.length === 0) {
@@ -361,7 +475,7 @@ export function BoardScreen({
       await withIdentity((identity) =>
         api.createComment(
           post.id,
-          { body: replyBody, mediaIds },
+          { body: replyBody, mediaIds, replyToId: replyTarget?.id ?? null },
           identity,
           mutationKey,
         ),
@@ -371,6 +485,8 @@ export function BoardScreen({
       setMutationKey(newMutationKey());
       const result = await api.comments(post.id);
       setComments(result.data);
+      setMode('detail');
+      setReplyTarget(null);
       setNotice('回复已提交，审核通过后公开。');
     } catch (error) {
       showError(error);
@@ -379,6 +495,7 @@ export function BoardScreen({
       setBusy(false);
     }
   }
+  // 受理后进入独立回执页，避免将收到举报误显示为已删除或已处理。
   async function submitReport(
     targetType: 'post' | 'comment',
     targetId: string,
@@ -399,7 +516,7 @@ export function BoardScreen({
           mutationKey,
         ),
       );
-      setMode('detail');
+      setMode('report-done');
       setMutationKey(newMutationKey());
       setNotice('举报已提交，平台将进行人工处理。');
     } catch (error) {
@@ -463,9 +580,94 @@ export function BoardScreen({
     </>
   );
 
+  if (mode === 'search')
+    return (
+      <Page title="搜索与筛选" onBack={() => setMode('feed')}>
+        <Field label="搜索讨论" value={query} onChange={setQuery} />
+        <Text style={styles.label}>分类</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {[
+            ['', '全部'],
+            ['interest', '兴趣'],
+            ['city', '同城'],
+          ].map(([value, label]) => (
+            <FilterPill
+              key={value || 'all'}
+              label={label}
+              selected={category === value}
+              onPress={() => setCategory(value)}
+            />
+          ))}
+        </View>
+        <Text style={styles.label}>地区</Text>
+        <Action
+          label={
+            regionCode ? (selectedRegion?.nameZh ?? regionCode) : '不限地区'
+          }
+          secondary
+          onPress={() => setShowRegionOptions((value) => !value)}
+        />
+        {showRegionOptions && regionParent ? (
+          <Action
+            label="返回都道府县"
+            secondary
+            onPress={() => void showPrefectures()}
+          />
+        ) : null}
+        {showRegionOptions
+          ? regions.map((region) => (
+              <Action
+                key={region.code}
+                label={`${region.nameZh} · ${region.nameJa}`}
+                secondary={regionCode !== region.code}
+                selected={regionCode === region.code}
+                onPress={() => void chooseRegion(region)}
+              />
+            ))
+          : null}
+        <Text style={styles.label}>兴趣</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {interestOptions.map((interest) => (
+            <FilterPill
+              key={interest.id}
+              label={interest.nameZh}
+              selected={interestId === interest.id}
+              onPress={() =>
+                setInterestId((current) =>
+                  current === interest.id ? '' : interest.id,
+                )
+              }
+            />
+          ))}
+        </View>
+        <Notice>排序：最新发布</Notice>
+        <Action
+          label="清除筛选"
+          secondary
+          onPress={() => {
+            setQuery('');
+            setCategory('');
+            setRegionCode('');
+            setSelectedRegion(null);
+            setRegionParent(null);
+            setInterestId('');
+          }}
+        />
+        <Action
+          label="应用筛选"
+          onPress={() => {
+            setAppliedQuery(query.trim());
+            setAttempt((value) => value + 1);
+            setMode('feed');
+          }}
+        />
+      </Page>
+    );
+
   if (mode === 'compose')
     return (
-      <Page title="写一条留言" onBack={() => setMode('feed')}>
+      <Page title="发布讨论" onBack={() => setMode('feed')}>
+        <Notice>游客发布 · 无需注册</Notice>
         <Notice>
           首次提交后进入人工审核；审核通过才公开，公开内容保留一年。
         </Notice>
@@ -485,7 +687,7 @@ export function BoardScreen({
         <Text style={styles.label}>分类</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {(['general', 'interest', 'city'] as const).map((value) => (
-            <Action
+            <FilterPill
               key={value}
               label={
                 value === 'general'
@@ -494,7 +696,7 @@ export function BoardScreen({
                     ? '兴趣'
                     : '城市'
               }
-              secondary={composeCategory !== value}
+              selected={composeCategory === value}
               onPress={() => setComposeCategory(value)}
             />
           ))}
@@ -563,6 +765,8 @@ export function BoardScreen({
         ) : showInterestOptions ? (
           <Notice>暂时没有可选兴趣标签。</Notice>
         ) : null}
+        {/* 图片数和发布上限同时可见，方便用户在提交前确认剩余名额。 */}
+        <Text style={styles.label}>图片（{images.length}/9）</Text>
         {addImageControls(9)}
         <Action
           label={busy ? '正在提交' : '提交审核'}
@@ -613,6 +817,31 @@ export function BoardScreen({
               {displayAuthor(comment.authorDisplay)}
             </Text>
             <Text style={styles.rowLabel}>{comment.body}</Text>
+            {comment.images.map((image) => (
+              <Image
+                key={image.id}
+                source={{ uri: image.url }}
+                accessibilityLabel="回复图片"
+                style={{ width: '100%', height: 160, borderRadius: 10 }}
+                resizeMode="cover"
+              />
+            ))}
+            {/* 引用仅在一层内展示，避免回复树在窄屏上无限缩进。 */}
+            {comment.replyToId ? (
+              <Text style={{ color: theme.muted, fontSize: 12 }}>
+                回复了讨论中的另一条内容
+              </Text>
+            ) : null}
+            <Action
+              label="回复这条内容"
+              secondary
+              onPress={() => {
+                setReplyTarget(comment);
+                setReplyBody('');
+                setImages([]);
+                setMode('reply');
+              }}
+            />
             <Action
               label="举报回复"
               secondary
@@ -626,18 +855,14 @@ export function BoardScreen({
             />
           </View>
         ))}
-        <Field
-          label="回复内容"
-          value={replyBody}
-          onChange={setReplyBody}
-          multiline
-          editable={!busy}
-        />
-        {addImageControls(3)}
         <Action
-          label={busy ? '正在提交' : '提交回复'}
-          disabled={busy}
-          onPress={() => void submitReply()}
+          label="写回复"
+          onPress={() => {
+            setReplyTarget(null);
+            setReplyBody('');
+            setImages([]);
+            setMode('reply');
+          }}
         />
         {notice ? <Notice>{notice}</Notice> : null}
       </Page>
@@ -647,17 +872,20 @@ export function BoardScreen({
     return (
       <Page title="举报内容" onBack={() => setMode('detail')}>
         <Notice>举报由人工处理，提交举报不会自动隐藏被举报内容。</Notice>
+        <Notice>
+          举报对象：{selected ? '回复内容' : (post?.title ?? '当前内容')}
+        </Notice>
         {(['spam', 'abuse', 'illegal', 'privacy', 'other'] as const).map(
           (reason) => (
             <Action
               key={reason}
               label={
                 {
-                  spam: '垃圾信息',
-                  abuse: '骚扰或辱骂',
-                  illegal: '违法内容',
-                  privacy: '隐私问题',
-                  other: '其他',
+                  spam: '垃圾广告 / 刷屏',
+                  abuse: '骚扰 / 不友善',
+                  illegal: '诈骗 / 虚假信息',
+                  privacy: '泄露个人隐私',
+                  other: '其他问题',
                 }[reason]
               }
               secondary={reportReason !== reason}
@@ -672,6 +900,7 @@ export function BoardScreen({
           multiline
           editable={!busy}
         />
+        <Notice>游客也可以举报。提交表示受理，不代表内容会立即删除。</Notice>
         <Action
           label="提交举报"
           disabled={busy}
@@ -684,6 +913,58 @@ export function BoardScreen({
           }
         />
         {notice ? <Notice>{notice}</Notice> : null}
+      </Page>
+    );
+
+  // 回复页同时呈现引用上下文、游客身份与图片额度，提交后回到详情。
+  if (mode === 'reply' && post)
+    return (
+      <Page title="回复讨论" onBack={() => setMode('detail')}>
+        {replyTarget ? (
+          <Notice>
+            回复 {displayAuthor(replyTarget.authorDisplay)}：{replyTarget.body}
+          </Notice>
+        ) : null}
+        <Field
+          label="回复内容"
+          value={replyBody}
+          onChange={setReplyBody}
+          multiline
+          editable={!busy}
+        />
+        <Text style={styles.label}>图片（{images.length}/3）</Text>
+        {addImageControls(3)}
+        <Notice>你将以游客身份回复。同一帖子中保持这个标识。</Notice>
+        <Action
+          label={busy ? '正在发布' : '发布回复'}
+          disabled={busy}
+          onPress={() => void submitReply()}
+        />
+        {notice ? <Notice>{notice}</Notice> : null}
+      </Page>
+    );
+
+  // 举报回执只确认收到，不承诺审核结论或立即隐藏内容。
+  if (mode === 'report-done')
+    return (
+      <Page title="举报已受理" onBack={() => setMode('detail')}>
+        <View style={{ alignItems: 'center', gap: 12, paddingVertical: 42 }}>
+          <Text style={{ color: theme.primary, fontSize: 42 }}>✓</Text>
+          <Text accessibilityRole="header" style={styles.title}>
+            举报已提交
+          </Text>
+          <Text
+            style={{ color: theme.muted, textAlign: 'center', lineHeight: 22 }}
+          >
+            我们会按社区规则处理。你可以返回继续浏览。
+          </Text>
+        </View>
+        <Notice>提交举报不会自动删除内容或退出群聊。</Notice>
+        <Action
+          label="返回原页面"
+          secondary
+          onPress={() => setMode('detail')}
+        />
       </Page>
     );
 
@@ -911,145 +1192,222 @@ export function BoardScreen({
     );
 
   return (
-    <Page title="留言板" onBack={onBack}>
-      <Notice>
-        分享在日本的日常，认识兴趣相近的人。只有人工审核通过的内容会公开。
-      </Notice>
+    <Page
+      title="留言板首页"
+      onBack={onBack}
+      showBack={false}
+      headerAction={
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="搜索 · 地区"
+          onPress={() => {
+            setQuery(appliedQuery);
+            setMode('search');
+          }}
+          style={{ paddingHorizontal: 8, paddingVertical: 10 }}
+        >
+          <Text style={{ color: theme.primary, fontSize: 13 }}>
+            搜索 · 地区
+          </Text>
+        </Pressable>
+      }
+      footer={
+        <BoardBottomNavigation
+          onSelect={(item) => {
+            if (item === '留言板') {
+              setNotice('');
+              return;
+            }
+            if (item === '我的') {
+              void openMine();
+              return;
+            }
+            setNotice(`${item}页面将在后续阶段开放。`);
+          }}
+        />
+      }
+      floatingAction={
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="发帖"
+          onPress={startCompose}
+          style={{
+            minWidth: 112,
+            minHeight: 48,
+            paddingHorizontal: 18,
+            borderRadius: 24,
+            backgroundColor: theme.primary,
+            justifyContent: 'center',
+            alignItems: 'center',
+            elevation: 5,
+          }}
+        >
+          <Text
+            style={{ color: theme.surface, fontWeight: '700', fontSize: 14 }}
+          >
+            ＋ 发帖
+          </Text>
+        </Pressable>
+      }
+    >
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {['', 'general', 'interest', 'city'].map((value) => (
-          <Action
+        {[
+          ['', '全部'],
+          ['interest', '兴趣'],
+          ['city', '同城'],
+        ].map(([value, label]) => (
+          <FilterPill
             key={value || 'all'}
-            label={CATEGORY_LABELS[value] ?? value}
-            secondary={category !== value}
-            onPress={() => setCategory(value)}
+            label={label}
+            selected={category === value}
+            onPress={() => {
+              setCategory(value);
+              setAttempt((current) => current + 1);
+            }}
           />
         ))}
       </View>
-      {/* 筛选目录默认收起，避免长字典挤占讨论列表的首屏空间。 */}
-      <Text style={styles.label}>地区筛选</Text>
-      <Action
-        label={
-          regionCode
-            ? `地区 · ${selectedRegion?.nameZh ?? regionCode}`
-            : '全部地区'
-        }
-        secondary
-        onPress={() => setShowRegionOptions((value) => !value)}
-      />
-      {showRegionOptions && regionParent ? (
-        <Action
-          label="返回都道府县"
-          secondary
-          onPress={() => void showPrefectures()}
-        />
-      ) : null}
-      {showRegionOptions
-        ? regions.map((region) => (
-            <Action
-              key={region.code}
-              label={`${region.nameZh} · ${region.nameJa}`}
-              secondary={regionCode !== region.code}
-              onPress={() => void chooseRegion(region)}
-            />
-          ))
-        : null}
-      <Text style={styles.label}>兴趣筛选</Text>
-      <Action
-        label={
-          interestId
-            ? `兴趣 · ${interestOptions.find((item) => item.id === interestId)?.nameZh ?? '已选择'}`
-            : '全部兴趣'
-        }
-        secondary
-        onPress={() => setShowInterestOptions((value) => !value)}
-      />
-      {showInterestOptions
-        ? interestOptions.map((interest) => (
-            <Action
-              key={interest.id}
-              label={interest.nameZh}
-              secondary={interestId !== interest.id}
-              onPress={() =>
-                setInterestId((current) =>
-                  current === interest.id ? '' : interest.id,
-                )
-              }
-            />
-          ))
-        : null}
-      <Action
-        label="清除地区和兴趣筛选"
-        secondary
-        onPress={() => {
-          setRegionCode('');
-          setSelectedRegion(null);
-          setRegionParent(null);
-          setInterestId('');
-          void showPrefectures();
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingVertical: 2,
         }}
-      />
-      <Action
-        label="应用筛选"
-        secondary
-        onPress={() => setAttempt((value) => value + 1)}
-      />
-      <Action label="写留言" onPress={startCompose} />
-      {needsGuest ? (
-        <>
-          <Notice>保存游客身份后即可发布内容。</Notice>
-          <Action
-            label="保存游客身份并继续"
-            secondary
-            disabled={busy}
-            onPress={() => void saveGuestAndCompose()}
-          />
-        </>
-      ) : null}
-      <Action label="我的内容" secondary onPress={() => void openMine()} />
-      <Action
-        label="重新加载"
-        secondary
-        disabled={loading}
-        onPress={() => setAttempt((value) => value + 1)}
-      />
+      >
+        <View>
+          <Text style={{ color: theme.muted, fontSize: 12 }}>
+            {regionCode
+              ? `${selectedRegion?.nameZh ?? regionCode} · `
+              : '不限地区 · '}
+            {interestId
+              ? interestOptions.find((item) => item.id === interestId)?.nameZh
+              : '兴趣筛选'}
+          </Text>
+        </View>
+        <Text style={{ color: theme.muted, fontSize: 12 }}>最新 ↓</Text>
+      </View>
+      {notice ? <Notice>{notice}</Notice> : null}
       {loading ? <Notice>正在读取公开留言。</Notice> : null}
       {posts.length === 0 && !loading ? (
-        <Notice>
-          还没有公开留言。你可以写下第一条，审核通过后大家就能看到。
-        </Notice>
-      ) : null}
-      {posts.map((item) => (
         <View
-          key={item.id}
           style={{
-            gap: 8,
-            padding: 16,
+            alignItems: 'center',
+            padding: 24,
+            borderRadius: 18,
             backgroundColor: theme.surface,
-            borderRadius: 16,
+            borderColor: '#D8E2E1',
+            borderWidth: 1,
+            gap: 8,
           }}
         >
-          <Text accessibilityRole="header" style={styles.label}>
+          <Text style={{ color: theme.primary, fontSize: 30 }}>▤</Text>
+          <Text style={{ color: theme.ink, fontWeight: '700', fontSize: 17 }}>
+            这里还没有讨论
+          </Text>
+          <Text
+            style={{
+              color: theme.muted,
+              textAlign: 'center',
+              fontSize: 14,
+              lineHeight: 22,
+            }}
+          >
+            还没有公开留言。你可以写下第一条，审核通过后大家就能看到。
+          </Text>
+        </View>
+      ) : null}
+      {posts.map((item) => (
+        <Pressable
+          key={item.id}
+          accessibilityRole="button"
+          accessibilityLabel={`打开留言：${item.title}`}
+          onPress={() => void openPost(item)}
+          style={{
+            gap: 8,
+            padding: 14,
+            backgroundColor: theme.surface,
+            borderColor: '#D8E2E1',
+            borderWidth: 1,
+            borderRadius: 18,
+          }}
+        >
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {item.interests.map((interest, index) => (
+              <Text
+                key={`interest-${index}`}
+                style={{
+                  backgroundColor: '#E8F3EF',
+                  color: theme.primary,
+                  paddingHorizontal: 7,
+                  paddingVertical: 4,
+                  borderRadius: 5,
+                  fontSize: 11,
+                }}
+              >
+                {readableName(interest)}
+              </Text>
+            ))}
+            {readableName(item.region) ? (
+              <Text
+                style={{
+                  backgroundColor: '#E8F3EF',
+                  color: theme.primary,
+                  paddingHorizontal: 7,
+                  paddingVertical: 4,
+                  borderRadius: 5,
+                  fontSize: 11,
+                }}
+              >
+                {readableName(item.region)}
+              </Text>
+            ) : null}
+          </View>
+          <Text
+            accessibilityRole="header"
+            style={{ color: theme.ink, fontSize: 16, fontWeight: '700' }}
+          >
             {item.title}
           </Text>
-          <Text style={styles.rowLabel}>{item.body}</Text>
-          <Text style={{ color: theme.muted }}>
-            {displayAuthor(item.authorDisplay)} · {item.replyCount} 条回复
+          <Text
+            numberOfLines={3}
+            style={{ color: theme.ink, fontSize: 14, lineHeight: 22 }}
+          >
+            {item.body}
           </Text>
-          {item.images.slice(0, 3).map((image: BoardImage) => (
+          {item.images.slice(0, 1).map((image: BoardImage) => (
             <Image
               key={image.id}
               source={{ uri: image.url }}
               accessibilityLabel="留言图片"
-              style={{ width: '100%', height: 180, borderRadius: 12 }}
+              style={{ width: '100%', height: 160, borderRadius: 12 }}
               resizeMode="cover"
             />
           ))}
-          <Action
-            label="查看留言和回复"
-            secondary
-            onPress={() => void openPost(item)}
-          />
-        </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: '#E1F0EC',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{ color: theme.primary, fontWeight: '600' }}>
+                {displayAuthor(item.authorDisplay).slice(0, 1)}
+              </Text>
+            </View>
+            <Text style={{ color: theme.muted, fontSize: 11, flex: 1 }}>
+              {displayAuthor(item.authorDisplay)} ·{' '}
+              {relativeTime(item.publishedAt)}
+            </Text>
+            <Text style={{ color: theme.muted, fontSize: 11 }}>
+              {item.replyCount} 条回复
+            </Text>
+          </View>
+        </Pressable>
       ))}
       {hasMore && nextCursor ? (
         <Action
@@ -1064,6 +1422,7 @@ export function BoardScreen({
                 category: category || undefined,
                 regionCode: regionCode || undefined,
                 interestId: interestId || undefined,
+                q: appliedQuery || undefined,
                 cursor,
               })
               .then((result: BoardPage<PublicPost>) => {
@@ -1076,7 +1435,6 @@ export function BoardScreen({
           }}
         />
       ) : null}
-      {notice ? <Notice>{notice}</Notice> : null}
     </Page>
   );
 }

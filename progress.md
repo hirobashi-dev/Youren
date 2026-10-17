@@ -1,5 +1,18 @@
 # 工作记录
 
+## 移动端留言板设计对齐启动（2026-10-17）
+
+- 用户确认模拟器第一张为开发结果、第二张为 B01 设计稿。已承认前一轮只调整了共享页面框架和部分 B04/B06 控件，B01 与设计仍差异明显。
+- 建立 B01、B02、B03/B05、B04/B06、R01/状态逐步对齐路线。设计稿示例帖子不得冒充真实后端数据；关键词/排序需先核对 API 能力。
+- 上一轮实现提交 `d50d924`；该提交的 mobile tests 75/75、typecheck 与 Expo Android bundle export 通过。本轮视觉对齐尚未开始实现，继续检查导航/API后从 B01 开始。
+
+## 移动端留言板设计对齐实现（2026-10-17）
+
+- 完成 B01 首页结构和 B02 搜索筛选，关键词/地区/兴趣/分类使用已有服务端查询能力，排序遵循 API 的最新顺序；保持真实空数据，不伪造帖子。
+- B03 详情支持显示图片与回复；B05改为独立回复页，支持单层引用及最多3张图片；B04发布页补游客说明、审核提示和9张图片计数；B06继续区分内容类型与审核状态；R01 使用设计稿分类并有独立受理页。
+- 补充发布页、详情回复页和举报页回归测试。完整 `npm test -w @youren/mobile -- --runInBand` 通过10套/80项；`npm run typecheck -w @youren/mobile`、Prettier检查、`git diff --check` 通过；`npm run build:js -w @youren/mobile` 成功导出iOS和Android bundle。
+- 模拟器截图检查尚待用户从第三阶段 worktree 的 Metro 刷新后完成；本次验证不等同设备目视验收，也未测试真实上传及真实举报操作。
+
 ## GitHub CI修正后通过（2026-10-04）
 
 - 修复提交914bd0f已推送，运行37168830294 completed/success；frontend、backend、browser均success，JDK安装、Maven真实集成及浏览器联调实际执行通过。

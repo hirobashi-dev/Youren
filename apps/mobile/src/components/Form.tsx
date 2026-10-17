@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from 'react';
+import type { PropsWithChildren, ReactNode } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -16,7 +16,18 @@ export function Page({
   title,
   children,
   onBack,
-}: PropsWithChildren<{ title: string; onBack: () => void }>) {
+  showBack = true,
+  headerAction,
+  footer,
+  floatingAction,
+}: PropsWithChildren<{
+  title: string;
+  onBack: () => void;
+  showBack?: boolean;
+  headerAction?: ReactNode;
+  footer?: ReactNode;
+  floatingAction?: ReactNode;
+}>) {
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
@@ -28,13 +39,20 @@ export function Page({
           contentContainerStyle={styles.content}
         >
           <View style={styles.appBar}>
-            <Action label="返回首页" compact secondary onPress={onBack} />
+            {showBack ? (
+              <Action label="返回首页" compact secondary onPress={onBack} />
+            ) : null}
             <Text accessibilityRole="header" style={styles.title}>
               {title}
             </Text>
+            {headerAction}
           </View>
           {children}
         </ScrollView>
+        {footer ? <View style={styles.footer}>{footer}</View> : null}
+        {floatingAction ? (
+          <View style={styles.floatingAction}>{floatingAction}</View>
+        ) : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -148,6 +166,12 @@ export const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#D8E2E1',
   },
+  footer: {
+    backgroundColor: theme.surface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#D8E2E1',
+  },
+  floatingAction: { position: 'absolute', right: 18, bottom: 72 },
   title: {
     color: theme.ink,
     fontSize: 21,
