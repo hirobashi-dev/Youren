@@ -27,11 +27,13 @@ export function Page({
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.content}
         >
-          <Action label="返回首页" secondary onPress={onBack} />
-          <Text accessibilityRole="header" style={styles.title}>
-            {title}
-          </Text>
-          <View style={styles.card}>{children}</View>
+          <View style={styles.appBar}>
+            <Action label="返回首页" compact secondary onPress={onBack} />
+            <Text accessibilityRole="header" style={styles.title}>
+              {title}
+            </Text>
+          </View>
+          {children}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -42,28 +44,43 @@ export function Action({
   onPress,
   disabled = false,
   secondary = false,
+  selected,
+  compact = false,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
   secondary?: boolean;
+  selected?: boolean;
+  compact?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled }}
+      accessibilityState={{
+        disabled,
+        ...(selected === undefined ? {} : { selected }),
+      }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
+        compact && styles.compactButton,
         secondary && styles.secondary,
+        selected && styles.selectedButton,
         disabled && styles.disabled,
         pressed && styles.pressed,
       ]}
     >
-      <Text style={[styles.buttonText, secondary && styles.secondaryText]}>
-        {label}
+      <Text
+        style={[
+          styles.buttonText,
+          (secondary || selected) && styles.secondaryText,
+          compact && styles.compactText,
+        ]}
+      >
+        {compact ? '‹' : label}
       </Text>
     </Pressable>
   );
@@ -117,12 +134,26 @@ export function Notice({ children }: PropsWithChildren) {
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.canvas },
   flex: { flex: 1 },
-  content: { flexGrow: 1, padding: 24, gap: 16 },
+  content: { flexGrow: 1, padding: 20, gap: 16 },
+  // 手机页面统一使用白色顶栏和连续画布，内容区由各页面按业务分组。
+  appBar: {
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: -20,
+    marginTop: -20,
+    paddingHorizontal: 16,
+    backgroundColor: theme.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#D8E2E1',
+  },
   title: {
     color: theme.ink,
-    fontSize: 28,
+    fontSize: 21,
     fontWeight: '700',
-    marginVertical: 8,
+    marginVertical: 0,
+    flex: 1,
   },
   card: {
     padding: 20,
@@ -139,6 +170,15 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  compactButton: {
+    minHeight: 44,
+    width: 44,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    borderWidth: 0,
+  },
+  compactText: { fontSize: 24, fontWeight: '400' },
+  selectedButton: { backgroundColor: '#E1F0EC', borderColor: '#C7DFD9' },
   buttonText: {
     color: theme.surface,
     fontSize: 16,

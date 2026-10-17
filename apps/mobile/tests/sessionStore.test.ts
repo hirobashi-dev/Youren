@@ -17,6 +17,19 @@ function setup(online = () => true) {
   );
   return { store, storage };
 }
+// 匿名浏览不创建主体；只有用户主动保存游客身份后才允许留言板写操作携带凭证。
+test('游客内容凭证仅在主动保存身份后提供', async () => {
+  const { store } = setup();
+  await store.restore();
+  expect(store.contentCredentials()).toBeNull();
+  global.fetch = jest.fn(async () => reply({
+    guestToken: 'guest-secret',
+    principalId: '22222222-2222-4222-8222-222222222222',
+    expiresAt: '2027-01-01T00:00:00Z',
+  }));
+  await store.createGuest();
+  expect(store.contentCredentials()).toEqual({ guestToken: 'guest-secret' });
+});
 test('启动刷新后原子保存新令牌，并发调用只消费一次', async () => {
   const { store, storage } = setup();
   await store.accept(session);

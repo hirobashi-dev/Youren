@@ -1,0 +1,1082 @@
+import { useEffect, useRef, useState } from 'react';
+import { Image, Text, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import {
+  BoardApi,
+  newMutationKey,
+  type BoardCredentials,
+  type BoardPage,
+  type Image as BoardImage,
+  type Interest,
+  type OwnContent,
+  type PublicComment,
+  type PublicPost,
+  type Region,
+} from '../api/board';
+import { ApiError, safeMessage } from '../api/client';
+import { imageSelectionError } from '../api/media';
+import { SessionStore } from '../auth/sessionStore';
+import { Action, Field, Notice, Page, styles } from '../components/Form';
+import { theme } from '../theme';
+
+type Mode = 'feed' | 'detail' | 'compose' | 'mine' | 'edit' | 'report';
+type DraftImage = {
+  uri: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  width: number;
+  height: number;
+};
+const CATEGORY_LABELS: Record<string, string> = {
+  '': '全部分类',
+  general: '综合',
+  interest: '兴趣',
+  city: '城市',
+};
+const STATUS_LABELS: Record<string, string> = {
+  '': '全部状态',
+  pending: '待审核',
+  visible: '已公开',
+  rejected: '需修改',
+  hidden: '已隐藏',
+  expired: '已到期',
+  deleted: '已删除',
+};
+const displayAuthor = (value: Record<string, unknown>) =>
+  String(value.label ?? value.nickname ?? 'Youren用户');
+
+// 手机端沿用已确认的清爽绿色主题；所有写操作沿用当前账号或显式保存的游客身份。
+export function BoardScreen({
+  api,
+  store,
+  onBack,
+}: {
+  api: BoardApi;
+  store: SessionStore;
+  onBack: () => void;
+}) {
+  const [mode, setMode] = useState<Mode>('feed');
+  const [posts, setPosts] = useState<PublicPost[]>([]);
+  const [post, setPost] = useState<PublicPost | null>(null);
+  const [comments, setComments] = useState<PublicComment[]>([]);
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
+  const [interestOptions, setInterestOptions] = useState<Interest[]>([]);
+  const [regionParent, setRegionParent] = useState<string | null>(null);
+  const [ownItems, setOwnItems] = useState<OwnContent[]>([]);
+  const [ownKind, setOwnKind] = useState<'posts' | 'comments'>('posts');
+  const [category, setCategory] = useState('');
+  const [composeCategory, setComposeCategory] = useState<
+    'general' | 'interest' | 'city'
+  >('general');
+  const [regionCode, setRegionCode] = useState('');
+  const [interestId, setInterestId] = useState('');
+  const [composeInterestIds, setComposeInterestIds] = useState<string[]>([]);
+  const [showRegionOptions, setShowRegionOptions] = useState(false);
+  const [showInterestOptions, setShowInterestOptions] = useState(false);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [replyBody, setReplyBody] = useState('');
+  const [images, setImages] = useState<DraftImage[]>([]);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [reportReason, setReportReason] = useState('spam');
+  const [reportDetail, setReportDetail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [needsGuest, setNeedsGuest] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [mutationKey, setMutationKey] = useState(newMutationKey);
+  const [selected, setSelected] = useState<OwnContent | null>(null);
+  const lock = useRef(false);
+
+  // 筛选和发帖复用服务端字典；目录为空时明确提示，避免让用户猜内部代码。
+  useEffect(() => {
+    const controller = new AbortController();
+    void Promise.all([
+      api.regions(undefined, controller.signal),
+      api.interests(controller.signal),
+    ])
+      .then(([regionPage, interestPage]) => {
+        if (controller.signal.aborted) return;
+        setRegions(regionPage.data);
+        setInterestOptions(interestPage.data);
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) showError(error);
+      });
+    return () => controller.abort();
+  }, [api]);
+
+  const credentials = (): BoardCredentials | null => store.contentCredentials();
+  const withIdentity = <T,>(
+    operation: (value: BoardCredentials) => Promise<T>,
+  ) => {
+    const identity = credentials();
+    if (!identity) throw new ApiError('AUTH_REQUIRED', 401, 'not-sent');
+    if (identity.accessToken)
+      return store.authorized((token) => operation({ accessToken: token }));
+    return operation(identity);
+  };
+  const showError = (error: unknown) =>
+    setNotice(
+      error instanceof ApiError
+        ? safeMessage(error)
+        : '操作未完成，请检查网络后重试。',
+    );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setNotice('');
+    void api
+      .posts(
+        {
+          category: category || undefined,
+          regionCode: regionCode || undefined,
+          interestId: interestId || undefined,
+        },
+        controller.signal,
+      )
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        setPosts(result.data);
+        setNextCursor(result.page.nextCursor);
+        setHasMore(result.page.hasMore);
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) showError(error);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [api, category, regionCode, interestId, attempt]);
+
+  async function openPost(item: PublicPost) {
+    setPost(item);
+    setMode('detail');
+    setNotice('');
+    try {
+      const result = await api.comments(item.id, undefined, undefined);
+      setComments(result.data);
+    } catch (error) {
+      showError(error);
+    }
+  }
+  async function openMine(kind = ownKind, status = statusFilter) {
+    if (!credentials()) {
+      setNeedsGuest(true);
+      setNotice('保存游客身份后即可查看本人内容。');
+      return;
+    }
+    setOwnKind(kind);
+    setMode('mine');
+    setLoading(true);
+    try {
+      const result = await withIdentity((identity) =>
+        api.ownContent(kind, status || undefined, undefined, identity),
+      );
+      setOwnItems(result.data);
+      setNextCursor(result.page.nextCursor);
+      setHasMore(result.page.hasMore);
+    } catch (error) {
+      showError(error);
+    } finally {
+      setLoading(false);
+    }
+  }
+  function startCompose() {
+    if (!credentials()) {
+      setNeedsGuest(true);
+      setNotice('保存游客身份后即可发布内容。');
+      return;
+    }
+    setNeedsGuest(false);
+    setTitle('');
+    setBody('');
+    setImages([]);
+    setComposeCategory('general');
+    setComposeInterestIds([]);
+    setMutationKey(newMutationKey());
+    setNotice('');
+    setMode('compose');
+  }
+  async function chooseRegion(region: Region) {
+    setRegionCode(region.code);
+    setSelectedRegion(region);
+    setRegionParent(
+      region.level === 'prefecture' ? region.code : region.parentCode,
+    );
+    if (region.level === 'prefecture') {
+      try {
+        setRegions((await api.regions(region.code)).data);
+      } catch (error) {
+        showError(error);
+      }
+    }
+  }
+  async function showPrefectures() {
+    setRegionParent(null);
+    try {
+      setRegions((await api.regions()).data);
+    } catch (error) {
+      showError(error);
+    }
+  }
+  async function saveGuestAndCompose() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await store.createGuest();
+      if (store.contentCredentials()) startCompose();
+      else
+        setNotice(
+          store.getSnapshot().message || '游客身份保存失败，请稍后重试。',
+        );
+    } catch (error) {
+      showError(error);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function pickImages(limit: number) {
+    if (busy) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setNotice('需要允许访问照片，才能添加图片。');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      selectionLimit: Math.max(1, limit - images.length),
+      quality: 1,
+    });
+    if (result.canceled) return;
+    const chosen: DraftImage[] = [];
+    for (const asset of result.assets) {
+      const error = imageSelectionError(
+        asset,
+        images.length + chosen.length,
+        limit,
+      );
+      if (error) {
+        setNotice(error);
+        return;
+      }
+      if (asset.width * asset.height > 20_000_000) {
+        setNotice('图片像素不能超过 2000 万。');
+        return;
+      }
+      chosen.push({
+        uri: asset.uri,
+        fileName: asset.fileName ?? `image-${chosen.length + 1}`,
+        mimeType: asset.mimeType!,
+        fileSize: asset.fileSize!,
+        width: asset.width,
+        height: asset.height,
+      });
+    }
+    setImages((current) => [...current, ...chosen]);
+    setNotice('');
+  }
+  async function uploadImages(limit: number) {
+    const identity = credentials();
+    if (!identity) throw new ApiError('AUTH_REQUIRED', 401, 'not-sent');
+    const mediaIds: string[] = [];
+    for (const asset of images.slice(0, limit)) {
+      // 上传意向未知时绝不盲目新建第二个意向；未绑定文件由服务端24小时清理。
+      const intent = await withIdentity((current) =>
+        api.uploadIntent(
+          {
+            fileName: asset.fileName,
+            mime: asset.mimeType,
+            sizeBytes: asset.fileSize,
+          },
+          current,
+        ),
+      );
+      await withIdentity((current) => api.upload(intent, asset.uri, current));
+      const status = await withIdentity((current) =>
+        api.completeUpload(intent.mediaId, current),
+      );
+      if (!['approved', 'ready'].includes(status.status))
+        throw new Error('图片仍在处理中，请稍后重试。');
+      mediaIds.push(intent.mediaId);
+    }
+    return mediaIds;
+  }
+  async function submitPost() {
+    if (lock.current || busy) return;
+    if (!title.trim() || !body.trim()) {
+      setNotice('请填写标题和内容。');
+      return;
+    }
+    lock.current = true;
+    setBusy(true);
+    setNotice('正在上传图片并提交审核。');
+    try {
+      const mediaIds = await uploadImages(9);
+      await withIdentity((identity) =>
+        api.createPost(
+          {
+            title,
+            body,
+            category: composeCategory,
+            regionCode: regionCode || null,
+            interestIds: composeInterestIds,
+            mediaIds,
+          },
+          identity,
+          mutationKey,
+        ),
+      );
+      setImages([]);
+      setMode('mine');
+      setStatusFilter('pending');
+      setMutationKey(newMutationKey());
+      await openMine('posts', 'pending');
+      setNotice('已提交，审核通过后会在留言板公开。');
+    } catch (error) {
+      showError(error);
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+  async function submitReply() {
+    if (!post || lock.current || busy) return;
+    if (!replyBody.trim() && images.length === 0) {
+      setNotice('请填写回复或添加图片。');
+      return;
+    }
+    lock.current = true;
+    setBusy(true);
+    try {
+      const mediaIds = await uploadImages(3);
+      await withIdentity((identity) =>
+        api.createComment(
+          post.id,
+          { body: replyBody, mediaIds },
+          identity,
+          mutationKey,
+        ),
+      );
+      setReplyBody('');
+      setImages([]);
+      setMutationKey(newMutationKey());
+      const result = await api.comments(post.id);
+      setComments(result.data);
+      setNotice('回复已提交，审核通过后公开。');
+    } catch (error) {
+      showError(error);
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+  async function submitReport(
+    targetType: 'post' | 'comment',
+    targetId: string,
+  ) {
+    if (lock.current || busy) return;
+    setBusy(true);
+    lock.current = true;
+    try {
+      await withIdentity((identity) =>
+        api.report(
+          {
+            targetType,
+            targetId,
+            reasonCode: reportReason,
+            detail: reportDetail,
+          },
+          identity,
+          mutationKey,
+        ),
+      );
+      setMode('detail');
+      setMutationKey(newMutationKey());
+      setNotice('举报已提交，平台将进行人工处理。');
+    } catch (error) {
+      showError(error);
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+  async function deleteOwn(item: OwnContent) {
+    if (lock.current || busy) return;
+    setBusy(true);
+    lock.current = true;
+    try {
+      await withIdentity((identity) =>
+        item.kind === 'posts'
+          ? api.deletePost(item.id, identity)
+          : api.deleteComment(item.id, identity),
+      );
+      setOwnItems((current) => current.filter((value) => value.id !== item.id));
+      setNotice('内容已删除。');
+    } catch (error) {
+      showError(error);
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+  const addImageControls = (limit: number) => (
+    <>
+      {images.length ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {images.map((asset, index) => (
+            <View key={`${asset.uri}-${index}`}>
+              <Image
+                source={{ uri: asset.uri }}
+                style={{ width: 72, height: 72, borderRadius: 10 }}
+              />
+              <Action
+                label={`移除图片 ${index + 1}`}
+                secondary
+                onPress={() =>
+                  setImages((current) =>
+                    current.filter((_, position) => position !== index),
+                  )
+                }
+              />
+            </View>
+          ))}
+        </View>
+      ) : null}
+      <Notice>
+        最多 {limit} 张；支持 JPEG、PNG、WebP，单张不超过 5 MB、2000 万像素。
+      </Notice>
+      <Action
+        label="添加图片"
+        secondary
+        disabled={busy || images.length >= limit}
+        onPress={() => void pickImages(limit)}
+      />
+    </>
+  );
+
+  if (mode === 'compose')
+    return (
+      <Page title="写一条留言" onBack={() => setMode('feed')}>
+        <Notice>
+          首次提交后进入人工审核；审核通过才公开，公开内容保留一年。
+        </Notice>
+        <Field
+          label="标题"
+          value={title}
+          editable={!busy}
+          onChange={setTitle}
+        />
+        <Field
+          label="内容"
+          value={body}
+          multiline
+          editable={!busy}
+          onChange={setBody}
+        />
+        <Text style={styles.label}>分类</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {(['general', 'interest', 'city'] as const).map((value) => (
+            <Action
+              key={value}
+              label={
+                value === 'general'
+                  ? '综合'
+                  : value === 'interest'
+                    ? '兴趣'
+                    : '城市'
+              }
+              secondary={composeCategory !== value}
+              onPress={() => setComposeCategory(value)}
+            />
+          ))}
+        </View>
+        <Text style={styles.label}>地区（可选）</Text>
+        <Action
+          label={
+            regionCode
+              ? `地区 · ${selectedRegion?.nameZh ?? regionCode}`
+              : '选择地区（可选）'
+          }
+          secondary
+          onPress={() => setShowRegionOptions((value) => !value)}
+        />
+        {regionCode ? (
+          <Notice>已选择：{selectedRegion?.nameZh ?? regionCode}</Notice>
+        ) : null}
+        {showRegionOptions && regionParent ? (
+          <Action
+            label="返回都道府县"
+            secondary
+            onPress={() => void showPrefectures()}
+          />
+        ) : null}
+        {showRegionOptions && regions.length ? (
+          <View style={{ gap: 8 }}>
+            {regions.map((region) => (
+              <Action
+                key={region.code}
+                label={`${region.nameZh} · ${region.nameJa}`}
+                secondary={regionCode !== region.code}
+                onPress={() => void chooseRegion(region)}
+              />
+            ))}
+          </View>
+        ) : showRegionOptions ? (
+          <Notice>地区目录暂不可用，可以稍后重试。</Notice>
+        ) : null}
+        <Text style={styles.label}>兴趣标签（可选）</Text>
+        <Action
+          label={
+            composeInterestIds.length
+              ? `已选 ${composeInterestIds.length} 个兴趣`
+              : '选择兴趣标签'
+          }
+          secondary
+          onPress={() => setShowInterestOptions((value) => !value)}
+        />
+        {showInterestOptions && interestOptions.length ? (
+          <View style={{ gap: 8 }}>
+            {interestOptions.map((interest) => (
+              <Action
+                key={interest.id}
+                label={interest.nameZh}
+                secondary={!composeInterestIds.includes(interest.id)}
+                onPress={() =>
+                  setComposeInterestIds((current) =>
+                    current.includes(interest.id)
+                      ? current.filter((id) => id !== interest.id)
+                      : [...current, interest.id],
+                  )
+                }
+              />
+            ))}
+          </View>
+        ) : showInterestOptions ? (
+          <Notice>暂时没有可选兴趣标签。</Notice>
+        ) : null}
+        {addImageControls(9)}
+        <Action
+          label={busy ? '正在提交' : '提交审核'}
+          disabled={busy}
+          onPress={() => void submitPost()}
+        />
+        {notice ? <Notice>{notice}</Notice> : null}
+      </Page>
+    );
+
+  if (mode === 'detail' && post)
+    return (
+      <Page title={post.title} onBack={() => setMode('feed')}>
+        <Notice>{post.body}</Notice>
+        <Notice>
+          {displayAuthor(post.authorDisplay)} · 回复 {post.replyCount}
+        </Notice>
+        {post.images.map((image) => (
+          <Image
+            key={image.id}
+            source={{ uri: image.url }}
+            accessibilityLabel="留言图片"
+            style={{ width: '100%', height: 220, borderRadius: 12 }}
+            resizeMode="cover"
+          />
+        ))}
+        <Action
+          label="举报这条留言"
+          secondary
+          onPress={() => {
+            setSelected(null);
+            setMode('report');
+            setMutationKey(newMutationKey());
+          }}
+        />
+        <Text style={styles.title}>回复</Text>
+        {comments.map((comment) => (
+          <View
+            key={comment.id}
+            style={{
+              padding: 14,
+              backgroundColor: theme.surface,
+              borderRadius: 12,
+              gap: 8,
+            }}
+          >
+            <Text style={styles.rowLabel}>
+              {displayAuthor(comment.authorDisplay)}
+            </Text>
+            <Text style={styles.rowLabel}>{comment.body}</Text>
+            <Action
+              label="举报回复"
+              secondary
+              onPress={() => {
+                setReportReason('spam');
+                setReportDetail('');
+                setSelected({ kind: 'comments', id: comment.id } as OwnContent);
+                setMode('report');
+                setMutationKey(newMutationKey());
+              }}
+            />
+          </View>
+        ))}
+        <Field
+          label="回复内容"
+          value={replyBody}
+          onChange={setReplyBody}
+          multiline
+          editable={!busy}
+        />
+        {addImageControls(3)}
+        <Action
+          label={busy ? '正在提交' : '提交回复'}
+          disabled={busy}
+          onPress={() => void submitReply()}
+        />
+        {notice ? <Notice>{notice}</Notice> : null}
+      </Page>
+    );
+
+  if (mode === 'report')
+    return (
+      <Page title="举报内容" onBack={() => setMode('detail')}>
+        <Notice>举报由人工处理，提交举报不会自动隐藏被举报内容。</Notice>
+        {(['spam', 'abuse', 'illegal', 'privacy', 'other'] as const).map(
+          (reason) => (
+            <Action
+              key={reason}
+              label={
+                {
+                  spam: '垃圾信息',
+                  abuse: '骚扰或辱骂',
+                  illegal: '违法内容',
+                  privacy: '隐私问题',
+                  other: '其他',
+                }[reason]
+              }
+              secondary={reportReason !== reason}
+              onPress={() => setReportReason(reason)}
+            />
+          ),
+        )}
+        <Field
+          label="补充说明（可选）"
+          value={reportDetail}
+          onChange={setReportDetail}
+          multiline
+          editable={!busy}
+        />
+        <Action
+          label="提交举报"
+          disabled={busy}
+          onPress={() =>
+            selected
+              ? void submitReport('comment', selected.id)
+              : post
+                ? void submitReport('post', post.id)
+                : undefined
+          }
+        />
+        {notice ? <Notice>{notice}</Notice> : null}
+      </Page>
+    );
+
+  if (mode === 'mine')
+    return (
+      <Page title="我的内容" onBack={() => setMode('feed')}>
+        {/* 内容类型只控制留言或回复；与下方审核状态筛选相互独立。 */}
+        <View
+          style={{
+            gap: 10,
+            padding: 14,
+            borderRadius: 16,
+            backgroundColor: theme.surface,
+          }}
+        >
+          <Text accessibilityRole="header" style={styles.label}>
+            内容类型
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {(['posts', 'comments'] as const).map((kind) => (
+              <View key={kind} style={{ flex: 1 }}>
+                <Action
+                  label={kind === 'posts' ? '我的留言' : '我的回复'}
+                  secondary={ownKind !== kind}
+                  selected={ownKind === kind}
+                  onPress={() => void openMine(kind, statusFilter)}
+                />
+              </View>
+            ))}
+          </View>
+        </View>
+        <View
+          style={{
+            gap: 10,
+            padding: 14,
+            borderRadius: 16,
+            backgroundColor: theme.surface,
+          }}
+        >
+          <Text accessibilityRole="header" style={styles.label}>
+            审核状态
+          </Text>
+          <View
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              justifyContent: 'space-between',
+              rowGap: 8,
+            }}
+          >
+            {['', 'pending', 'visible', 'rejected', 'hidden', 'expired'].map(
+              (status) => (
+                <View key={status || 'all'} style={{ width: '48%' }}>
+                  <Action
+                    label={STATUS_LABELS[status] ?? status}
+                    secondary={statusFilter !== status}
+                    selected={statusFilter === status}
+                    onPress={() => {
+                      setStatusFilter(status);
+                      void openMine(ownKind, status);
+                    }}
+                  />
+                </View>
+              ),
+            )}
+          </View>
+        </View>
+        {/* 浅绿色摘要承载两组筛选的组合结果，并通过无障碍标签朗读当前条件。 */}
+        <View
+          accessibilityLabel={`正在查看：${ownKind === 'posts' ? '我的留言' : '我的回复'} · ${STATUS_LABELS[statusFilter] ?? statusFilter}`}
+          accessibilityLiveRegion="polite"
+          style={{
+            gap: 3,
+            marginBottom: 14,
+            padding: 12,
+            borderRadius: 11,
+            borderColor: '#CBDFDA',
+            borderWidth: 1,
+            backgroundColor: '#E5F3EF',
+          }}
+        >
+          <Text style={{ color: theme.muted, fontSize: 12 }}>正在查看</Text>
+          <Text style={{ color: theme.ink, fontSize: 14, fontWeight: '600' }}>
+            {ownKind === 'posts' ? '我的留言' : '我的回复'} ·{' '}
+            {STATUS_LABELS[statusFilter] ?? statusFilter}
+          </Text>
+        </View>
+        <Notice>
+          这些内容由本机游客凭证管理。注册后可接续，不会自动公开关联你的账号。
+        </Notice>
+        {loading ? <Notice>正在读取内容。</Notice> : null}
+        {ownItems.length === 0 && !loading ? (
+          <Notice>这里暂时没有内容。</Notice>
+        ) : null}
+        {ownItems.map((item) => (
+          <View
+            key={item.id}
+            style={{
+              gap: 8,
+              padding: 14,
+              backgroundColor: theme.surface,
+              borderRadius: 12,
+            }}
+          >
+            <Text style={styles.label}>
+              {'unavailable' in item
+                ? item.kind === 'posts'
+                  ? '留言'
+                  : '回复'
+                : (item.title ?? (item.kind === 'posts' ? '无标题' : '回复'))}
+            </Text>
+            <Text style={styles.rowLabel}>
+              状态：
+              {{
+                pending: '待审核',
+                visible: '已公开',
+                rejected: '需修改',
+                hidden: '已隐藏',
+                expired: '已到期',
+                deleted: '已删除',
+              }[item.status] ?? item.status}
+            </Text>
+            <Text style={styles.rowLabel}>
+              {'unavailable' in item ? '内容不可用' : item.body || '内容不可用'}
+            </Text>
+            {'unavailable' in item ? null : item.parentUnavailable ? (
+              <Notice>原留言已到期或不可见，回复无法公开查看。</Notice>
+            ) : null}
+            {['pending', 'rejected'].includes(item.status) ? (
+              <Action
+                label="编辑并重新提交"
+                secondary
+                onPress={() => {
+                  if ('unavailable' in item) return;
+                  setSelected(item);
+                  setTitle(item.title ?? '');
+                  setBody(item.body);
+                  setComposeCategory(item.category ?? 'general');
+                  setRegionCode(item.regionCode ?? '');
+                  setComposeInterestIds(item.interestIds ?? []);
+                  setImages([]);
+                  setMode('edit');
+                }}
+              />
+            ) : null}
+            {['pending', 'rejected', 'visible', 'hidden'].includes(
+              item.status,
+            ) ? (
+              <Action
+                label="删除内容"
+                secondary
+                onPress={() => void deleteOwn(item)}
+              />
+            ) : null}
+          </View>
+        ))}
+        {notice ? <Notice>{notice}</Notice> : null}
+      </Page>
+    );
+
+  if (mode === 'edit' && selected && !('unavailable' in selected))
+    return (
+      <Page title="修改并重新审核" onBack={() => setMode('mine')}>
+        <Notice>
+          保存后会重新进入人工审核；原公开内容不会被这次编辑立即覆盖。
+        </Notice>
+        {selected.kind === 'posts' ? (
+          <Field
+            label="标题"
+            value={title}
+            onChange={setTitle}
+            editable={!busy}
+          />
+        ) : null}
+        <Field
+          label="内容"
+          value={body}
+          onChange={setBody}
+          multiline
+          editable={!busy}
+        />
+        <Action
+          label="保存修改并重新审核"
+          disabled={busy}
+          onPress={() => {
+            if (busy || lock.current || !selected) return;
+            lock.current = true;
+            setBusy(true);
+            setNotice('正在保存修改。');
+            void withIdentity((identity) =>
+              selected.kind === 'posts'
+                ? api.updatePost(
+                    selected.id,
+                    selected.version,
+                    {
+                      title,
+                      body,
+                      category: composeCategory,
+                      regionCode: regionCode || null,
+                      interestIds: composeInterestIds,
+                    },
+                    identity,
+                  )
+                : api.updateComment(
+                    selected.id,
+                    selected.version,
+                    { body },
+                    identity,
+                  ),
+            )
+              .then(() => {
+                setNotice('修改已提交，等待人工重新审核。');
+                setMode('mine');
+                return openMine(selected.kind, 'pending');
+              })
+              .catch(showError)
+              .finally(() => {
+                lock.current = false;
+                setBusy(false);
+              });
+          }}
+        />
+        {notice ? <Notice>{notice}</Notice> : null}
+      </Page>
+    );
+
+  return (
+    <Page title="留言板" onBack={onBack}>
+      <Notice>
+        分享在日本的日常，认识兴趣相近的人。只有人工审核通过的内容会公开。
+      </Notice>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {['', 'general', 'interest', 'city'].map((value) => (
+          <Action
+            key={value || 'all'}
+            label={CATEGORY_LABELS[value] ?? value}
+            secondary={category !== value}
+            onPress={() => setCategory(value)}
+          />
+        ))}
+      </View>
+      {/* 筛选目录默认收起，避免长字典挤占讨论列表的首屏空间。 */}
+      <Text style={styles.label}>地区筛选</Text>
+      <Action
+        label={
+          regionCode
+            ? `地区 · ${selectedRegion?.nameZh ?? regionCode}`
+            : '全部地区'
+        }
+        secondary
+        onPress={() => setShowRegionOptions((value) => !value)}
+      />
+      {showRegionOptions && regionParent ? (
+        <Action
+          label="返回都道府县"
+          secondary
+          onPress={() => void showPrefectures()}
+        />
+      ) : null}
+      {showRegionOptions
+        ? regions.map((region) => (
+            <Action
+              key={region.code}
+              label={`${region.nameZh} · ${region.nameJa}`}
+              secondary={regionCode !== region.code}
+              onPress={() => void chooseRegion(region)}
+            />
+          ))
+        : null}
+      <Text style={styles.label}>兴趣筛选</Text>
+      <Action
+        label={
+          interestId
+            ? `兴趣 · ${interestOptions.find((item) => item.id === interestId)?.nameZh ?? '已选择'}`
+            : '全部兴趣'
+        }
+        secondary
+        onPress={() => setShowInterestOptions((value) => !value)}
+      />
+      {showInterestOptions
+        ? interestOptions.map((interest) => (
+            <Action
+              key={interest.id}
+              label={interest.nameZh}
+              secondary={interestId !== interest.id}
+              onPress={() =>
+                setInterestId((current) =>
+                  current === interest.id ? '' : interest.id,
+                )
+              }
+            />
+          ))
+        : null}
+      <Action
+        label="清除地区和兴趣筛选"
+        secondary
+        onPress={() => {
+          setRegionCode('');
+          setSelectedRegion(null);
+          setRegionParent(null);
+          setInterestId('');
+          void showPrefectures();
+        }}
+      />
+      <Action
+        label="应用筛选"
+        secondary
+        onPress={() => setAttempt((value) => value + 1)}
+      />
+      <Action label="写留言" onPress={startCompose} />
+      {needsGuest ? (
+        <>
+          <Notice>保存游客身份后即可发布内容。</Notice>
+          <Action
+            label="保存游客身份并继续"
+            secondary
+            disabled={busy}
+            onPress={() => void saveGuestAndCompose()}
+          />
+        </>
+      ) : null}
+      <Action label="我的内容" secondary onPress={() => void openMine()} />
+      <Action
+        label="重新加载"
+        secondary
+        disabled={loading}
+        onPress={() => setAttempt((value) => value + 1)}
+      />
+      {loading ? <Notice>正在读取公开留言。</Notice> : null}
+      {posts.length === 0 && !loading ? (
+        <Notice>
+          还没有公开留言。你可以写下第一条，审核通过后大家就能看到。
+        </Notice>
+      ) : null}
+      {posts.map((item) => (
+        <View
+          key={item.id}
+          style={{
+            gap: 8,
+            padding: 16,
+            backgroundColor: theme.surface,
+            borderRadius: 16,
+          }}
+        >
+          <Text accessibilityRole="header" style={styles.label}>
+            {item.title}
+          </Text>
+          <Text style={styles.rowLabel}>{item.body}</Text>
+          <Text style={{ color: theme.muted }}>
+            {displayAuthor(item.authorDisplay)} · {item.replyCount} 条回复
+          </Text>
+          {item.images.slice(0, 3).map((image: BoardImage) => (
+            <Image
+              key={image.id}
+              source={{ uri: image.url }}
+              accessibilityLabel="留言图片"
+              style={{ width: '100%', height: 180, borderRadius: 12 }}
+              resizeMode="cover"
+            />
+          ))}
+          <Action
+            label="查看留言和回复"
+            secondary
+            onPress={() => void openPost(item)}
+          />
+        </View>
+      ))}
+      {hasMore && nextCursor ? (
+        <Action
+          label="加载更多"
+          secondary
+          disabled={loading}
+          onPress={() => {
+            const cursor = nextCursor;
+            setLoading(true);
+            void api
+              .posts({
+                category: category || undefined,
+                regionCode: regionCode || undefined,
+                interestId: interestId || undefined,
+                cursor,
+              })
+              .then((result: BoardPage<PublicPost>) => {
+                setPosts((current) => [...current, ...result.data]);
+                setNextCursor(result.page.nextCursor);
+                setHasMore(result.page.hasMore);
+              })
+              .catch(showError)
+              .finally(() => setLoading(false));
+          }}
+        />
+      ) : null}
+      {notice ? <Notice>{notice}</Notice> : null}
+    </Page>
+  );
+}

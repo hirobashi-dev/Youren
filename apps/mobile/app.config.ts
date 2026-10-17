@@ -20,6 +20,11 @@ const config: ExpoConfig = {
   plugins: [
     'expo-dev-client',
     ['expo-secure-store', { configureAndroidBackup: true }],
+    // 图片选择只读取用户主动挑选的照片，不请求相机或麦克风权限。
+    [
+      'expo-image-picker',
+      { photosPermission: '允许 Youren 访问照片，以便添加到留言或回复中。' },
+    ],
   ],
   // 将动态Expo配置绑定到用户刚创建的EAS项目，供云构建解析项目身份。
   extra: { eas: { projectId: 'a0d99061-5c20-4cc8-b75b-141ae378932a' } },

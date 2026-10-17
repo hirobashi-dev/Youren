@@ -155,13 +155,20 @@ export class ApiClient {
           fieldLimit,
         );
       }
+      // 分页控制器直接返回Page，而写操作返回Envelope；两种合同都严格验证，不能丢失游标元数据。
+      if (!object(body)) throw new ApiError('INVALID_RESPONSE');
+      const paged = exact(body, ['data', 'page', 'requestId']);
       if (
-        !exact(body, ['data', 'requestId']) ||
+        (!exact(body, ['data', 'requestId']) && !paged) ||
         typeof body.requestId !== 'string' ||
-        !validate(body.data)
+        (paged
+          ? !validate({ data: body.data, page: body.page, requestId: body.requestId })
+          : !validate(body.data))
       )
         throw new ApiError('INVALID_RESPONSE');
-      return body.data;
+      return (paged
+        ? { data: body.data, page: body.page, requestId: body.requestId }
+        : body.data) as T;
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new ApiError(

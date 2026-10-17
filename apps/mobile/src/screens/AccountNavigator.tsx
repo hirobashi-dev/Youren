@@ -3,6 +3,8 @@ import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthApi } from '../api/auth';
 import { ProfileApi } from '../api/profile';
+import { ApiClient } from '../api/client';
+import { BoardApi } from '../api/board';
 import { safeMessage } from '../api/client';
 import { SessionStore } from '../auth/sessionStore';
 import { Action, Notice, styles } from '../components/Form';
@@ -11,15 +13,19 @@ import { AuthScreen } from './AuthScreen';
 import { ProfileScreen } from './ProfileScreen';
 import { SettingsScreen } from './SettingsScreen';
 import { PublicProfileScreen } from './PublicProfileScreen';
-// 浏览始终可用；私有画面只在持久化会话有效时显示，不展示恋爱或年龄字段。
+import { BoardScreen } from './BoardScreen';
+// 浏览始终可用；私有画面只在持久化会话有效时显示，留言板由独立路由承载。
+const fallbackBoardApi = new BoardApi(new ApiClient());
 export function AccountNavigator({
   store,
   auth,
   profileApi,
+  boardApi = fallbackBoardApi,
 }: {
   store: SessionStore;
   auth: AuthApi;
   profileApi: ProfileApi;
+  boardApi?: BoardApi;
 }) {
   const state = useSyncExternalStore(
     store.subscribe,
@@ -27,7 +33,7 @@ export function AccountNavigator({
     store.getSnapshot,
   );
   const [route, setRoute] = useState<
-    'home' | 'auth' | 'profile' | 'settings' | 'public'
+    'home' | 'auth' | 'profile' | 'settings' | 'public' | 'board'
   >('home');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -58,6 +64,8 @@ export function AccountNavigator({
     void store.restore();
   }, [store]);
   const onBack = () => setRoute('home');
+  if (route === 'board')
+    return <BoardScreen api={boardApi} store={store} onBack={onBack} />;
   if (route === 'auth')
     return (
       <AuthScreen
@@ -183,6 +191,11 @@ export function AccountNavigator({
                 ) : null}
               </>
             )}
+            <Action
+              label="留言板"
+              secondary
+              onPress={() => setRoute('board')}
+            />
           </SafeAreaView>
           <FoundationScreen />
         </View>

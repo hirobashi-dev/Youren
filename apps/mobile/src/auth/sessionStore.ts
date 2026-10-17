@@ -79,6 +79,12 @@ export class SessionStore {
       throw new ApiError('AUTH_REQUIRED', 401, 'not-sent');
     return this.credentials.accessToken;
   }
+  // 仅返回当前显式保存的内容身份；匿名浏览不隐式创建游客凭证。
+  contentCredentials(): { accessToken?: string; guestToken?: string } | null {
+    if (this.state.status === 'ready') return { accessToken: this.accessToken() };
+    if (this.state.status === 'guest' && this.guest) return { guestToken: this.guest.token };
+    return null;
+  }
   updateAccount(account: Me) {
     if (this.state.status === 'ready') this.publish({ account });
   }
