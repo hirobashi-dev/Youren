@@ -54,3 +54,17 @@ packages/contracts/openapi.json按现有详细设计生成92个REST操作；安�
 
 - Expo57本地bundledNativeModules建议expo-secure-store ~57.0.4；手机任务按本地SDK元数据固定版本。官方SecureStore说明强调Android备份排除不可恢复密钥的数据，v57网页工具无法读取，因此不以最新SDK版本替换当前依赖。
 - 资料审核版本应保留旧公开内容，V1 profiles只有一套字段，不能直接覆盖未审核资料；昵称30/简介500仍待本轮明确确认，已发送问题，不阻塞独立认证任务。
+
+## 第二阶段任务5续作（2026-10-05）
+
+- 当前普通检出目录不是linked worktree：Git目录与common目录均为`D:/MyWork/01_developer/Ai/Youren/.git`，分支为`develop/stage-1-foundation`。
+- 工作区已有任务5的手机端未提交成果：4个已跟踪文件修改，以及认证、API、会话、表单、资料/设置页面和5个测试文件新增；续作必须在原地审查并保全，不能新建空白worktree后丢失上下文。
+- 当前工具会话无法通过`Set-Location`进入项目目录（Access is denied），但绝对路径读写与`git -C`可用；后续命令使用显式项目路径或获批的项目级执行方式，避免误读`C:\`。
+- 已批准计划把任务5限定为手机认证、SecureStore恢复、本人/公开资料、设置、退出及Android真实操作；要求临时网络/超时/503保留凭证，明确失效才清除，刷新串行且响应丢失不得盲目重放。
+- `docs/development/stage-2-acceptance.md`当前进度与待执行清单仍停留在任务2，未同步已经完成并提交的任务3和4；任务5完成记录必须一并纠正，但不能改写历史测试证据。
+- `apps/mobile/README.md`仍声称只实现连接状态，且把结果统一写入stage-1验收；任务5文档收尾需更新为实际账号流程并改指向stage-2验收。
+- Android只读准备检查确认AVD `Pixel_3a_API_34`与`transform_app_avd`存在；当前没有3008/6383/8083监听服务。普通沙箱内ADB daemon启动失败（无法连接daemon），实际设备验收需要使用项目既有的提升权限执行方式。
+- 现有`app-debug.apk`时间为2026-10-04 09:16，早于任务5代码，不能作为本轮原生验收证据；必须在代码验证后重新生成并安装。
+- Android模拟器`Pixel_3a_API_34`已以只读模式启动在`emulator-5556`，ADB报告`sys.boot_completed=1`。
+- 既有`tools/start-test-api.cjs`固定连接阶段1测试库和Redis 6382，不适用于本轮已准备的阶段2隔离QA环境；任务5真实流程应读取忽略的`.local/stage2-qa-settings.json`并且绝不打印其中密码、HMAC或收件箱密钥。
+- 刷新合同专项初步核对纠正了误报：OpenAPI `/v1/auth/refresh`引用仅含令牌对的`RefreshSession`，与后端一致；实际缺陷是手机草稿错误按登录`AuthSession`解析刷新响应。实现已用真实令牌形状和随后独立`GET /me`的RED回归修正，仍等待只读审计最终确认。
