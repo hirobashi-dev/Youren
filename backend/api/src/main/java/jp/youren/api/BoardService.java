@@ -47,6 +47,15 @@ public class BoardService {
       @com.fasterxml.jackson.annotation.JsonInclude(
               com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
           String title,
+      @com.fasterxml.jackson.annotation.JsonInclude(
+              com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+          String category,
+      @com.fasterxml.jackson.annotation.JsonInclude(
+              com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+          String regionCode,
+      @com.fasterxml.jackson.annotation.JsonInclude(
+              com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+          List<UUID> interestIds,
       String body,
       List<Object> images,
       boolean parentUnavailable) {}
@@ -112,7 +121,7 @@ public class BoardService {
     if (!CATEGORIES.contains(category)) throw AuthFailure.invalid();
     if (regionCode != null && !mapper.regionActive(regionCode)) throw AuthFailure.invalid();
     List<UUID> interests = uniqueIds(interestIds, 20);
-    List<UUID> images = uniqueIds(mediaIds, 9);
+    List<UUID> images = mediaIds == null ? List.of() : uniqueIds(mediaIds, 9);
     if (!interests.isEmpty() && mapper.countActiveInterests(interests) != interests.size())
       throw AuthFailure.invalid();
     if (!images.isEmpty()) {
@@ -167,10 +176,11 @@ public class BoardService {
     if (!CATEGORIES.contains(category)) throw AuthFailure.invalid();
     if (regionCode != null && !mapper.regionActive(regionCode)) throw AuthFailure.invalid();
     List<UUID> interests = uniqueIds(interestIds, 20);
-    List<UUID> images = uniqueIds(mediaIds, 9);
+    List<UUID> images = mediaIds == null ? List.of() : uniqueIds(mediaIds, 9);
     if (!interests.isEmpty() && mapper.countActiveInterests(interests) != interests.size())
       throw AuthFailure.invalid();
-    if (!images.isEmpty()
+    if (mediaIds != null
+        && !images.isEmpty()
         && (mapper.lockMedia(owner, images) != images.size()
             || mapper.countReusableMedia(owner, images, id) != images.size()))
       throw AuthFailure.invalid();
@@ -185,11 +195,13 @@ public class BoardService {
         throw new AuthFailure(409, "RESULT_EXPIRED");
       throw AuthFailure.invalid();
     }
-    mapper.deletePostMedia(id);
+    // 编辑表单未提供图片字段时保留原关联，避免文本修改意外删除待审图片。
+    if (mediaIds != null) mapper.deletePostMedia(id);
     mapper.deletePostInterests(id);
     for (UUID interest : interests) mapper.insertPostInterest(id, interest);
-    for (int i = 0; i < images.size(); i++)
-      if (mapper.insertPostMedia(id, images.get(i), i, owner) != 1) throw AuthFailure.invalid();
+    if (mediaIds != null)
+      for (int i = 0; i < images.size(); i++)
+        if (mapper.insertPostMedia(id, images.get(i), i, owner) != 1) throw AuthFailure.invalid();
     // 已公开内容重提后仍返回数据库保留的首发时间与期限，避免客户端误以为一年期限被清空。
     var updated = mapper.findOwnPost(id, owner);
     return new Submit(
@@ -334,6 +346,9 @@ public class BoardService {
         row.expiresAt(),
         row.version(),
         row.title(),
+        row.category(),
+        row.regionCode(),
+        mapper.interests(row.id()).stream().map(BoardMapper.Interest::id).toList(),
         row.body(),
         "visible".equals(row.status()) ? images(row.id(), "posts", row.expiresAt()) : List.of(),
         false);
@@ -416,7 +431,7 @@ public class BoardService {
     var receipt = mapper.commentReceipt(actor, key.toString(), route);
     if (receipt != null) return replay(receipt, hash, now());
     requireReplyTarget(postId, replyToId);
-    var images = uniqueIds(mediaIds, 3);
+    var images = mediaIds == null ? List.<UUID>of() : uniqueIds(mediaIds, 3);
     String normalized = replyBody(body, images);
     UUID id = UUID.randomUUID();
     if (!images.isEmpty()) {
@@ -453,9 +468,10 @@ public class BoardService {
       UUID owner, UUID id, int version, UUID replyToId, String body, List<UUID> mediaIds) {
     var row = requireOwnComment(owner, id);
     requireReplyTarget(row.postId(), replyToId);
-    var images = uniqueIds(mediaIds, 3);
+    var images = mediaIds == null ? List.<UUID>of() : uniqueIds(mediaIds, 3);
     String normalized = replyBody(body, images);
-    if (!images.isEmpty()
+    if (mediaIds != null
+        && !images.isEmpty()
         && (mapper.lockMedia(owner, images) != images.size()
             || mapper.countReusableMedia(owner, images, id) != images.size()))
       throw AuthFailure.invalid();
@@ -468,9 +484,13 @@ public class BoardService {
         throw new AuthFailure(409, "RESULT_EXPIRED");
       else throw AuthFailure.invalid();
     }
-    mapper.deleteCommentMedia(id);
-    for (int i = 0; i < images.size(); i++)
-      if (mapper.insertCommentMedia(id, images.get(i), i, owner) != 1) throw AuthFailure.invalid();
+    // 回复编辑未提供图片字段时只更新文字，保留原有媒体绑定。
+    if (mediaIds != null) {
+      mapper.deleteCommentMedia(id);
+      for (int i = 0; i < images.size(); i++)
+        if (mapper.insertCommentMedia(id, images.get(i), i, owner) != 1)
+          throw AuthFailure.invalid();
+    }
     return new Submit(id, "pending", row.publishedAt(), row.expiresAt(), version + 1);
   }
 
@@ -495,6 +515,9 @@ public class BoardService {
         row.publishedAt(),
         row.expiresAt(),
         row.version(),
+        null,
+        null,
+        null,
         null,
         row.body(),
         "visible".equals(row.status()) ? images(row.id(), "comments", row.expiresAt()) : List.of(),

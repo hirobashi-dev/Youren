@@ -171,6 +171,8 @@ pwsh -NoProfile -File .\backend\admin-init.ps1
 
 ## 5. 构建并启动Java API
 
+API默认绑定`127.0.0.1`；第5节设置的`SERVER_ADDRESS`会被`application.yml`读取。部署到容器或其他网络环境时，必须按部署网络显式设置监听地址。
+
 首次启动、后端源码更新或迁移后，打开一个专用PowerShell窗口。在仓库根目录构建API及其模块：
 
 ```powershell

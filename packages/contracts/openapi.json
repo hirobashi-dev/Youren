@@ -23593,7 +23593,7 @@
     "/v1/admin/content": {
       "get": {
         "operationId": "get_admin_content",
-        "summary": "审核角色读取待审内容",
+        "summary": "审核角色读取待审及举报处置队列",
         "description": "独立管理员身份和对应角色授权；审计角色只读。",
         "tags": [
           "admin"
@@ -23630,13 +23630,15 @@
             "name": "status",
             "in": "query",
             "required": true,
-            "description": "队列状态。",
+            "description": "待审、待修改、已公开或已隐藏队列。",
             "schema": {
               "type": "string",
               "description": "状态。",
               "enum": [
                 "pending",
-                "rejected"
+                "rejected",
+                "visible",
+                "hidden"
               ]
             }
           },
@@ -27702,7 +27704,7 @@
       },
       "AdminContent": {
         "type": "object",
-        "description": "待审内容版本，仅角色有权读取；超时只提醒，不会自动驳回或删除。",
+        "description": "审核与举报处置队列版本；超时只提醒，不会自动驳回或删除。",
         "properties": {
           "targetType": {
             "type": "string",
@@ -27725,7 +27727,9 @@
             "description": "审核状态。",
             "enum": [
               "pending",
-              "rejected"
+              "rejected",
+              "visible",
+              "hidden"
             ]
           },
           "version": {
@@ -27735,7 +27739,7 @@
           },
           "pendingSince": {
             "type": "string",
-            "description": "本次进入待审状态的服务端时间。",
+            "description": "状态进入队列的服务端时间。",
             "format": "date-time"
           },
           "reviewOverdue": {

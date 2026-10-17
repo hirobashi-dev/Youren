@@ -28,7 +28,13 @@ public interface ProfileMapper {
 
   Region region(@Param("code") String code);
 
+  // 地区字典只返回启用项；无父级时由SQL限定为都道府县，避免一次加载全部市区町村。
+  List<Region> regions(@Param("parentCode") String parentCode);
+
   Interest interest(@Param("id") UUID id);
+
+  // 兴趣字典按稳定顺序返回启用项，客户端无需持有数据库内部排序规则。
+  List<Interest> interests();
 
   boolean canMessage(@Param("viewer") UUID viewer, @Param("target") UUID target);
 

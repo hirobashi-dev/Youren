@@ -1014,6 +1014,26 @@ class BoardIT {
             .statusCode());
   }
 
+  // 地区与兴趣由只读字典按展示名称提供，手机筛选不需要用户输入数据库代码。
+  @Test
+  void publicCatalogsReturnActiveRegionsAndInterestsWithEtag() throws Exception {
+    UUID interest = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO regions(code,parent_code,level,name_ja,name_zh) VALUES('JP-13',NULL,'prefecture','東京都','东京都')");
+    jdbc.update(
+        "INSERT INTO regions(code,parent_code,level,name_ja,name_zh) VALUES('JP-13-101','JP-13','municipality','千代田区','千代田区')");
+    jdbc.update(
+        "INSERT INTO interests(id,code,name_zh,sort_order) VALUES(?, 'walk', '散步', 10)", interest);
+    var regions = call("GET", "/regions", null, null, 0, null);
+    var children = call("GET", "/regions?parentCode=JP-13", null, null, 0, null);
+    var interests = call("GET", "/interests", null, null, 0, null);
+    assertEquals(200, regions.statusCode());
+    assertEquals("东京都", json.readTree(regions.body()).at("/data/0/nameZh").asText());
+    assertEquals("千代田区", json.readTree(children.body()).at("/data/0/nameZh").asText());
+    assertEquals(interest.toString(), json.readTree(interests.body()).at("/data/0/id").asText());
+    assertNotNull(regions.headers().firstValue("ETag").orElse(null));
+  }
+
   // 已经公开后驳回再编辑，提交响应也须保留原发布时间和到期时间，不能显示为从未发布。
   @Test
   void rejectedEditResponsePreservesFirstPublicationTimes() throws Exception {

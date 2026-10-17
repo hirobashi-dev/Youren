@@ -38,19 +38,33 @@ class ProfileControllerTest {
 
   MockMvc http(int nicknameMax, int bioMax) {
     var accounts = mock(IdentityAccountMapper.class);
+    var profiles = mock(ProfileMapper.class);
+    when(profiles.regions(null)).thenReturn(java.util.List.of());
+    when(profiles.interests()).thenReturn(java.util.List.of());
     when(accounts.lock(id))
         .thenReturn(new IdentityAccountMapper.IdentityRow(id, "private@example.com", "active"));
     var service =
         new ProfileService(
-            mock(ProfileMapper.class),
-            accounts,
-            new ObjectMapper(),
-            Clock.systemUTC(),
-            nicknameMax,
-            bioMax);
+            profiles, accounts, new ObjectMapper(), Clock.systemUTC(), nicknameMax, bioMax);
     return MockMvcBuilders.standaloneSetup(new ProfileController(service, null))
         .setControllerAdvice(new ApiExceptionHandler())
         .build();
+  }
+
+  // 地区与兴趣筛选必须先从公开字典取得展示名称，不让客户端输入数据库内部ID。
+  @Test
+  void readOnlyCatalogRoutesAreAvailableWithoutLogin() throws Exception {
+    var http = http(30, 500);
+    http.perform(get("/v1/regions"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data").isArray())
+        .andExpect(jsonPath("$.page.hasMore").value(false))
+        .andExpect(header().exists("ETag"))
+        .andExpect(header().string("Cache-Control", "public, max-age=300"));
+    http.perform(get("/v1/interests"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data").isArray())
+        .andExpect(header().exists("ETag"));
   }
 
   // NBSP和全角空格组成的昵称应视为留白，不能用Unicode空白绕过首次基本资料要求。

@@ -58,6 +58,11 @@ const STATUS_LABELS: Record<string, string> = {
 };
 const displayAuthor = (value: Record<string, unknown>) =>
   String(value.label ?? value.nickname ?? 'Youren用户');
+// 头像沿用稿件中的短字符标记，不依赖用户上传头像或臆造资料。
+const authorMark = (value: Record<string, unknown>) => {
+  const label = displayAuthor(value);
+  return label.startsWith('游客 ') ? label.slice(3, 4) : label.slice(0, 1);
+};
 const readableName = (value: unknown) => {
   if (!value || typeof value !== 'object') return '';
   const row = value as Record<string, unknown>;
@@ -108,6 +113,39 @@ function FilterPill({
       >
         {label}
       </Text>
+    </Pressable>
+  );
+}
+
+// 表单选项使用稿件中的左对齐白底选择栏，避免被通用主操作按钮样式替代。
+function PickerField({
+  label,
+  value,
+  onPress,
+}: {
+  label: string;
+  value: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label}：${value}`}
+      onPress={onPress}
+      style={{
+        minHeight: 50,
+        paddingHorizontal: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#D8E2E1',
+        backgroundColor: theme.surface,
+      }}
+    >
+      <Text style={{ color: theme.ink, fontSize: 14 }}>{value}</Text>
+      <Text style={{ color: theme.muted, fontSize: 12 }}>⌄</Text>
     </Pressable>
   );
 }
@@ -181,6 +219,12 @@ export function BoardScreen({
   const [replyTarget, setReplyTarget] = useState<PublicComment | null>(null);
   const [regions, setRegions] = useState<Region[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
+  const [selectedPrefecture, setSelectedPrefecture] = useState<Region | null>(
+    null,
+  );
+  const [searchRegionLevel, setSearchRegionLevel] = useState<
+    'prefecture' | 'municipality'
+  >('prefecture');
   const [interestOptions, setInterestOptions] = useState<Interest[]>([]);
   const [regionParent, setRegionParent] = useState<string | null>(null);
   const [ownItems, setOwnItems] = useState<OwnContent[]>([]);
@@ -190,7 +234,7 @@ export function BoardScreen({
   const [appliedQuery, setAppliedQuery] = useState('');
   const [composeCategory, setComposeCategory] = useState<
     'general' | 'interest' | 'city'
-  >('general');
+  >('interest');
   const [regionCode, setRegionCode] = useState('');
   const [interestId, setInterestId] = useState('');
   const [composeInterestIds, setComposeInterestIds] = useState<string[]>([]);
@@ -214,7 +258,12 @@ export function BoardScreen({
   const [attempt, setAttempt] = useState(0);
   const [mutationKey, setMutationKey] = useState(newMutationKey);
   const [selected, setSelected] = useState<OwnContent | null>(null);
+  const [showPostActions, setShowPostActions] = useState(false);
   const lock = useRef(false);
+  const composeInterestNames = interestOptions
+    .filter((interest) => composeInterestIds.includes(interest.id))
+    .map((interest) => interest.nameZh);
+  const composePlaceSummary = `${composeInterestNames.join('、') || '选择兴趣'} · ${selectedRegion?.nameZh ?? '选择地区'}`;
 
   // 筛选和发帖复用服务端字典；目录为空时明确提示，避免让用户猜内部代码。
   useEffect(() => {
@@ -320,6 +369,10 @@ export function BoardScreen({
       return;
     }
     setNeedsGuest(false);
+    // 搜索页和发布页共用目录状态，切换页面时重置展开标记，避免首点变成收起。
+    setShowRegionOptions(false);
+    setShowInterestOptions(false);
+    setShowCategoryOptions(false);
     // 同一应用会话内恢复手动保存的草稿；草稿暂不跨应用重启持久化。
     if (savedDraft) {
       setTitle(savedDraft.title);
@@ -333,7 +386,7 @@ export function BoardScreen({
       setTitle('');
       setBody('');
       setImages([]);
-      setComposeCategory('general');
+      setComposeCategory('interest');
       setComposeInterestIds([]);
     }
     setMutationKey(newMutationKey());
@@ -347,11 +400,15 @@ export function BoardScreen({
       region.level === 'prefecture' ? region.code : region.parentCode,
     );
     if (region.level === 'prefecture') {
+      setSelectedPrefecture(region);
+      if (mode === 'search') setSearchRegionLevel('municipality');
       try {
         setRegions((await api.regions(region.code)).data);
       } catch (error) {
         showError(error);
       }
+    } else if (mode === 'search') {
+      setShowRegionOptions(false);
     }
   }
   async function showPrefectures() {
@@ -631,49 +688,131 @@ export function BoardScreen({
 
   if (mode === 'search')
     return (
-      <Page title="搜索与筛选" onBack={() => setMode('feed')}>
-        <Field label="搜索讨论" value={query} onChange={setQuery} />
-        <Text style={styles.label}>分类</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {[
-            ['', '全部'],
-            ['interest', '兴趣'],
-            ['city', '同城'],
-          ].map(([value, label]) => (
-            <FilterPill
-              key={value || 'all'}
-              label={label}
-              selected={category === value}
-              onPress={() => setCategory(value)}
+      <Page
+        title="搜索与筛选"
+        onBack={() => setMode('feed')}
+        headerAction={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="重置筛选"
+            onPress={() => {
+              setQuery('');
+              setCategory('');
+              setRegionCode('');
+              setSelectedRegion(null);
+              setSelectedPrefecture(null);
+              setRegionParent(null);
+              setInterestId('');
+              setShowRegionOptions(false);
+            }}
+            style={{ paddingHorizontal: 8, paddingVertical: 10 }}
+          >
+            <Text style={{ color: theme.primary, fontSize: 13 }}>重置</Text>
+          </Pressable>
+        }
+        footer={
+          <View style={{ paddingHorizontal: 20, paddingVertical: 10 }}>
+            <Action
+              label="应用筛选"
+              onPress={() => {
+                setAppliedQuery(query.trim());
+                setAttempt((value) => value + 1);
+                setMode('feed');
+              }}
             />
-          ))}
-        </View>
+          </View>
+        }
+      >
+        <Field label="搜索讨论" value={query} onChange={setQuery} />
         <Text style={styles.label}>地区</Text>
-        <Action
-          label={
-            regionCode ? (selectedRegion?.nameZh ?? regionCode) : '不限地区'
-          }
-          secondary
-          onPress={() => setShowRegionOptions((value) => !value)}
+        <PickerField
+          label="都道府县"
+          value={selectedPrefecture?.nameZh ?? '选择都道府县'}
+          onPress={() => {
+            setSearchRegionLevel('prefecture');
+            setShowRegionOptions(true);
+            void showPrefectures();
+          }}
         />
-        {showRegionOptions && regionParent ? (
-          <Action
-            label="返回都道府县"
-            secondary
-            onPress={() => void showPrefectures()}
-          />
-        ) : null}
-        {showRegionOptions
-          ? regions.map((region) => (
-              <Action
+        <PickerField
+          label="市区町村"
+          value={
+            selectedRegion?.level === 'municipality'
+              ? selectedRegion.nameZh
+              : '不限'
+          }
+          onPress={() => {
+            if (!selectedPrefecture) {
+              setSearchRegionLevel('prefecture');
+              setShowRegionOptions(true);
+              void showPrefectures();
+              return;
+            }
+            // 町村选项依赖已选都道府县，未选择时先展示上级目录。
+            setSearchRegionLevel('municipality');
+            setShowRegionOptions(true);
+            if (regionParent !== selectedPrefecture.code)
+              void api
+                .regions(selectedPrefecture.code)
+                .then((page) => setRegions(page.data))
+                .catch(showError);
+          }}
+        />
+        {showRegionOptions ? (
+          <View
+            style={{
+              paddingHorizontal: 12,
+              borderRadius: 12,
+              backgroundColor: theme.surface,
+            }}
+          >
+            {searchRegionLevel === 'municipality' ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="不限市区町村"
+                onPress={() => {
+                  if (selectedPrefecture) {
+                    setRegionCode(selectedPrefecture.code);
+                    setSelectedRegion(selectedPrefecture);
+                  }
+                  setShowRegionOptions(false);
+                }}
+                style={{
+                  minHeight: 44,
+                  justifyContent: 'center',
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#D8E2E1',
+                }}
+              >
+                <Text style={{ color: theme.ink, fontSize: 14 }}>不限</Text>
+              </Pressable>
+            ) : null}
+            {regions.map((region) => (
+              <Pressable
                 key={region.code}
-                label={`${region.nameZh} · ${region.nameJa}`}
-                secondary={regionCode !== region.code}
-                selected={regionCode === region.code}
+                accessibilityRole="button"
+                accessibilityLabel={`${region.nameZh} · ${region.nameJa}`}
+                accessibilityState={{ selected: regionCode === region.code }}
                 onPress={() => void chooseRegion(region)}
-              />
-            ))
-          : null}
+                style={{
+                  minHeight: 44,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#D8E2E1',
+                }}
+              >
+                <Text style={{ color: theme.ink, fontSize: 14 }}>
+                  {region.nameZh} · {region.nameJa}
+                </Text>
+                {regionCode === region.code ? (
+                  <Text style={{ color: theme.primary }}>✓</Text>
+                ) : null}
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
         <Text style={styles.label}>兴趣</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {interestOptions.map((interest) => (
@@ -689,27 +828,7 @@ export function BoardScreen({
             />
           ))}
         </View>
-        <Notice>排序：最新发布</Notice>
-        <Action
-          label="清除筛选"
-          secondary
-          onPress={() => {
-            setQuery('');
-            setCategory('');
-            setRegionCode('');
-            setSelectedRegion(null);
-            setRegionParent(null);
-            setInterestId('');
-          }}
-        />
-        <Action
-          label="应用筛选"
-          onPress={() => {
-            setAppliedQuery(query.trim());
-            setAttempt((value) => value + 1);
-            setMode('feed');
-          }}
-        />
+        <Text style={{ color: theme.muted, fontSize: 12 }}>排序 · 最新</Text>
       </Page>
     );
 
@@ -764,9 +883,6 @@ export function BoardScreen({
             游客发布 · 无需注册。请保留本机数据，方便管理内容。
           </Text>
         </View>
-        <Text style={{ color: theme.muted, fontSize: 13, lineHeight: 21 }}>
-          首次提交后进入人工审核；审核通过才公开，公开内容保留一年。
-        </Text>
         <Field
           label="标题 *"
           value={title}
@@ -800,9 +916,15 @@ export function BoardScreen({
           </Text>
         </View>
         <Text style={styles.label}>分类 *</Text>
-        <Action
-          label={`${composeCategory === 'general' ? '综合' : composeCategory === 'interest' ? '兴趣' : '城市'}　⌄`}
-          secondary
+        <PickerField
+          label="分类 *"
+          value={
+            composeCategory === 'general'
+              ? '综合'
+              : composeCategory === 'interest'
+                ? '兴趣'
+                : '城市'
+          }
           onPress={() => setShowCategoryOptions((open) => !open)}
         />
         {showCategoryOptions ? (
@@ -826,19 +948,17 @@ export function BoardScreen({
             ))}
           </View>
         ) : null}
-        <Text style={styles.label}>地区（可选）</Text>
-        <Action
-          label={
-            regionCode
-              ? `地区 · ${selectedRegion?.nameZh ?? regionCode}`
-              : '选择地区（可选）'
-          }
-          secondary
-          onPress={() => setShowRegionOptions((value) => !value)}
+        <Text style={styles.label}>兴趣 / 地区</Text>
+        <PickerField
+          label="兴趣 / 地区"
+          value={composePlaceSummary}
+          onPress={() => {
+            // 稿件将可选兴趣和地区合为一个字段，展开后仍分别读取各自目录。
+            const open = !(showRegionOptions || showInterestOptions);
+            setShowRegionOptions(open);
+            setShowInterestOptions(open);
+          }}
         />
-        {regionCode ? (
-          <Notice>已选择：{selectedRegion?.nameZh ?? regionCode}</Notice>
-        ) : null}
         {showRegionOptions && regionParent ? (
           <Action
             label="返回都道府县"
@@ -860,16 +980,6 @@ export function BoardScreen({
         ) : showRegionOptions ? (
           <Notice>地区目录暂不可用，可以稍后重试。</Notice>
         ) : null}
-        <Text style={styles.label}>兴趣标签（可选）</Text>
-        <Action
-          label={
-            composeInterestIds.length
-              ? `已选 ${composeInterestIds.length} 个兴趣`
-              : '选择兴趣标签'
-          }
-          secondary
-          onPress={() => setShowInterestOptions((value) => !value)}
-        />
         {showInterestOptions && interestOptions.length ? (
           <View style={{ gap: 8 }}>
             {interestOptions.map((interest) => (
@@ -896,11 +1006,145 @@ export function BoardScreen({
 
   if (mode === 'detail' && post)
     return (
-      <Page title={post.title} onBack={() => setMode('feed')}>
-        <Notice>{post.body}</Notice>
-        <Notice>
-          {displayAuthor(post.authorDisplay)} · 回复 {post.replyCount}
-        </Notice>
+      <Page
+        title="帖子详情"
+        onBack={() => setMode('feed')}
+        headerAction={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="更多 ···"
+            onPress={() => setShowPostActions((visible) => !visible)}
+            style={{ paddingHorizontal: 8, paddingVertical: 10 }}
+          >
+            <Text style={{ color: theme.primary, fontSize: 13 }}>更多 ···</Text>
+          </Pressable>
+        }
+        footer={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="写回复并添加图片"
+            onPress={() => {
+              setReplyTarget(null);
+              setReplyBody('');
+              setImages([]);
+              setMode('reply');
+            }}
+            style={{
+              minHeight: 54,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              paddingHorizontal: 16,
+              borderTopWidth: 1,
+              borderTopColor: '#D8E2E1',
+              backgroundColor: theme.surface,
+            }}
+          >
+            <Text
+              style={{
+                flex: 1,
+                padding: 10,
+                borderRadius: 9,
+                backgroundColor: theme.canvas,
+                color: theme.muted,
+                fontSize: 13,
+              }}
+            >
+              写回复……
+            </Text>
+            <Text style={{ color: theme.primary, fontSize: 13 }}>＋ 图片</Text>
+          </Pressable>
+        }
+      >
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          {post.interests.map((item, index) => (
+            <Text
+              key={`detail-interest-${index}`}
+              style={{
+                paddingHorizontal: 8,
+                paddingVertical: 5,
+                borderRadius: 5,
+                backgroundColor: '#E8F3EF',
+                color: theme.primary,
+                fontSize: 11,
+              }}
+            >
+              {readableName(item)}
+            </Text>
+          ))}
+          {readableName(post.region) ? (
+            <Text
+              style={{
+                paddingHorizontal: 8,
+                paddingVertical: 5,
+                borderRadius: 5,
+                backgroundColor: '#E8F3EF',
+                color: theme.primary,
+                fontSize: 11,
+              }}
+            >
+              {readableName(post.region)}
+            </Text>
+          ) : null}
+        </View>
+        {showPostActions ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="举报这条留言"
+            onPress={() => {
+              // 详情更多菜单只开放举报动作，避免把尚未实现的菜单项伪装成可用。
+              setShowPostActions(false);
+              setSelected(null);
+              setMode('report');
+              setMutationKey(newMutationKey());
+            }}
+            style={{
+              alignSelf: 'flex-end',
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              borderWidth: 1,
+              borderColor: '#D8E2E1',
+              borderRadius: 9,
+              backgroundColor: theme.surface,
+            }}
+          >
+            <Text style={{ color: theme.ink, fontSize: 13 }}>举报这条留言</Text>
+          </Pressable>
+        ) : null}
+        <Text
+          accessibilityRole="header"
+          style={{ color: theme.ink, fontSize: 20, fontWeight: '700' }}
+        >
+          {post.title}
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 18,
+              backgroundColor: '#E5F3EF',
+            }}
+          >
+            <Text style={{ color: theme.primary, fontSize: 15 }}>
+              {authorMark(post.authorDisplay)}
+            </Text>
+          </View>
+          <Text style={{ color: theme.muted, fontSize: 12 }}>
+            {displayAuthor(post.authorDisplay)} ·{' '}
+            {relativeTime(post.publishedAt)}
+          </Text>
+          <Text
+            style={{ color: theme.muted, fontSize: 12, marginLeft: 'auto' }}
+          >
+            {post.replyCount} 条回复
+          </Text>
+        </View>
+        <Text style={{ color: theme.ink, fontSize: 14, lineHeight: 23 }}>
+          {post.body}
+        </Text>
         {post.images.map((image) => (
           <Image
             key={image.id}
@@ -910,30 +1154,48 @@ export function BoardScreen({
             resizeMode="cover"
           />
         ))}
-        <Action
-          label="举报这条留言"
-          secondary
-          onPress={() => {
-            setSelected(null);
-            setMode('report');
-            setMutationKey(newMutationKey());
-          }}
-        />
-        <Text style={styles.title}>回复</Text>
+        <Text style={styles.title}>回复 · {post.replyCount}</Text>
         {comments.map((comment) => (
           <View
             key={comment.id}
             style={{
-              padding: 14,
-              backgroundColor: theme.surface,
-              borderRadius: 12,
-              gap: 8,
+              paddingVertical: 15,
+              borderBottomWidth: 1,
+              borderBottomColor: '#D8E2E1',
+              gap: 9,
             }}
           >
-            <Text style={styles.rowLabel}>
-              {displayAuthor(comment.authorDisplay)}
+            <View
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+            >
+              <View
+                style={{
+                  width: 30,
+                  height: 30,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 15,
+                  backgroundColor: '#E5F3EF',
+                }}
+              >
+                <Text style={{ color: theme.primary, fontSize: 13 }}>
+                  {authorMark(comment.authorDisplay)}
+                </Text>
+              </View>
+              <Text
+                style={{ color: theme.ink, fontSize: 13, fontWeight: '600' }}
+              >
+                {displayAuthor(comment.authorDisplay)}
+              </Text>
+              <Text
+                style={{ color: theme.muted, fontSize: 11, marginLeft: 'auto' }}
+              >
+                {relativeTime(comment.publishedAt)}
+              </Text>
+            </View>
+            <Text style={{ color: theme.ink, fontSize: 14, lineHeight: 22 }}>
+              {comment.body}
             </Text>
-            <Text style={styles.rowLabel}>{comment.body}</Text>
             {comment.images.map((image) => (
               <Image
                 key={image.id}
@@ -949,19 +1211,21 @@ export function BoardScreen({
                 回复了讨论中的另一条内容
               </Text>
             ) : null}
-            <Action
-              label="回复这条内容"
-              secondary
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="回复这条内容"
               onPress={() => {
                 setReplyTarget(comment);
                 setReplyBody('');
                 setImages([]);
                 setMode('reply');
               }}
-            />
-            <Action
-              label="举报回复"
-              secondary
+            >
+              <Text style={{ color: theme.primary, fontSize: 12 }}>回复</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="举报回复"
               onPress={() => {
                 setReportReason('spam');
                 setReportDetail('');
@@ -969,47 +1233,102 @@ export function BoardScreen({
                 setMode('report');
                 setMutationKey(newMutationKey());
               }}
-            />
+            >
+              <Text style={{ color: theme.muted, fontSize: 12 }}>举报</Text>
+            </Pressable>
           </View>
         ))}
-        <Action
-          label="写回复"
-          onPress={() => {
-            setReplyTarget(null);
-            setReplyBody('');
-            setImages([]);
-            setMode('reply');
-          }}
-        />
         {notice ? <Notice>{notice}</Notice> : null}
       </Page>
     );
 
   if (mode === 'report')
     return (
-      <Page title="举报内容" onBack={() => setMode('detail')}>
-        <Notice>举报由人工处理，提交举报不会自动隐藏被举报内容。</Notice>
+      <Page
+        title="举报内容"
+        onBack={() => setMode('detail')}
+        footer={
+          <View style={{ paddingHorizontal: 20, paddingVertical: 10 }}>
+            <Action
+              label="提交举报"
+              disabled={busy}
+              onPress={() =>
+                selected
+                  ? void submitReport('comment', selected.id)
+                  : post
+                    ? void submitReport('post', post.id)
+                    : undefined
+              }
+            />
+          </View>
+        }
+      >
         <Notice>
           举报对象：{selected ? '回复内容' : (post?.title ?? '当前内容')}
         </Notice>
-        {(['spam', 'abuse', 'illegal', 'privacy', 'other'] as const).map(
-          (reason) => (
-            <Action
-              key={reason}
-              label={
-                {
-                  spam: '垃圾广告 / 刷屏',
-                  abuse: '骚扰 / 不友善',
-                  illegal: '诈骗 / 虚假信息',
-                  privacy: '泄露个人隐私',
-                  other: '其他问题',
-                }[reason]
-              }
-              secondary={reportReason !== reason}
-              onPress={() => setReportReason(reason)}
-            />
-          ),
-        )}
+        <View
+          style={{
+            paddingHorizontal: 14,
+            borderRadius: 12,
+            backgroundColor: theme.surface,
+          }}
+        >
+          {(['spam', 'abuse', 'illegal', 'privacy', 'other'] as const).map(
+            (reason) => {
+              const labels = {
+                spam: '垃圾广告 / 刷屏',
+                abuse: '骚扰 / 不友善',
+                illegal: '诈骗 / 虚假信息',
+                privacy: '泄露个人隐私',
+                other: '其他问题',
+              };
+              const selectedReason = reportReason === reason;
+              return (
+                <Pressable
+                  key={reason}
+                  accessibilityRole="radio"
+                  accessibilityLabel={labels[reason]}
+                  accessibilityState={{ selected: selectedReason }}
+                  onPress={() => setReportReason(reason)}
+                  style={{
+                    minHeight: 48,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    borderBottomWidth: reason === 'other' ? 0 : 1,
+                    borderBottomColor: '#D8E2E1',
+                  }}
+                >
+                  <Text style={{ color: theme.ink, fontSize: 14 }}>
+                    {labels[reason]}
+                  </Text>
+                  <View
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderWidth: 2,
+                      borderRadius: 9,
+                      borderColor: selectedReason ? theme.primary : '#A7B7BA',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {selectedReason ? (
+                      <View
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: 4,
+                          backgroundColor: theme.primary,
+                        }}
+                      />
+                    ) : null}
+                  </View>
+                </Pressable>
+              );
+            },
+          )}
+        </View>
         <Field
           label="补充说明（可选）"
           value={reportDetail}
@@ -1018,17 +1337,6 @@ export function BoardScreen({
           editable={!busy}
         />
         <Notice>游客也可以举报。提交表示受理，不代表内容会立即删除。</Notice>
-        <Action
-          label="提交举报"
-          disabled={busy}
-          onPress={() =>
-            selected
-              ? void submitReport('comment', selected.id)
-              : post
-                ? void submitReport('post', post.id)
-                : undefined
-          }
-        />
         {notice ? <Notice>{notice}</Notice> : null}
       </Page>
     );
@@ -1036,7 +1344,19 @@ export function BoardScreen({
   // 回复页同时呈现引用上下文、游客身份与图片额度，提交后回到详情。
   if (mode === 'reply' && post)
     return (
-      <Page title="回复讨论" onBack={() => setMode('detail')}>
+      <Page
+        title="回复讨论"
+        onBack={() => setMode('detail')}
+        footer={
+          <View style={{ paddingHorizontal: 20, paddingVertical: 10 }}>
+            <Action
+              label={busy ? '正在发布' : '发布回复'}
+              disabled={busy}
+              onPress={() => void submitReply()}
+            />
+          </View>
+        }
+      >
         {replyTarget ? (
           <Notice>
             回复 {displayAuthor(replyTarget.authorDisplay)}：{replyTarget.body}
@@ -1049,14 +1369,17 @@ export function BoardScreen({
           multiline
           editable={!busy}
         />
-        <Text style={styles.label}>图片（{images.length}/3）</Text>
+        <Text style={{ color: theme.muted, fontSize: 12, lineHeight: 18 }}>
+          有图片时可以不填写文字。
+        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <Text style={styles.label}>图片</Text>
+          <Text style={{ color: theme.primary, fontSize: 12 }}>
+            {images.length} / 3
+          </Text>
+        </View>
         {addImageControls(3)}
         <Notice>你将以游客身份回复。同一帖子中保持这个标识。</Notice>
-        <Action
-          label={busy ? '正在发布' : '发布回复'}
-          disabled={busy}
-          onPress={() => void submitReply()}
-        />
         {notice ? <Notice>{notice}</Notice> : null}
       </Page>
     );
@@ -1186,15 +1509,18 @@ export function BoardScreen({
               borderRadius: 12,
             }}
           >
-            <Text style={styles.label}>
-              {'unavailable' in item
-                ? item.kind === 'posts'
-                  ? '留言'
-                  : '回复'
-                : (item.title ?? (item.kind === 'posts' ? '无标题' : '回复'))}
-            </Text>
-            <Text style={styles.rowLabel}>
-              状态：
+            <Text
+              style={{
+                alignSelf: 'flex-start',
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 5,
+                backgroundColor:
+                  item.status === 'rejected' ? '#FAEDF2' : '#E8F3EF',
+                color: item.status === 'rejected' ? '#91415D' : theme.primary,
+                fontSize: 11,
+              }}
+            >
               {{
                 pending: '待审核',
                 visible: '已公开',
@@ -1205,8 +1531,20 @@ export function BoardScreen({
               }[item.status] ?? item.status}
             </Text>
             <Text style={styles.rowLabel}>
+              {'unavailable' in item
+                ? item.kind === 'posts'
+                  ? '留言'
+                  : '回复'
+                : (item.title ?? (item.kind === 'posts' ? '无标题' : '回复'))}
+            </Text>
+            <Text style={styles.rowLabel}>
               {'unavailable' in item ? '内容不可用' : item.body || '内容不可用'}
             </Text>
+            {'unavailable' in item || !item.publishedAt ? null : (
+              <Text style={{ color: theme.muted, fontSize: 11 }}>
+                {relativeTime(item.publishedAt)}
+              </Text>
+            )}
             {'unavailable' in item ? null : item.parentUnavailable ? (
               <Notice>原留言已到期或不可见，回复无法公开查看。</Notice>
             ) : null}
@@ -1319,6 +1657,7 @@ export function BoardScreen({
           accessibilityLabel="搜索 · 地区"
           onPress={() => {
             setQuery(appliedQuery);
+            setShowRegionOptions(false);
             setMode('search');
           }}
           style={{ paddingHorizontal: 8, paddingVertical: 10 }}

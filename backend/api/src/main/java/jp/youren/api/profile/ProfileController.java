@@ -2,6 +2,9 @@ package jp.youren.api.profile;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.servlet.http.HttpServletRequest;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.util.UUID;
 import jp.youren.api.auth.*;
 import jp.youren.api.security.CurrentPrincipal;
@@ -22,6 +25,42 @@ public class ProfileController {
   @GetMapping("/v1/me")
   public ResponseEntity<AuthController.Envelope> me(HttpServletRequest request) {
     return success(me.read(owner(request)));
+  }
+
+  // 公开字典带稳定ETag并采用分页外壳，允许客户端安全缓存且与普通私有响应隔离。
+  @GetMapping("/v1/regions")
+  public ResponseEntity<CatalogPage<ProfileService.Region>> regions(
+      @RequestParam(value = "parentCode", required = false) String parentCode) {
+    var data = profiles.regions(parentCode);
+    return catalog(data);
+  }
+
+  @GetMapping("/v1/interests")
+  public ResponseEntity<CatalogPage<ProfileService.Interest>> interests() {
+    return catalog(profiles.interests());
+  }
+
+  public record CatalogPage<T>(java.util.List<T> data, CatalogPageInfo page, String requestId) {}
+
+  public record CatalogPageInfo(String nextCursor, boolean hasMore) {}
+
+  private static <T> ResponseEntity<CatalogPage<T>> catalog(java.util.List<T> data) {
+    String etag;
+    try {
+      byte[] digest =
+          MessageDigest.getInstance("SHA-256")
+              .digest(data.toString().getBytes(StandardCharsets.UTF_8));
+      // 响应包含逐次变化的追踪ID，使用弱验证器表达目录数据本身语义相同即可复用。
+      etag = "W/\"" + HexFormat.of().formatHex(digest) + "\"";
+    } catch (java.security.NoSuchAlgorithmException impossible) {
+      throw new IllegalStateException(impossible);
+    }
+    return ResponseEntity.ok()
+        .eTag(etag)
+        .header("Cache-Control", "public, max-age=300")
+        .body(
+            new CatalogPage<>(
+                data, new CatalogPageInfo(null, false), UUID.randomUUID().toString()));
   }
 
   @PatchMapping("/v1/me/profile")

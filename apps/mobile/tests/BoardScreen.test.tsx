@@ -75,6 +75,8 @@ test('搜索筛选提交关键词并返回留言板首页', async () => {
 
   fireEvent.press(await screen.findByRole('button', { name: '搜索 · 地区' }));
   expect(screen.getByTestId('page-back-chevron')).toBeTruthy();
+  expect(screen.getByRole('button', { name: '重置筛选' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: '应用筛选' })).toBeTruthy();
   fireEvent.changeText(screen.getByLabelText('搜索讨论'), '河边散步');
   fireEvent.press(screen.getByRole('button', { name: '应用筛选' }));
 
@@ -120,12 +122,14 @@ test('发布讨论页展示游客说明、审核提示和图片数量限制', as
   expect(await screen.findByRole('header', { name: '发布讨论' })).toBeTruthy();
   expect(screen.getByTestId('page-back-chevron')).toBeTruthy();
   expect(screen.getByText(/游客发布 · 无需注册/)).toBeTruthy();
-  expect(screen.getByText(/首次提交后进入人工审核/)).toBeTruthy();
   expect(screen.getByText(/最多 9 张/)).toBeTruthy();
   expect(screen.getByText('标题 *')).toBeTruthy();
   expect(screen.getByText('正文 *')).toBeTruthy();
   expect(screen.getByText('1–2000 字')).toBeTruthy();
   expect(screen.getByText('图片')).toBeTruthy();
+  expect(screen.getByText('图片审核通过后才会公开展示。')).toBeTruthy();
+  expect(screen.getByRole('button', { name: '分类 *：兴趣' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: /兴趣 \/ 地区/ })).toBeTruthy();
   expect(screen.getByRole('button', { name: '保存草稿' })).toBeTruthy();
   expect(screen.getByRole('button', { name: '发布讨论' })).toBeTruthy();
   fireEvent.changeText(screen.getByLabelText('标题 *'), '我的草稿标题');
@@ -203,6 +207,9 @@ test('帖子详情可打开带引用上下文的独立回复页', async () => {
   fireEvent.press(
     await screen.findByRole('button', { name: '打开留言：周末散步' }),
   );
+  expect(await screen.findByRole('header', { name: '帖子详情' })).toBeTruthy();
+  expect(screen.getByRole('header', { name: '周末散步' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: '写回复并添加图片' })).toBeTruthy();
   fireEvent.press(await screen.findByRole('button', { name: '回复这条内容' }));
 
   expect(await screen.findByText('回复讨论')).toBeTruthy();
@@ -210,6 +217,8 @@ test('帖子详情可打开带引用上下文的独立回复页', async () => {
     screen.getByText('回复 游客 B：上周傍晚去过，夕阳很漂亮。'),
   ).toBeTruthy();
   expect(screen.getByText(/以游客身份回复/)).toBeTruthy();
+  expect(screen.getByText('有图片时可以不填写文字。')).toBeTruthy();
+  expect(screen.getByRole('button', { name: '发布回复' })).toBeTruthy();
   expect(screen.getByText(/最多 3 张/)).toBeTruthy();
 });
 
@@ -253,12 +262,14 @@ test('帖子举报页明确显示对象、分类和人工处理说明', async ()
   fireEvent.press(
     await screen.findByRole('button', { name: '打开留言：周末散步' }),
   );
+  fireEvent.press(await screen.findByRole('button', { name: '更多 ···' }));
   fireEvent.press(await screen.findByRole('button', { name: '举报这条留言' }));
 
   expect(await screen.findByText('举报内容')).toBeTruthy();
   expect(screen.getByText('举报对象：周末散步')).toBeTruthy();
-  expect(screen.getByRole('button', { name: '垃圾广告 / 刷屏' })).toBeTruthy();
-  expect(screen.getByRole('button', { name: '诈骗 / 虚假信息' })).toBeTruthy();
+  expect(screen.getByRole('radio', { name: '垃圾广告 / 刷屏' })).toBeTruthy();
+  expect(screen.getByRole('radio', { name: '诈骗 / 虚假信息' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: '提交举报' })).toBeTruthy();
   expect(screen.getByText(/提交表示受理，不代表内容会立即删除/)).toBeTruthy();
 });
 
@@ -366,7 +377,11 @@ test('从公开字典选择都道府县和兴趣标签', async () => {
     <BoardScreen api={new BoardApi(client)} store={store} onBack={() => {}} />,
   );
   fireEvent.press(await screen.findByRole('button', { name: '搜索 · 地区' }));
-  fireEvent.press(await screen.findByRole('button', { name: '不限地区' }));
+  fireEvent.press(
+    await screen.findByRole('button', {
+      name: '都道府县：选择都道府县',
+    }),
+  );
   fireEvent.press(
     await screen.findByRole('button', { name: '东京都 · 東京都' }),
   );
@@ -375,9 +390,14 @@ test('从公开字典选择都道府县和兴趣标签', async () => {
   );
   fireEvent.press(screen.getByRole('button', { name: '应用筛选' }));
   fireEvent.press(screen.getByRole('button', { name: '发帖' }));
-  expect(await screen.findByText('已选择：千代田区')).toBeTruthy();
-  fireEvent.press(screen.getByRole('button', { name: '选择兴趣标签' }));
-  fireEvent.press(screen.getByRole('button', { name: '散步' }));
+  expect(
+    await screen.findByRole('button', {
+      name: '兴趣 / 地区：选择兴趣 · 千代田区',
+    }),
+  ).toBeTruthy();
+  // B04 将兴趣与地区呈现在同一选择栏中，展开后仍可分别选取目录项。
+  fireEvent.press(screen.getByRole('button', { name: /兴趣 \/ 地区/ }));
+  fireEvent.press(await screen.findByRole('button', { name: '散步' }));
   expect(screen.getByRole('button', { name: '散步' })).toBeTruthy();
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));

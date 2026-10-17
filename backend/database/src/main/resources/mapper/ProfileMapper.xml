@@ -15,7 +15,11 @@
   <!-- 调用方先锁账号；即使首次创建不存在草稿也可防止并发创建绕过版本检查。 -->
   <insert id="saveDraft" timeout="2">INSERT INTO profile_drafts(account_id,fields,version,created_at,updated_at) VALUES(#{id},CAST(#{fields} AS jsonb),#{version},#{now},#{now}) ON CONFLICT(account_id) DO UPDATE SET fields=EXCLUDED.fields,version=EXCLUDED.version,moderation_status='pending',updated_at=EXCLUDED.updated_at</insert>
   <select id="region" resultMap="region" timeout="2">SELECT code,parent_code,level,name_ja,name_zh FROM regions WHERE code=#{code} AND active=true</select>
+  <!-- 地区目录按父级分层读取；顶层只返回都道府县，避免客户端下载完整地名表。 -->
+  <select id="regions" resultMap="region" timeout="2">SELECT code,parent_code,level,name_ja,name_zh FROM regions WHERE active=true AND ((#{parentCode,jdbcType=VARCHAR} IS NULL AND level='prefecture') OR parent_code=#{parentCode}) ORDER BY code</select>
   <select id="interest" resultMap="interest" timeout="2">SELECT id,code,name_zh FROM interests WHERE id=#{id} AND active=true</select>
+  <!-- 兴趣目录只公开启用项，并以后台维护的顺序稳定展示。 -->
+  <select id="interests" resultMap="interest" timeout="2">SELECT id,code,name_zh FROM interests WHERE active=true ORDER BY sort_order,code</select>
   <!-- 公开访问必须显式验证审核、可见性和账号状态；知道账号ID不产生权限。 -->
   <select id="isPublic" resultType="boolean" timeout="2">SELECT EXISTS(SELECT 1 FROM profiles p JOIN accounts a ON a.id=p.account_id WHERE p.account_id=#{id} AND p.visibility='public' AND p.moderation_status='approved' AND a.status='active')</select>
   <!-- 普通私聊资格不依赖年龄或恋爱；双方拉黑拒绝，关闭陌生联系不关闭已经互相联系。 -->

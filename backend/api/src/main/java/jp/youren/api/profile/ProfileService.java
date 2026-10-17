@@ -83,6 +83,21 @@ public class ProfileService {
         : new OwnerState(owner(id, snapshot), snapshot.version());
   }
 
+  // 目录由共享字典维护；下游筛选器只使用启用项，兴趣顺序由数据库固定。
+  @Transactional(readOnly = true)
+  public List<Region> regions(String parentCode) {
+    return mapper.regions(parentCode).stream()
+        .map(r -> new Region(r.code(), r.parentCode(), r.level(), r.nameJa(), r.nameZh()))
+        .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public List<Interest> interests() {
+    return mapper.interests().stream()
+        .map(i -> new Interest(i.id(), i.code(), i.nameZh()))
+        .toList();
+  }
+
   // 资格与快照在同一数据库快照读取，防止审核/隐藏并发变更期间混用不同版本。
   @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
   public PublicProfile publicProfile(UUID id, UUID viewer) {

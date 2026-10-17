@@ -98,7 +98,7 @@ list('get','/admin/reports','审核角色读取举报队列','A','AdminReport',[
 op('get','/admin/reports/{reportId}','审核角色读取必要举报上下文','A','AdminReport');
 // 举报结案只记录人工处置，不隐式批准、隐藏或删除被举报内容。
 op('post','/admin/reports/{reportId}/resolve','管理员记录举报处置结果','A','AuditAction','ReportResolutionInput',{status:201,idem:true,description:'结案需填写处置结论、理由和期望版本；举报结案本身不删除目标内容。'});
-list('get','/admin/content','审核角色读取待审内容','A','AdminContent',[q('status',en('状态。','pending/rejected'),'队列状态。',true),q('targetType',en('目标。','post/comment/profile/dating/event'),'对象类别。')]);
+list('get','/admin/content','审核角色读取待审及举报处置队列','A','AdminContent',[q('status',en('状态。','pending/rejected/visible/hidden'),'待审、待修改、已公开或已隐藏队列。',true),q('targetType',en('目标。','post/comment/profile/dating/event'),'对象类别。')]);
 op('post','/admin/moderation-actions','管理员处理单个对象','A','AuditAction','BoardModerationInput',{status:201,idem:true,description:'仅人工处理帖子或回复；reason和expectedVersion验证，auditor不得写入。'});
 list('get','/admin/groups','运营角色管理群概要','A','Group');
 list('get','/admin/events','运营角色管理活动概要','A','EventPublic');

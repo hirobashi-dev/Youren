@@ -1,6 +1,6 @@
 # OpenAPI 接口合同
 
-[openapi.json](openapi.json) 为 OpenAPI 3.1.0 合同，包含94个 REST 操作，统一 `/v1` 前缀。中文 `description` 说明字段和规则；JSON不支持注释，因此注释维护于生成源及本说明。可以导入支持OpenAPI 3.1的Swagger Editor、Postman等工具评审。
+[openapi.json](openapi.json) 为 OpenAPI 3.1.0 合同，包含95个 REST 操作，统一 `/v1` 前缀。中文 `description` 说明字段和规则；JSON不支持注释，因此注释维护于生成源及本说明。可以导入支持OpenAPI 3.1的Swagger Editor、Postman等工具评审。
 
 第二阶段新增公开 `GET /v1/auth/policy`，只返回服务端要求的条款与隐私版本号；客户端主动同意后提交，服务端再核验版本。开发版本不表示正式政策正文已发布，不返回密钥或邮件配置。
 

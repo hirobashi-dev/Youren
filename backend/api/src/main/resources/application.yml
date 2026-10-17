@@ -1,7 +1,7 @@
-# 健康接口保持原路径及开发端口；迁移入口与服务启动分开。
+# 本机默认仅绑定回环地址；部署时须显式配置SERVER_ADDRESS开放所需网卡。
 server:
   port: ${SERVER_PORT:3000}
-  address: 0.0.0.0
+  address: ${SERVER_ADDRESS:127.0.0.1}
 spring:
   flyway:
     enabled: false
